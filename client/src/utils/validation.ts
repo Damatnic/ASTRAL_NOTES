@@ -72,7 +72,7 @@ export const createNoteSchema = z.object({
   projectId: z.string().min(1, 'Project ID is required'),
 });
 
-export const updateNoteSchema = createNoteSchema.partial().omit(['projectId']);
+export const updateNoteSchema = createNoteSchema.omit(['projectId']).partial();
 
 // Search schema
 export const searchSchema = z.object({

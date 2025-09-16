@@ -219,6 +219,7 @@ interface ConfirmModalProps {
   onConfirm: () => void;
   title: string;
   description: string;
+  message?: string;
   confirmText?: string;
   cancelText?: string;
   variant?: 'default' | 'destructive';
@@ -231,6 +232,7 @@ export function ConfirmModal({
   onConfirm,
   title,
   description,
+  message,
   confirmText = 'Confirm',
   cancelText = 'Cancel',
   variant = 'default',
@@ -261,6 +263,12 @@ export function ConfirmModal({
       footer={footer}
       closeOnBackdrop={!loading}
       closeOnEscape={!loading}
-    />
+    >
+      {message && (
+        <div className="text-sm text-slate-600 dark:text-slate-400">
+          {message}
+        </div>
+      )}
+    </Modal>
   );
 }

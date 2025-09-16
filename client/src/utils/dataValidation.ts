@@ -149,7 +149,7 @@ export class DataValidator {
       description: typeof data.description === 'string' ? data.description.trim().slice(0, 1000) : '',
       status: PROJECT_STATUS_OPTIONS.find(s => s.value === data.status)?.value || 'planning',
       genre: WRITING_GENRES.includes(data.genre) ? data.genre : undefined,
-      tags: Array.isArray(data.tags) ? data.tags.slice(0, 20).filter(tag => typeof tag === 'string') : [],
+      tags: Array.isArray(data.tags) ? data.tags.slice(0, 20).filter((tag: any) => typeof tag === 'string') : [],
       wordCount: typeof data.wordCount === 'number' && data.wordCount >= 0 ? data.wordCount : 0,
       targetWordCount: typeof data.targetWordCount === 'number' && data.targetWordCount > 0 ? data.targetWordCount : undefined,
     };
@@ -163,7 +163,7 @@ export class DataValidator {
       title: typeof data.title === 'string' ? data.title.trim().slice(0, 200) : '',
       content: typeof data.content === 'string' ? data.content.slice(0, 100000) : '',
       type: NOTE_TYPES.find(t => t.value === data.type)?.value || 'note',
-      tags: Array.isArray(data.tags) ? data.tags.slice(0, 10).filter(tag => typeof tag === 'string') : [],
+      tags: Array.isArray(data.tags) ? data.tags.slice(0, 10).filter((tag: any) => typeof tag === 'string') : [],
       position: typeof data.position === 'number' && data.position >= 0 ? data.position : 0,
     };
   }

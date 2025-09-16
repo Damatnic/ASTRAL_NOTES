@@ -19,6 +19,7 @@ export interface UpdateProjectData {
   tags?: string[];
   status?: Project['status'];
   genre?: string;
+  wordCount?: number;
 }
 
 export interface ProjectStats {
@@ -63,7 +64,7 @@ class ProjectService {
       title: data.title.trim(),
       description: data.description?.trim() || '',
       userId: 'local-user',
-      status: 'active',
+      status: 'planning',
       isPublic: false,
       tags: data.tags || [],
       wordCount: 0,
@@ -161,14 +162,14 @@ class ProjectService {
    * Restore an archived or deleted project
    */
   public restoreProject(id: string): Project | null {
-    return this.updateProject(id, { status: 'active' });
+    return this.updateProject(id, { status: 'writing' });
   }
 
   /**
-   * Get active projects only
+   * Get writing projects only
    */
   public getActiveProjects(): Project[] {
-    return storageService.getProjects().filter(p => p.status === 'active');
+    return storageService.getProjects().filter(p => p.status === 'writing');
   }
 
   /**
@@ -247,7 +248,7 @@ class ProjectService {
     
     return {
       totalProjects: projects.filter(p => p.status !== 'deleted').length,
-      activeProjects: projects.filter(p => p.status === 'active').length,
+      activeProjects: projects.filter(p => p.status === 'writing').length,
       totalWords: allNotes.reduce((sum, note) => sum + note.wordCount, 0),
       totalNotes: allNotes.length,
     };
@@ -258,7 +259,7 @@ class ProjectService {
    */
   public getRecentProjects(limit: number = 5): Project[] {
     const projects = storageService.getProjects()
-      .filter(p => p.status === 'active')
+      .filter(p => p.status === 'writing')
       .sort((a, b) => new Date(b.lastEditedAt).getTime() - new Date(a.lastEditedAt).getTime());
     
     return projects.slice(0, limit);

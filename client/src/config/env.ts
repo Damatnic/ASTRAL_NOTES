@@ -26,7 +26,7 @@ const optionalEnvVars = {
 
 // Get environment variable with validation
 function getEnvVar(key: string, defaultValue?: string): string {
-  const value = import.meta.env[key] || defaultValue;
+  const value = (import.meta.env as any)[key] || defaultValue;
   
   if (!value && requiredEnvVars.includes(key as any)) {
     throw new Error(`Missing required environment variable: ${key}`);
@@ -39,7 +39,7 @@ function getEnvVar(key: string, defaultValue?: string): string {
 export const env = {
   // App Information
   app: {
-    name: getEnvVar('VITE_APP_NAME', optionalEnvVars.VITE_APP_NAME),
+    name: getEnvVar('VITE_APP_NAME', 'Astral Notes'),
     version: getEnvVar('VITE_APP_VERSION', optionalEnvVars.VITE_APP_VERSION),
     description: getEnvVar('VITE_APP_DESCRIPTION', optionalEnvVars.VITE_APP_DESCRIPTION),
   },
@@ -86,9 +86,9 @@ export const env = {
   },
 
   // Environment Info
-  isDevelopment: import.meta.env.DEV,
-  isProduction: import.meta.env.PROD,
-  mode: import.meta.env.MODE,
+  isDevelopment: (import.meta.env as any).DEV,
+  isProduction: (import.meta.env as any).PROD,
+  mode: (import.meta.env as any).MODE,
 };
 
 // Validation function
@@ -97,7 +97,7 @@ export function validateEnvironment(): { isValid: boolean; errors: string[] } {
 
   // Check required variables
   requiredEnvVars.forEach(key => {
-    if (!import.meta.env[key]) {
+    if (!(import.meta.env as any)[key]) {
       errors.push(`Missing required environment variable: ${key}`);
     }
   });

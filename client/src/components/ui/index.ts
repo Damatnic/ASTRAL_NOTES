@@ -6,15 +6,15 @@
 // Core Components
 export { Button, buttonVariants, type ButtonProps } from './Button';
 export { Input, type InputProps } from './Input';
-export { Card, CardContent, CardDescription, CardHeader, CardTitle, type CardProps } from './Card';
+export { Card, CardContent, CardDescription, CardHeader, CardTitle } from './Card';
 export { Badge, type BadgeProps } from './Badge';
 export { Progress, type ProgressProps } from './Progress';
 
 // Advanced Components
-export { Modal, ConfirmModal, type ModalProps } from './Modal';
-export { Dropdown, type DropdownProps, type DropdownOption } from './Dropdown';
+export { Modal, ConfirmModal } from './Modal';
+export { Dropdown, type DropdownOption } from './Dropdown';
 export { Tabs, SimpleTabs, SimpleTab, type TabItem } from './Tabs';
-export { TextEditor, type TextEditorProps } from './TextEditor';
+export { TextEditor } from './TextEditor';
 export { ToastProvider, useToast, toast, type Toast, type ToastAction } from './Toast';
 
 // Component Categories for Design System Documentation
