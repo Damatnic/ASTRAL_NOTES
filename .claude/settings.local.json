@@ -1,0 +1,36 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run setup:*)",
+      "Bash(npx tsc:*)",
+      "Bash(node:*)",
+      "Bash(npm run dev:*)",
+      "Bash(npx prisma generate:*)",
+      "Bash(npx prisma:*)",
+      "Bash(taskkill:*)",
+      "Bash(curl:*)",
+      "WebSearch",
+      "Bash(npm install:*)",
+      "Bash(npm audit:*)",
+      "Bash(openssl rand:*)",
+      "Bash(npm update:*)",
+      "Bash(find:*)",
+      "Bash(npm run build:*)",
+      "Bash(npm run typecheck:*)",
+      "Read(//c/Users/damat/_REPOS/astral-field/**)",
+      "Bash(npm test:*)",
+      "Bash(npm run:*)",
+      "Bash(set PORT=8000)",
+      "Bash(start http://localhost:7893)",
+      "Bash(git checkout:*)",
+      "Bash(git reset:*)",
+      "Bash(npm outdated)",
+      "Bash(sed:*)",
+      "Bash(start http://localhost:7895)",
+      "Bash(git init:*)",
+      "Bash(git add:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

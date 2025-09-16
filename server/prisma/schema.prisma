@@ -1,0 +1,485 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  username  String   @unique
+  password  String
+  firstName String?
+  lastName  String?
+  avatar    String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // User preferences
+  preferences UserPreferences?
+
+  // Owned content
+  projects     Project[]
+  generalNotes GeneralNote[]
+
+  // Collaboration
+  projectCollaborators ProjectCollaborator[]
+  comments             Comment[]
+
+  @@map("users")
+}
+
+model UserPreferences {
+  id     String @id @default(cuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  theme              String  @default("light") // light, dark, auto
+  editorFontSize     Int     @default(14)
+  editorFontFamily   String  @default("Inter")
+  autoSave           Boolean @default(true)
+  autoSaveInterval   Int     @default(30) // seconds
+  showWordCount      Boolean @default(true)
+  showCharacterCount Boolean @default(false)
+  distrationFreeMode Boolean @default(false)
+  keyboardShortcuts  String @default("{}")
+
+  @@map("user_preferences")
+}
+
+model Project {
+  id          String   @id @default(cuid())
+  title       String
+  description String?
+  color       String   @default("#3B82F6") // Hex color for project identification
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  ownerId     String
+  owner       User     @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+
+  // Project content
+  stories     Story[]
+  notes       ProjectNote[]
+  characters  Character[]
+  locations   Location[]
+  items       Item[]
+  plotThreads PlotThread[]
+  themes      Theme[]
+  timelines   Timeline[]
+
+  // Collaboration
+  collaborators ProjectCollaborator[]
+
+  @@map("projects")
+}
+
+model ProjectCollaborator {
+  id        String   @id @default(cuid())
+  projectId String
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role      String   @default("viewer") // owner, editor, viewer
+  createdAt DateTime @default(now())
+
+  @@unique([projectId, userId])
+  @@map("project_collaborators")
+}
+
+model Story {
+  id          String   @id @default(cuid())
+  title       String
+  description String?
+  status      String   @default("planning") // planning, drafting, revising, completed
+  wordCount   Int      @default(0)
+  targetWords Int?
+  order       Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  projectId   String
+  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  // Story content
+  scenes    Scene[]
+  notes     StoryNote[]
+  chapters  Chapter[]
+  acts      Act[]
+  timelines Timeline[]
+
+  @@map("stories")
+}
+
+model Chapter {
+  id        String   @id @default(cuid())
+  title     String
+  order     Int
+  wordCount Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  storyId   String
+  story     Story    @relation(fields: [storyId], references: [id], onDelete: Cascade)
+
+  scenes Scene[]
+
+  @@map("chapters")
+}
+
+model Act {
+  id        String   @id @default(cuid())
+  title     String
+  order     Int
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  storyId   String
+  story     Story    @relation(fields: [storyId], references: [id], onDelete: Cascade)
+
+  scenes Scene[]
+
+  @@map("acts")
+}
+
+model Scene {
+  id          String   @id @default(cuid())
+  title       String
+  content     String   @default("")
+  summary     String?
+  wordCount   Int      @default(0)
+  order       Int      @default(0)
+  status      String   @default("draft") // outline, draft, revision, complete
+  povCharacter String? // Character ID or name
+  location    String?  // Location ID or name
+  timeOfDay   String?
+  date        DateTime?
+  tags        String @default("[]")
+  color       String?  // For visual organization
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  storyId   String
+  story     Story    @relation(fields: [storyId], references: [id], onDelete: Cascade)
+  chapterId String?
+  chapter   Chapter? @relation(fields: [chapterId], references: [id])
+  actId     String?
+  act       Act?     @relation(fields: [actId], references: [id])
+
+  // Relationships
+  characters      SceneCharacter[]
+  dependencies    SceneDependency[] @relation("SceneDependencies")
+  dependents      SceneDependency[] @relation("SceneDependents")
+  timelineEntries TimelineEntry[]
+  links           Link[]            @relation("SceneLinks")
+  comments        Comment[]
+
+  @@map("scenes")
+}
+
+model SceneCharacter {
+  id        String @id @default(cuid())
+  sceneId   String
+  scene     Scene  @relation(fields: [sceneId], references: [id], onDelete: Cascade)
+  characterId String
+  character Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  role      String @default("present") // present, mentioned, pov
+
+  @@unique([sceneId, characterId])
+  @@map("scene_characters")
+}
+
+model SceneDependency {
+  id            String @id @default(cuid())
+  sceneId       String
+  scene         Scene  @relation("SceneDependencies", fields: [sceneId], references: [id], onDelete: Cascade)
+  dependentSceneId String
+  dependentScene   Scene  @relation("SceneDependents", fields: [dependentSceneId], references: [id], onDelete: Cascade)
+  type          String @default("follows") // follows, requires, blocks
+  description   String?
+
+  @@unique([sceneId, dependentSceneId])
+  @@map("scene_dependencies")
+}
+
+// Notes system
+model GeneralNote {
+  id        String   @id @default(cuid())
+  title     String
+  content   String   @default("")
+  type      String   @default("general") // general, research, idea, reference
+  tags      String @default("[]")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  links    Link[]    @relation("GeneralNoteLinks")
+  comments Comment[]
+
+  @@map("general_notes")
+}
+
+model ProjectNote {
+  id        String   @id @default(cuid())
+  title     String
+  content   String   @default("")
+  type      String   @default("general") // general, worldbuilding, series_bible, research
+  tags      String @default("[]")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  projectId String
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  links    Link[]    @relation("ProjectNoteLinks")
+  comments Comment[]
+
+  @@map("project_notes")
+}
+
+model StoryNote {
+  id        String   @id @default(cuid())
+  title     String
+  content   String   @default("")
+  type      String   @default("general") // general, plot, character, research
+  tags      String @default("[]")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  storyId   String
+  story     Story    @relation(fields: [storyId], references: [id], onDelete: Cascade)
+
+  links    Link[]    @relation("StoryNoteLinks")
+  comments Comment[]
+
+  @@map("story_notes")
+}
+
+// Entity types for rich world-building
+model Character {
+  id          String   @id @default(cuid())
+  name        String
+  description String   @default("")
+  avatar      String?
+  traits      String @default("{}") // Physical, personality, background
+  arc         String @default("{}") // Character development arc
+  relationships String @default("{}") // Relationships with other characters
+  backstory   String   @default("")
+  motivation  String   @default("")
+  conflict    String   @default("")
+  tags        String @default("[]")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  projectId   String
+  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  scenes           SceneCharacter[]
+  timelineEntries  TimelineEntry[]
+  links            Link[]           @relation("CharacterLinks")
+  comments         Comment[]
+
+  @@map("characters")
+}
+
+model Location {
+  id          String   @id @default(cuid())
+  name        String
+  description String   @default("")
+  type        String   @default("place") // place, region, building, room
+  parent      String? // Parent location ID for hierarchy
+  coordinates String?    @default("{}") // Map coordinates if applicable
+  significance String  @default("")
+  atmosphere  String   @default("")
+  tags        String @default("[]")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  projectId   String
+  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  timelineEntries TimelineEntry[]
+  links           Link[]          @relation("LocationLinks")
+  comments        Comment[]
+
+  @@map("locations")
+}
+
+model Item {
+  id           String   @id @default(cuid())
+  name         String
+  description  String   @default("")
+  type         String   @default("object") // object, weapon, artifact, document
+  properties   String @default("{}") // Physical properties, magical properties, etc.
+  history      String   @default("")
+  currentHolder String? // Character ID or location
+  significance String   @default("")
+  tags         String @default("[]")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  projectId    String
+  project      Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  timelineEntries TimelineEntry[]
+  links           Link[]          @relation("ItemLinks")
+  comments        Comment[]
+
+  @@map("items")
+}
+
+model PlotThread {
+  id          String   @id @default(cuid())
+  name        String
+  description String   @default("")
+  status      String   @default("active") // active, resolved, abandoned
+  priority    String   @default("medium") // high, medium, low
+  resolution  String   @default("")
+  tags        String @default("[]")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  projectId   String
+  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  timelineEntries TimelineEntry[]
+  links           Link[]          @relation("PlotThreadLinks")
+  comments        Comment[]
+
+  @@map("plot_threads")
+}
+
+model Theme {
+  id          String   @id @default(cuid())
+  name        String
+  description String   @default("")
+  occurrences String @default("{}") // Array of scene IDs where theme appears
+  analysis    String   @default("")
+  tags        String @default("[]")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  projectId   String
+  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  links    Link[]    @relation("ThemeLinks")
+  comments Comment[]
+
+  @@map("themes")
+}
+
+// Timeline system
+model Timeline {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  type        String   @default("story") // story, character, world, narrative
+  startDate   DateTime?
+  endDate     DateTime?
+  scale       String   @default("days") // minutes, hours, days, months, years
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  projectId String?
+  project   Project? @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  storyId   String?
+  story     Story?   @relation(fields: [storyId], references: [id], onDelete: Cascade)
+
+  entries TimelineEntry[]
+
+  @@map("timelines")
+}
+
+model TimelineEntry {
+  id          String    @id @default(cuid())
+  title       String
+  description String?
+  date        DateTime
+  endDate     DateTime? // For events with duration
+  type        String    @default("event") // event, scene, milestone, deadline
+  importance  Int       @default(1) // 1-5 scale
+  tags        String @default("[]")
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  timelineId String
+  timeline   Timeline @relation(fields: [timelineId], references: [id], onDelete: Cascade)
+
+  // Optional connections to other entities
+  sceneId     String?
+  scene       Scene?     @relation(fields: [sceneId], references: [id])
+  characterId String?
+  character   Character? @relation(fields: [characterId], references: [id])
+  locationId  String?
+  location    Location?  @relation(fields: [locationId], references: [id])
+  itemId      String?
+  item        Item?      @relation(fields: [itemId], references: [id])
+  plotThreadId String?
+  plotThread  PlotThread? @relation(fields: [plotThreadId], references: [id])
+
+  @@map("timeline_entries")
+}
+
+// Linking system
+model Link {
+  id          String   @id @default(cuid())
+  sourceType  String   // Type of source entity
+  sourceId    String   // ID of source entity
+  targetType  String   // Type of target entity
+  targetId    String   // ID of target entity
+  linkText    String   // The text used in the link
+  contextBefore String @default("") // Text before the link for context
+  contextAfter  String @default("") // Text after the link for context
+  createdAt   DateTime @default(now())
+
+  // Relations to different entity types (nullable)
+  sourceScene        Scene?        @relation("SceneLinks", fields: [sourceId], references: [id], onDelete: Cascade)
+  sourceGeneralNote  GeneralNote?  @relation("GeneralNoteLinks", fields: [sourceId], references: [id], onDelete: Cascade)
+  sourceProjectNote  ProjectNote?  @relation("ProjectNoteLinks", fields: [sourceId], references: [id], onDelete: Cascade)
+  sourceStoryNote    StoryNote?    @relation("StoryNoteLinks", fields: [sourceId], references: [id], onDelete: Cascade)
+  sourceCharacter    Character?    @relation("CharacterLinks", fields: [sourceId], references: [id], onDelete: Cascade)
+  sourceLocation     Location?     @relation("LocationLinks", fields: [sourceId], references: [id], onDelete: Cascade)
+  sourceItem         Item?         @relation("ItemLinks", fields: [sourceId], references: [id], onDelete: Cascade)
+  sourcePlotThread   PlotThread?   @relation("PlotThreadLinks", fields: [sourceId], references: [id], onDelete: Cascade)
+  sourceTheme        Theme?        @relation("ThemeLinks", fields: [sourceId], references: [id], onDelete: Cascade)
+
+  @@unique([sourceType, sourceId, targetType, targetId, linkText])
+  @@map("links")
+}
+
+// Comments and collaboration
+model Comment {
+  id        String   @id @default(cuid())
+  content   String
+  resolved  Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Polymorphic relations to different entity types
+  entityType String
+  entityId   String
+
+  scene         Scene?        @relation(fields: [entityId], references: [id], onDelete: Cascade)
+  generalNote   GeneralNote?  @relation(fields: [entityId], references: [id], onDelete: Cascade)
+  projectNote   ProjectNote?  @relation(fields: [entityId], references: [id], onDelete: Cascade)
+  storyNote     StoryNote?    @relation(fields: [entityId], references: [id], onDelete: Cascade)
+  character     Character?    @relation(fields: [entityId], references: [id], onDelete: Cascade)
+  location      Location?     @relation(fields: [entityId], references: [id], onDelete: Cascade)
+  item          Item?         @relation(fields: [entityId], references: [id], onDelete: Cascade)
+  plotThread    PlotThread?   @relation(fields: [entityId], references: [id], onDelete: Cascade)
+  theme         Theme?        @relation(fields: [entityId], references: [id], onDelete: Cascade)
+
+  @@map("comments")
+}
+
+// Version control for all content
+model Version {
+  id          String   @id @default(cuid())
+  entityType  String   // Type of entity being versioned
+  entityId    String   // ID of the entity
+  content     String     // Snapshot of the entity at this version
+  changeType  String   @default("update") // create, update, delete
+  description String?  // Optional description of changes
+  createdAt   DateTime @default(now())
+  userId      String   // User who made the change
+
+  @@map("versions")
+}
