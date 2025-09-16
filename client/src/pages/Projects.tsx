@@ -13,7 +13,7 @@ import {
   Trash2, 
   Edit, 
   Eye, 
-  Grid3X3, 
+  LayoutGrid, 
   List,
   SortAsc,
   SortDesc,
@@ -296,7 +296,7 @@ export function Projects() {
   ];
 
   const viewModeOptions: DropdownOption[] = [
-    { value: 'grid', label: 'Grid View', icon: <Grid3X3 className="h-4 w-4" /> },
+    { value: 'grid', label: 'Grid View', icon: <LayoutGrid className="h-4 w-4" /> },
     { value: 'list', label: 'List View', icon: <List className="h-4 w-4" /> },
     { value: 'table', label: 'Table View', icon: <List className="h-4 w-4" /> },
   ];
