@@ -21,11 +21,6 @@
     "VITE_DEV_PORT": "7895",
     "VITE_DEV_HOST": "localhost"
   },
-  "functions": {
-    "client/dist/index.html": {
-      "maxDuration": 10
-    }
-  },
   "rewrites": [
     {
       "source": "/(.*)",
