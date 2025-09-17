@@ -1,9 +1,11 @@
-// Service Worker for ASTRAL_NOTES
-// Handles offline functionality, caching, and background sync
+// Service Worker for ASTRAL_NOTES v2.0
+// Enhanced with AI assistance, voice features, and advanced collaboration
 
-const CACHE_NAME = 'astral-notes-v1';
-const STATIC_CACHE = 'astral-static-v1';
-const DATA_CACHE = 'astral-data-v1';
+const CACHE_NAME = 'astral-notes-v2';
+const STATIC_CACHE = 'astral-static-v2';
+const DATA_CACHE = 'astral-data-v2';
+const AI_CACHE = 'astral-ai-v1';
+const VOICE_CACHE = 'astral-voice-v1';
 
 // Files to cache immediately
 const STATIC_ASSETS = [
@@ -216,10 +218,173 @@ async function syncOfflineChanges() {
   }
 }
 
-// Open IndexedDB
+// File handling for PWA file associations
+self.addEventListener('fetch', (event) => {
+  const url = new URL(event.request.url);
+  
+  // Handle file opens
+  if (url.pathname === '/open-file' && event.request.method === 'POST') {
+    event.respondWith(handleFileOpen(event.request));
+    return;
+  }
+  
+  // Cache AI responses for offline use
+  if (url.pathname.includes('/api/ai/')) {
+    event.respondWith(
+      caches.open(AI_CACHE).then(cache => {
+        return cache.match(event.request).then(cachedResponse => {
+          if (cachedResponse) {
+            return cachedResponse;
+          }
+          
+          return fetch(event.request).then(response => {
+            if (response.status === 200) {
+              cache.put(event.request, response.clone());
+            }
+            return response;
+          });
+        });
+      })
+    );
+    return;
+  }
+  
+  // Cache voice processing results
+  if (url.pathname.includes('/api/voice/')) {
+    event.respondWith(
+      caches.open(VOICE_CACHE).then(cache => {
+        return cache.match(event.request).then(cachedResponse => {
+          if (cachedResponse) {
+            return cachedResponse;
+          }
+          
+          return fetch(event.request).then(response => {
+            if (response.status === 200) {
+              cache.put(event.request, response.clone());
+            }
+            return response;
+          });
+        });
+      })
+    );
+    return;
+  }
+});
+
+// Handle file opening from OS
+async function handleFileOpen(request) {
+  const formData = await request.formData();
+  const file = formData.get('file');
+  
+  if (file) {
+    const clients = await self.clients.matchAll({ type: 'window' });
+    if (clients.length > 0) {
+      clients[0].postMessage({
+        type: 'FILE_OPEN',
+        file: {
+          name: file.name,
+          type: file.type,
+          content: await file.text()
+        }
+      });
+      
+      return Response.redirect('/', 302);
+    }
+  }
+  
+  return new Response('File handling failed', { status: 400 });
+}
+
+// Enhanced background sync for AI processing
+self.addEventListener('sync', (event) => {
+  if (event.tag === 'ai-processing') {
+    event.waitUntil(processOfflineAIRequests());
+  }
+  
+  if (event.tag === 'voice-transcription') {
+    event.waitUntil(processOfflineVoiceRequests());
+  }
+});
+
+// Process AI requests made while offline
+async function processOfflineAIRequests() {
+  try {
+    const db = await openDB();
+    const tx = db.transaction('ai_queue', 'readonly');
+    const store = tx.objectStore('ai_queue');
+    const requests = await store.getAll();
+    
+    for (const request of requests) {
+      const response = await fetch('/api/ai/process', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(request.data)
+      });
+      
+      if (response.ok) {
+        const result = await response.json();
+        
+        // Store result and notify client
+        const clients = await self.clients.matchAll();
+        clients.forEach(client => {
+          client.postMessage({
+            type: 'AI_RESULT',
+            requestId: request.id,
+            result: result
+          });
+        });
+        
+        // Remove from queue
+        const deleteTx = db.transaction('ai_queue', 'readwrite');
+        await deleteTx.objectStore('ai_queue').delete(request.id);
+      }
+    }
+  } catch (error) {
+    console.error('[Service Worker] AI processing failed:', error);
+  }
+}
+
+// Process voice transcription requests made while offline
+async function processOfflineVoiceRequests() {
+  try {
+    const db = await openDB();
+    const tx = db.transaction('voice_queue', 'readonly');
+    const store = tx.objectStore('voice_queue');
+    const requests = await store.getAll();
+    
+    for (const request of requests) {
+      const response = await fetch('/api/voice/transcribe', {
+        method: 'POST',
+        body: request.audioBlob
+      });
+      
+      if (response.ok) {
+        const result = await response.json();
+        
+        // Notify client
+        const clients = await self.clients.matchAll();
+        clients.forEach(client => {
+          client.postMessage({
+            type: 'VOICE_RESULT',
+            requestId: request.id,
+            transcript: result.transcript
+          });
+        });
+        
+        // Remove from queue
+        const deleteTx = db.transaction('voice_queue', 'readwrite');
+        await deleteTx.objectStore('voice_queue').delete(request.id);
+      }
+    }
+  } catch (error) {
+    console.error('[Service Worker] Voice processing failed:', error);
+  }
+}
+
+// Open IndexedDB with enhanced stores
 function openDB() {
   return new Promise((resolve, reject) => {
-    const request = indexedDB.open('AstralNotesDB', 1);
+    const request = indexedDB.open('AstralNotesDB', 2);
     
     request.onerror = () => reject(request.error);
     request.onsuccess = () => resolve(request.result);
@@ -229,6 +394,14 @@ function openDB() {
       
       if (!db.objectStoreNames.contains('sync_queue')) {
         db.createObjectStore('sync_queue', { keyPath: 'id', autoIncrement: true });
+      }
+      
+      if (!db.objectStoreNames.contains('ai_queue')) {
+        db.createObjectStore('ai_queue', { keyPath: 'id', autoIncrement: true });
+      }
+      
+      if (!db.objectStoreNames.contains('voice_queue')) {
+        db.createObjectStore('voice_queue', { keyPath: 'id', autoIncrement: true });
       }
     };
   });

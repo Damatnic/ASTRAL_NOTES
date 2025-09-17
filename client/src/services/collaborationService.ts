@@ -46,6 +46,31 @@ export interface DocumentChange {
   content?: string;
   length?: number;
   attributes?: Record<string, any>;
+  revision?: number;
+  baseRevision?: number;
+}
+
+export interface Operation {
+  type: 'retain' | 'insert' | 'delete';
+  count?: number;
+  text?: string;
+  attributes?: Record<string, any>;
+}
+
+export interface CursorPosition {
+  userId: string;
+  documentId: string;
+  position: number;
+  selection?: { start: number; end: number };
+  timestamp: Date;
+}
+
+export interface PresenceData {
+  userId: string;
+  cursor?: CursorPosition;
+  isTyping: boolean;
+  activeElement?: string;
+  viewportPosition?: { x: number; y: number };
 }
 
 export interface ConflictResolution {
