@@ -3,8 +3,8 @@
  */
 
 // API Configuration
-export const API_BASE_URL = (import.meta.env as any).VITE_API_BASE_URL || 'http://localhost:3001/api';
-export const WS_BASE_URL = (import.meta.env as any).VITE_WS_BASE_URL || 'ws://localhost:3001';
+export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api';
+export const WS_BASE_URL = import.meta.env.VITE_WS_BASE_URL || 'ws://localhost:3001';
 
 // Storage Keys
 export const STORAGE_KEYS = {
@@ -48,10 +48,21 @@ export const NOTE_TYPES = [
   { value: 'chapter', label: 'Chapter', icon: 'BookOpen' },
   { value: 'scene', label: 'Scene', icon: 'Film' },
   { value: 'character', label: 'Character', icon: 'User' },
-  { value: 'plot', label: 'Plot', icon: 'Map' },
-  { value: 'setting', label: 'Setting', icon: 'MapPin' },
-  { value: 'outline', label: 'Outline', icon: 'List' },
+  { value: 'location', label: 'Location', icon: 'MapPin' },
+  { value: 'item', label: 'Item', icon: 'Package' },
+  { value: 'plotthread', label: 'Plot Thread', icon: 'Map' },
+  { value: 'theme', label: 'Theme', icon: 'Star' },
   { value: 'research', label: 'Research', icon: 'Search' },
+  { value: 'dialogue', label: 'Dialogue', icon: 'MessageSquare' },
+  { value: 'worldrule', label: 'World Rule', icon: 'Book' },
+  { value: 'outline', label: 'Outline', icon: 'List' },
+  { value: 'timeline', label: 'Timeline', icon: 'Clock' },
+  { value: 'relationship', label: 'Relationship', icon: 'Users' },
+  { value: 'conflict', label: 'Conflict', icon: 'Zap' },
+  { value: 'arc', label: 'Arc', icon: 'TrendingUp' },
+  { value: 'setting', label: 'Setting', icon: 'Map' },
+  { value: 'backstory', label: 'Backstory', icon: 'History' },
+  { value: 'reference', label: 'Reference', icon: 'Link' },
 ] as const;
 
 // Project Status Options

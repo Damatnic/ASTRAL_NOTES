@@ -35,6 +35,7 @@ import { Modal, ConfirmModal } from '@/components/ui/Modal';
 import { Dropdown, type DropdownOption } from '@/components/ui/Dropdown';
 import { Tabs, TabItem } from '@/components/ui/Tabs';
 import { useToast } from '@/components/ui/Toast';
+import { CreateProjectModal } from '@/components/modals/CreateProjectModal';
 import { fetchProjectsAsync, deleteProjectAsync, setSearchFilter, setStatusFilter } from '@/store/slices/projectsSlice';
 import { projectService } from '@/services/projectService';
 import { exportService } from '@/services/exportService';
@@ -668,6 +669,11 @@ export function Projects() {
       )}
 
       {/* Modals */}
+      <CreateProjectModal
+        isOpen={showNewProjectModal}
+        onClose={() => setShowNewProjectModal(false)}
+      />
+
       <ConfirmModal
         isOpen={showDeleteConfirm}
         onClose={() => setShowDeleteConfirm(false)}

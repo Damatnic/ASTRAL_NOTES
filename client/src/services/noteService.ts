@@ -42,6 +42,20 @@ class NoteService {
   }
 
   /**
+   * Get notes by project (alias for getProjectNotes)
+   */
+  public getNotesByProject(projectId: string): Note[] {
+    return this.getProjectNotes(projectId);
+  }
+
+  /**
+   * Get all notes across all projects
+   */
+  public getAllNotes(): Note[] {
+    return storageService.getAllNotes();
+  }
+
+  /**
    * Get note by ID
    */
   public getNoteById(projectId: string, noteId: string): Note | null {
@@ -82,7 +96,32 @@ class NoteService {
   /**
    * Update an existing note
    */
-  public updateNote(projectId: string, noteId: string, data: UpdateNoteData): Note | null {
+  public updateNote(projectId: string, noteId: string, data: UpdateNoteData): Note | null;
+  public updateNote(noteId: string, data: UpdateNoteData): Note | null;
+  public updateNote(projectIdOrNoteId: string, noteIdOrData: string | UpdateNoteData, data?: UpdateNoteData): Note | null {
+    let projectId: string;
+    let noteId: string;
+    let updateData: UpdateNoteData;
+
+    if (typeof noteIdOrData === 'string') {
+      // Two parameter version: updateNote(projectId, noteId, data)
+      projectId = projectIdOrNoteId;
+      noteId = noteIdOrData;
+      updateData = data!;
+    } else {
+      // Single parameter version: updateNote(noteId, data) - need to find projectId
+      noteId = projectIdOrNoteId;
+      updateData = noteIdOrData;
+      
+      // Find the project that contains this note
+      const allNotes = storageService.getAllNotes();
+      const note = allNotes.find(n => n.id === noteId);
+      if (!note) {
+        return null;
+      }
+      projectId = note.projectId;
+    }
+
     const notes = storageService.getProjectNotes(projectId);
     const index = notes.findIndex(n => n.id === noteId);
     
@@ -92,13 +131,13 @@ class NoteService {
 
     const updated: Note = {
       ...notes[index],
-      ...data,
+      ...updateData,
       updatedAt: new Date().toISOString(),
     };
 
     // Recalculate word count if content changed
-    if (data.content !== undefined) {
-      updated.wordCount = this.calculateWordCount(data.content);
+    if (updateData.content !== undefined) {
+      updated.wordCount = this.calculateWordCount(updateData.content);
     }
 
     notes[index] = updated;
@@ -113,9 +152,31 @@ class NoteService {
   /**
    * Delete a note
    */
-  public deleteNote(projectId: string, noteId: string): boolean {
+  public deleteNote(projectId: string, noteId: string): boolean;
+  public deleteNote(noteId: string): boolean;
+  public deleteNote(projectIdOrNoteId: string, noteId?: string): boolean {
+    let projectId: string;
+    let actualNoteId: string;
+
+    if (noteId) {
+      // Two parameter version: deleteNote(projectId, noteId)
+      projectId = projectIdOrNoteId;
+      actualNoteId = noteId;
+    } else {
+      // Single parameter version: deleteNote(noteId) - need to find projectId
+      actualNoteId = projectIdOrNoteId;
+      
+      // Find the project that contains this note
+      const allNotes = storageService.getAllNotes();
+      const note = allNotes.find(n => n.id === actualNoteId);
+      if (!note) {
+        return false;
+      }
+      projectId = note.projectId;
+    }
+
     const notes = storageService.getProjectNotes(projectId);
-    const filteredNotes = notes.filter(n => n.id !== noteId);
+    const filteredNotes = notes.filter(n => n.id !== actualNoteId);
     
     if (filteredNotes.length === notes.length) {
       return false; // Note not found
@@ -126,6 +187,80 @@ class NoteService {
     // Update project word count
     projectService.updateProjectWordCount(projectId);
 
+    return true;
+  }
+
+  /**
+   * Archive a note (add archived flag)
+   */
+  public archiveNote(projectId: string, noteId: string): boolean;
+  public archiveNote(noteId: string): boolean;
+  public archiveNote(projectIdOrNoteId: string, noteId?: string): boolean {
+    let projectId: string;
+    let actualNoteId: string;
+
+    if (noteId) {
+      projectId = projectIdOrNoteId;
+      actualNoteId = noteId;
+    } else {
+      actualNoteId = projectIdOrNoteId;
+      const allNotes = storageService.getAllNotes();
+      const note = allNotes.find(n => n.id === actualNoteId);
+      if (!note) return false;
+      projectId = note.projectId;
+    }
+
+    const notes = storageService.getProjectNotes(projectId);
+    const index = notes.findIndex(n => n.id === actualNoteId);
+    
+    if (index === -1) {
+      return false;
+    }
+
+    notes[index] = {
+      ...notes[index],
+      archived: true,
+      updatedAt: new Date().toISOString(),
+    };
+
+    storageService.saveProjectNotes(projectId, notes);
+    return true;
+  }
+
+  /**
+   * Restore an archived note
+   */
+  public restoreNote(projectId: string, noteId: string): boolean;
+  public restoreNote(noteId: string): boolean;
+  public restoreNote(projectIdOrNoteId: string, noteId?: string): boolean {
+    let projectId: string;
+    let actualNoteId: string;
+
+    if (noteId) {
+      projectId = projectIdOrNoteId;
+      actualNoteId = noteId;
+    } else {
+      actualNoteId = projectIdOrNoteId;
+      const allNotes = storageService.getAllNotes();
+      const note = allNotes.find(n => n.id === actualNoteId);
+      if (!note) return false;
+      projectId = note.projectId;
+    }
+
+    const notes = storageService.getProjectNotes(projectId);
+    const index = notes.findIndex(n => n.id === actualNoteId);
+    
+    if (index === -1) {
+      return false;
+    }
+
+    notes[index] = {
+      ...notes[index],
+      archived: false,
+      updatedAt: new Date().toISOString(),
+    };
+
+    storageService.saveProjectNotes(projectId, notes);
     return true;
   }
 

@@ -1,13 +1,25 @@
 /**
  * Global type definitions for Astral Notes
+ * Re-exports comprehensive story types and adds core application types
  */
 
+// Re-export all story management types
+export * from './story';
+import type { 
+  Project as StoryProject, 
+  Note as StoryNote, 
+  Character as StoryCharacter,
+  TimelineEvent as StoryTimelineEvent 
+} from './story';
+
+// Core user and application types
 export interface User {
   id: string;
   email: string;
   name: string;
   avatar?: string;
   preferences: UserPreferences;
+  subscription?: UserSubscription;
   createdAt: string;
   updatedAt: string;
 }
@@ -17,60 +29,34 @@ export interface UserPreferences {
   sidebarCollapsed: boolean;
   autoSave: boolean;
   notifications: boolean;
+  defaultView: 'cards' | 'list' | 'timeline';
+  editorMode: 'rich' | 'markdown' | 'distraction-free';
+  wordCountDisplay: boolean;
+  realTimeCollaboration: boolean;
+  aiAssistance: boolean;
+  keyboardShortcuts: boolean;
+  language: string;
+  timezone: string;
 }
 
-export interface Project {
-  id: string;
-  title: string;
-  description?: string;
-  userId: string;
-  status: 'planning' | 'writing' | 'editing' | 'complete' | 'archived' | 'deleted';
-  isPublic: boolean;
-  tags: string[];
-  genre?: string;
-  wordCount: number;
-  targetWordCount?: number;
-  lastEditedAt: string;
-  createdAt: string;
-  updatedAt: string;
+export interface UserSubscription {
+  plan: 'free' | 'pro' | 'team' | 'enterprise';
+  status: 'active' | 'canceled' | 'expired' | 'trial';
+  expiresAt?: string;
+  features: string[];
+  limits: {
+    projects: number;
+    collaborators: number;
+    storage: number; // in MB
+    aiRequests: number; // per month
+  };
 }
 
-export interface Note {
-  id: string;
-  projectId: string;
-  title: string;
-  content: string;
-  type: 'note' | 'character' | 'plot' | 'setting' | 'research' | 'chapter' | 'scene' | 'outline';
-  tags: string[];
-  wordCount: number;
-  position: number;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface Character {
-  id: string;
-  projectId: string;
-  name: string;
-  description?: string;
-  traits: string[];
-  backstory?: string;
-  relationships?: Record<string, string>;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface TimelineEvent {
-  id: string;
-  projectId: string;
-  title: string;
-  description?: string;
-  date?: string;
-  chapter?: string;
-  importance: 'low' | 'medium' | 'high';
-  createdAt: string;
-  updatedAt: string;
-}
+// Legacy type aliases for backward compatibility
+export type Project = StoryProject;
+export type Note = StoryNote;
+export type Character = StoryCharacter;
+export type TimelineEvent = StoryTimelineEvent;
 
 export interface ApiResponse<T = unknown> {
   success: boolean;

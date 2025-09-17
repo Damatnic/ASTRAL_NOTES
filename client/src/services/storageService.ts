@@ -238,6 +238,14 @@ class StorageService {
         sidebarCollapsed: false,
         autoSave: true,
         notifications: true,
+        defaultView: 'cards',
+        editorMode: 'rich',
+        wordCountDisplay: true,
+        realTimeCollaboration: false,
+        aiAssistance: true,
+        keyboardShortcuts: true,
+        language: 'en',
+        timezone: 'UTC'
       },
       appData: {
         lastBackup: null,
@@ -260,22 +268,74 @@ class StorageService {
       appData: { ...defaultData.appData, ...data.appData },
     };
 
-    // Validate projects structure
+    // Validate projects structure - use type assertion for migration
     migrated.projects = migrated.projects.map(project => ({
       id: project.id || this.generateId(),
       title: project.title || 'Untitled Project',
       description: project.description || '',
       userId: 'local-user',
-      status: project.status || 'active',
+      status: project.status || 'planning',
       isPublic: false,
       tags: Array.isArray(project.tags) ? project.tags : [],
       wordCount: typeof project.wordCount === 'number' ? project.wordCount : 0,
       lastEditedAt: project.lastEditedAt || new Date().toISOString(),
       createdAt: project.createdAt || new Date().toISOString(),
       updatedAt: project.updatedAt || new Date().toISOString(),
-    }));
+      // Add missing properties with defaults for legacy projects
+      stories: project.stories || [],
+      projectNotes: project.projectNotes || [],
+      plotboard: project.plotboard || this.createDefaultPlotboard(),
+      settings: project.settings || this.createDefaultSettings(),
+      collaborators: project.collaborators || [],
+      isCollaborative: project.isCollaborative || false,
+      genre: project.genre,
+      targetWordCount: project.targetWordCount
+    } as any));
 
     return migrated;
+  }
+
+  /**
+   * Create default plotboard structure
+   */
+  private createDefaultPlotboard() {
+    const now = new Date().toISOString();
+    return {
+      id: this.generateId(),
+      projectId: '',
+      stories: [],
+      threads: [],
+      connections: [],
+      timeline: [],
+      settings: {
+        viewMode: 'grid' as const,
+        showConnections: true,
+        autoLayout: true,
+        gridSize: 20,
+        theme: 'light' as const
+      },
+      createdAt: now,
+      updatedAt: now
+    };
+  }
+
+  /**
+   * Create default project settings
+   */
+  private createDefaultSettings() {
+    return {
+      defaultPOV: undefined,
+      defaultLocation: undefined,
+      timeFormat: '12h' as const,
+      dateFormat: 'MDY' as const,
+      autoSave: true,
+      versionHistory: true,
+      linkPreview: true,
+      wordCountTarget: undefined,
+      dailyGoal: undefined,
+      theme: 'light' as const,
+      distractionFree: false
+    };
   }
 
   /**

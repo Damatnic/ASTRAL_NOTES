@@ -71,6 +71,42 @@ class ProjectService {
       lastEditedAt: now,
       createdAt: now,
       updatedAt: now,
+      stories: [],
+      projectNotes: [],
+      plotboard: {
+        id: this.generateId(),
+        projectId: '',
+        stories: [],
+        threads: [],
+        connections: [],
+        timeline: [],
+        settings: {
+          viewMode: 'grid',
+          showConnections: true,
+          autoLayout: true,
+          gridSize: 20,
+          theme: 'light'
+        },
+        createdAt: now,
+        updatedAt: now
+      },
+      settings: {
+        defaultPOV: undefined,
+        defaultLocation: undefined,
+        timeFormat: '12h',
+        dateFormat: 'MDY',
+        autoSave: true,
+        versionHistory: true,
+        linkPreview: true,
+        wordCountTarget: undefined,
+        dailyGoal: undefined,
+        theme: 'light',
+        distractionFree: false
+      },
+      collaborators: [],
+      isCollaborative: false,
+      genre: data.genre,
+      targetWordCount: data.targetWordCount
     };
 
     const projects = storageService.getProjects();

@@ -7,6 +7,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { Layout } from '@/components/layout/Layout';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { ToastProvider } from '@/components/ui/Toast';
+import { OfflineIndicator } from '@/components/offline/OfflineIndicator';
 import { Loader2 } from 'lucide-react';
 
 // Lazy load pages for better performance
@@ -14,6 +15,7 @@ const Dashboard = React.lazy(() => import('@/pages/Dashboard').then(m => ({ defa
 const Projects = React.lazy(() => import('@/pages/Projects').then(m => ({ default: m.Projects })));
 const ProjectDashboard = React.lazy(() => import('@/pages/ProjectDashboard').then(m => ({ default: m.ProjectDashboard })));
 const NoteEditor = React.lazy(() => import('@/pages/NoteEditor').then(m => ({ default: m.NoteEditor })));
+const Search = React.lazy(() => import('@/pages/Search').then(m => ({ default: m.Search })));
 const Settings = React.lazy(() => import('@/pages/Settings').then(m => ({ default: m.Settings })));
 
 // Loading component
@@ -39,6 +41,7 @@ export function App() {
           }}
         >
           <div className="min-h-screen bg-background text-foreground">
+            <OfflineIndicator />
             <Suspense fallback={<LoadingSpinner />}>
               <Routes>
                 {/* Direct access routes - no authentication needed */}
@@ -49,6 +52,7 @@ export function App() {
                   <Route path="projects/:id" element={<ProjectDashboard />} />
                   <Route path="projects/:projectId/notes/new" element={<NoteEditor />} />
                   <Route path="projects/:projectId/notes/:noteId" element={<NoteEditor />} />
+                  <Route path="search" element={<Search />} />
                   <Route path="settings" element={<Settings />} />
                   
                   {/* Catch-all route for 404 */}

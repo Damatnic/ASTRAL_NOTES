@@ -3,6 +3,14 @@
  */
 
 import { z } from 'zod';
+import type { NoteType } from '../types/story';
+
+// Valid note types for validation
+const validNoteTypes: [NoteType, ...NoteType[]] = [
+  'note', 'character', 'location', 'item', 'plotthread', 'theme', 'research', 
+  'dialogue', 'worldrule', 'chapter', 'scene', 'outline', 'timeline', 
+  'relationship', 'conflict', 'arc', 'setting', 'backstory', 'reference'
+];
 
 // Auth schemas
 export const loginSchema = z.object({
@@ -65,7 +73,7 @@ export const createNoteSchema = z.object({
     .max(200, 'Title cannot exceed 200 characters'),
   content: z.string().optional().default(''),
   type: z
-    .enum(['note', 'character', 'plot', 'setting', 'research'])
+    .enum(validNoteTypes)
     .optional()
     .default('note'),
   tags: z.array(z.string()).optional().default([]),
