@@ -26,7 +26,7 @@ import {
   Package,
   BookOpen,
   MessageSquare,
-  Scales,
+  Scale,
   TrendingUp,
   FileText,
   Star
@@ -51,7 +51,7 @@ const TYPE_ICONS = {
   item: Package,
   plotthread: Zap,
   scene: MessageSquare,
-  worldrule: Scales,
+  worldrule: Scale,
   outline: FileText,
   research: BookOpen
 };

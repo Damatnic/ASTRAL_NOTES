@@ -7,7 +7,7 @@ import {
   WifiIcon,
   WifiOffIcon,
   CloudIcon,
-  CloudUpIcon,
+  Upload,
   CloudOffIcon,
   RefreshCwIcon,
   AlertCircleIcon,
@@ -305,7 +305,7 @@ export const OfflineIndicator: React.FC = () => {
               <div className="p-4 border-b border-gray-800">
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-2">
-                    <CloudUpIcon className="w-5 h-5 text-blue-400" />
+                    <Upload className="w-5 h-5 text-blue-400" />
                     <span className="text-gray-300 font-medium">Sync Queue</span>
                   </div>
                   {syncStatus.queueSize > 0 && (
