@@ -196,13 +196,12 @@ export function NoteEditor() {
           setSessionWordCount(noteData.wordCount);
         } else {
           // Create new note
-          const newNote = await noteService.createNote({
+          const newNote = noteService.createNote({
             title: 'Untitled Note',
             content: '',
             projectId,
             type: 'note',
             tags: [],
-            position: 0,
           });
           setNote(newNote);
           setInitialWordCount(0);
