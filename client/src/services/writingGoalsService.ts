@@ -333,7 +333,7 @@ class WritingGoalsService extends BrowserEventEmitter {
     today.setHours(0, 0, 0, 0);
 
     let streak = 0;
-    let currentDate = new Date(today);
+    const currentDate = new Date(today);
 
     // Count consecutive days backwards
     while (true) {
@@ -416,7 +416,7 @@ class WritingGoalsService extends BrowserEventEmitter {
     today.setHours(0, 0, 0, 0);
     
     let streak = 0;
-    let currentDate = new Date(today);
+    const currentDate = new Date(today);
 
     while (true) {
       const hasSession = this.sessions.some(session => {
@@ -1101,6 +1101,17 @@ class WritingGoalsService extends BrowserEventEmitter {
       console.error('Failed to load insights:', error);
       this.insights = [];
     }
+  }
+
+  // Test helper method to reset service state
+  resetForTesting(): void {
+    this.goals = [];
+    this.sessions = [];
+    this.habits = [];
+    this.achievements = [];
+    this.insights = [];
+    this.currentSession = null;
+    this.emit('reset');
   }
 }
 

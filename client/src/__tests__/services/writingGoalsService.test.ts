@@ -32,6 +32,8 @@ describe('WritingGoalsService', () => {
     mockLocalStorage.getItem.mockReturnValue(null);
     vi.clearAllTimers();
     vi.useFakeTimers();
+    // Reset service state between tests
+    writingGoalsService.resetForTesting();
   });
 
   afterEach(() => {

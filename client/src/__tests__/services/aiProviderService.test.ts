@@ -289,13 +289,22 @@ describe('AIProviderService', () => {
     });
 
     test('should accumulate usage statistics across requests', async () => {
+      // Check initial state - stats should be reset before each test
+      const initialStats = aiProviderService.getUsageStats();
+      expect(initialStats.openai?.totalTokens || 0).toBe(0);
+      
+      // First request
       await aiProviderService.generateCompletion(mockRequest);
       const stats1 = aiProviderService.getUsageStats();
+      expect(stats1.openai).toBeDefined();
+      expect(stats1.openai.totalTokens).toBeGreaterThan(0);
+      const firstRequestTokens = stats1.openai.totalTokens;
       
+      // Second request - should accumulate with first
       await aiProviderService.generateCompletion(mockRequest);
       const stats2 = aiProviderService.getUsageStats();
-      
-      expect(stats2.openai.totalTokens).toBeGreaterThan(stats1.openai.totalTokens);
+      expect(stats2.openai).toBeDefined();
+      expect(stats2.openai.totalTokens).toBe(firstRequestTokens * 2);
     });
   });
 

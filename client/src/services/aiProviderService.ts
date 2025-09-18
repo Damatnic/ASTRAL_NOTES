@@ -326,6 +326,9 @@ class AIProviderService {
   setActiveProvider(providerId: string): void {
     if (this.providers.has(providerId)) {
       this.activeProvider = providerId;
+    } else {
+      // Set to null/empty to indicate no valid provider is active
+      this.activeProvider = '';
     }
   }
 
@@ -333,6 +336,7 @@ class AIProviderService {
    * Get active provider
    */
   getActiveProvider(): AIProvider | undefined {
+    if (!this.activeProvider) return undefined;
     return this.providers.get(this.activeProvider);
   }
 
