@@ -136,6 +136,8 @@ export function StoryEditor() {
   const [story, setStory] = useState<Story | null>(null);
   const [activeTab, setActiveTab] = useState<'chapters' | 'characters' | 'plot' | 'timeline' | 'notes'>('chapters');
   const [selectedChapter, setSelectedChapter] = useState<Chapter | null>(null);
+  // Drag & drop state for chapter reordering
+  const [draggingChapterId, setDraggingChapterId] = useState<string | null>(null);
   const [selectedCharacter, setSelectedCharacter] = useState<Character | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -146,6 +148,38 @@ export function StoryEditor() {
   const [showPlotModal, setShowPlotModal] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [editorMode, setEditorMode] = useState<'write' | 'outline' | 'distraction-free'>('write');
+
+  // Handle chapter drag & drop reordering
+  const onChapterDragStart = useCallback((chapterId: string) => {
+    setDraggingChapterId(chapterId);
+  }, []);
+
+  const onChapterDragOver = useCallback((e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+  }, []);
+
+  const onChapterDrop = useCallback((targetChapterId: string) => {
+    if (!story || !draggingChapterId || draggingChapterId === targetChapterId) return;
+
+    const chapters = [...story.chapters];
+    const fromIndex = chapters.findIndex(ch => ch.id === draggingChapterId);
+    const toIndex = chapters.findIndex(ch => ch.id === targetChapterId);
+    if (fromIndex === -1 || toIndex === -1) return;
+
+    const [moved] = chapters.splice(fromIndex, 1);
+    chapters.splice(toIndex, 0, moved);
+
+    // Reassign positions sequentially after reorder
+    const reIndexed = chapters.map((ch, idx) => ({ ...ch, position: idx }));
+
+    setStory({ ...story, chapters: reIndexed });
+    // Keep the selection on the moved chapter
+    if (selectedChapter?.id === moved.id) {
+      setSelectedChapter({ ...moved, position: reIndexed.find(c => c.id === moved.id)!.position });
+    }
+
+    setDraggingChapterId(null);
+  }, [story, draggingChapterId, selectedChapter]);
 
   // Load story data
   useEffect(() => {
@@ -483,15 +517,24 @@ export function StoryEditor() {
                   {story.chapters.map((chapter) => (
                     <div
                       key={chapter.id}
+                      role="listitem"
+                      draggable
+                      onDragStart={() => onChapterDragStart(chapter.id)}
+                      onDragOver={onChapterDragOver}
+                      onDrop={() => onChapterDrop(chapter.id)}
                       className={cn(
                         'p-4 border-b border-border/30 cursor-pointer hover:bg-accent/50 transition-colors',
-                        selectedChapter?.id === chapter.id && 'bg-primary/10 border-l-4 border-l-primary'
+                        selectedChapter?.id === chapter.id && 'bg-primary/10 border-l-4 border-l-primary',
+                        draggingChapterId === chapter.id && 'opacity-70'
                       )}
                       onClick={() => setSelectedChapter(chapter)}
                     >
                       <div className="flex items-start justify-between">
                         <div className="flex-1 min-w-0">
-                          <h3 className="font-medium truncate">{chapter.title}</h3>
+                          <div className="flex items-center gap-2">
+                            <DragHandleDots2 className="h-4 w-4 text-muted-foreground" aria-hidden />
+                            <h3 className="font-medium truncate">{chapter.title}</h3>
+                          </div>
                           <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
                             {chapter.summary || 'No summary'}
                           </p>
@@ -507,6 +550,7 @@ export function StoryEditor() {
                             </span>
                           </div>
                         </div>
+                        <span className="text-xs text-muted-foreground ml-2">#{chapter.position + 1}</span>
                       </div>
                     </div>
                   ))}
