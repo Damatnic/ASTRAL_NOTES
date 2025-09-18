@@ -137,11 +137,11 @@ class AIWritingService {
         }));
       } catch (error) {
         console.warn('AI analysis failed, falling back to local analysis:', error);
-        suggestions = this.generateSuggestions(text);
+        suggestions = this.generateLocalSuggestions(text);
       }
     } else {
       // Fall back to local analysis
-      suggestions = this.generateSuggestions(text);
+      suggestions = this.generateLocalSuggestions(text);
     }
 
     return {
@@ -156,9 +156,9 @@ class AIWritingService {
   }
 
   /**
-   * Generate writing suggestions based on text analysis
+   * Generate writing suggestions locally (no external AI)
    */
-  private generateSuggestions(text: string): WritingSuggestion[] {
+  private generateLocalSuggestions(text: string): WritingSuggestion[] {
     const suggestions: WritingSuggestion[] = [];
     
     // Grammar suggestions
@@ -460,7 +460,7 @@ class AIWritingService {
 
   async getContextualAssistance(context: any): Promise<any> {
     return {
-      suggestions: await this.generateSuggestions(context.text || ''),
+      suggestions: await this.generateLocalSuggestions(context.text || ''),
       contextualTips: ['Consider the genre and tone', 'Focus on character development'],
       relevantPrompts: this.getPromptTemplates().slice(0, 3)
     };
