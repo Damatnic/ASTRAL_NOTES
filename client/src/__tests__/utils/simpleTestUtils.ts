@@ -7,6 +7,9 @@ import { vi } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
+// Re-export testing library functions for convenience
+export { render, screen, fireEvent, waitFor, userEvent };
+
 // Export commonly used test utilities
 export const mockApiResponse = (data: any, status = 200) => {
   return Promise.resolve({
@@ -103,12 +106,5 @@ export class CrossPlatformTestUtils {
   }
 }
 
-// Export all utilities
-export {
-  render,
-  screen,
-  fireEvent,
-  waitFor,
-  userEvent,
-  vi
-};
+// Additional exports
+export { vi };

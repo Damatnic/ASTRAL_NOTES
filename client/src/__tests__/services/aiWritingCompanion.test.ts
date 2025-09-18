@@ -250,7 +250,7 @@ describe('AIWritingCompanionService - Phase 2 Comprehensive Testing', () => {
       const originalStartTime = Date.now();
       vi.setSystemTime(originalStartTime + 3900000); // 65 minutes later
 
-      let healthReminders: any[] = [];
+      const healthReminders: any[] = [];
       aiWritingCompanion.on('healthReminder', (reminder) => {
         healthReminders.push(reminder);
       });

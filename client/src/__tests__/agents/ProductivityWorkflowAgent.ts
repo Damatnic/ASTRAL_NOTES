@@ -13,6 +13,17 @@
 import { describe, test, expect, beforeEach, vi } from 'vitest';
 import { aiTestingFramework } from '../services/ai-testing-framework';
 
+// Define WorkflowTestResult interface
+interface WorkflowTestResult {
+  workflowName: string;
+  success: boolean;
+  executionTime?: number;
+  stepsCompleted?: number;
+  totalSteps?: number;
+  error?: string;
+  timestamp: number;
+}
+
 export class ProductivityWorkflowAgent {
   private testResults: Map<string, ProductivityTestResult> = new Map();
   private workflowResults: Map<string, WorkflowTestResult> = new Map();
@@ -822,6 +833,7 @@ export class ProductivityWorkflowAgent {
 
   private generateGlobalProductivityRecommendations(results: ProductivityTestResult[]): string[] {
     const recommendations: string[] = [];
+    const passedServices = results.filter(r => r.passesValidation).length;
     
     const lowSatisfactionServices = results.filter(r => r.averageUserSatisfaction < 0.8);
     if (lowSatisfactionServices.length > 0) {

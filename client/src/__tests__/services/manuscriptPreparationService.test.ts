@@ -84,7 +84,7 @@ describe('ManuscriptPreparationService', () => {
 
       const format = manuscriptPreparationService.createCustomFormat(formatData);
       
-      expect(format.id).toMatch(/^custom-\d+$/);
+      expect(format.id).toMatch(/^custom-\d+-[a-z0-9]+$/);
       expect(format.name).toBe(formatData.name);
       expect(format.isCustom).toBe(true);
       expect(format.isDefault).toBe(false);
@@ -261,7 +261,7 @@ Later that day, something happened.`;
 
       const pkg = manuscriptPreparationService.createSubmissionPackage(packageData);
       
-      expect(pkg.id).toMatch(/^package-\d+$/);
+      expect(pkg.id).toMatch(/^package-\d+-[a-z0-9]+$/);
       expect(pkg.name).toBe(packageData.name);
       expect(pkg.status).toBe('draft');
       expect(pkg.createdAt).toBeInstanceOf(Date);
@@ -323,7 +323,7 @@ Later that day, something happened.`;
 
       const jobId = manuscriptPreparationService.exportManuscript(content, format, settings);
       
-      expect(jobId).toMatch(/^export-\d+$/);
+      expect(jobId).toMatch(/^export-\d+-[a-z0-9]+$/);
       
       const job = manuscriptPreparationService.getExportJob(jobId);
       expect(job).toBeDefined();
@@ -553,32 +553,42 @@ Later that day, something happened.`;
   });
 
   describe('Event Handling', () => {
-    it('should emit formatCreated event', (done) => {
-      manuscriptPreparationService.on('formatCreated', (format) => {
-        expect(format.name).toBe('Event Test Format');
-        done();
+    it('should emit formatCreated event', async () => {
+      const promise = new Promise((resolve) => {
+        manuscriptPreparationService.on('formatCreated', (format) => {
+          expect(format.name).toBe('Event Test Format');
+          resolve(true);
+        });
       });
 
       manuscriptPreparationService.createCustomFormat({
         name: 'Event Test Format'
       });
+      
+      await promise;
     });
 
-    it('should emit packageCreated event', (done) => {
-      manuscriptPreparationService.on('packageCreated', (pkg) => {
-        expect(pkg.name).toBe('Event Test Package');
-        done();
+    it('should emit packageCreated event', async () => {
+      const promise = new Promise((resolve) => {
+        manuscriptPreparationService.on('packageCreated', (pkg) => {
+          expect(pkg.name).toBe('Event Test Package');
+          resolve(true);
+        });
       });
 
       manuscriptPreparationService.createSubmissionPackage({
         name: 'Event Test Package'
       });
+      
+      await promise;
     });
 
-    it('should emit exportStarted event', (done) => {
-      manuscriptPreparationService.on('exportStarted', (job) => {
-        expect(job.status).toBe('processing');
-        done();
+    it('should emit exportStarted event', async () => {
+      const promise = new Promise((resolve) => {
+        manuscriptPreparationService.on('exportStarted', (job) => {
+          expect(job.status).toBe('processing');
+          resolve(true);
+        });
       });
 
       const format: ExportFormat = {
@@ -590,6 +600,8 @@ Later that day, something happened.`;
       };
 
       manuscriptPreparationService.exportManuscript('content', format, (manuscriptPreparationService as any).defaultSettings);
+      
+      await promise;
     });
   });
 

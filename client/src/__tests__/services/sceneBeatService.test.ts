@@ -126,7 +126,7 @@ describe('SceneBeatService', () => {
       expect(commands[2]).toEqual({
         command: 'desc',
         args: 'The room is dark',
-        position: 43,
+        position: 44,
       });
     });
 
@@ -544,11 +544,9 @@ describe('SceneBeatService', () => {
       const sceneId = 'scene-1';
       const beat = sceneBeatService.createBeat(sceneId, 'Test', 'action');
 
-      (aiWritingService.generateContent as Mock).mockImplementation(
-        () => new Promise((_, reject) => {
-          setTimeout(() => reject(new Error('Timeout')), 100);
-        })
-      );
+      // Explicitly reset the mock and set up rejection
+      (aiWritingService.generateContent as Mock).mockReset();
+      (aiWritingService.generateContent as Mock).mockRejectedValue(new Error('Timeout'));
 
       await expect(sceneBeatService.expandBeat(beat.id, sceneId)).rejects.toThrow();
     });

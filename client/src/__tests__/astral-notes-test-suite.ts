@@ -54,7 +54,7 @@ const MASTER_TEST_CONFIG = {
       maxTestExecutionTime: 30000, // 30 seconds
     },
     accessibility: {
-      wcagLevel: 'AA' as 'AA',
+      wcagLevel: 'AA' as const,
       minimumScore: 95,
     },
     security: {

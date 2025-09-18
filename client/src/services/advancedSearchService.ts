@@ -410,7 +410,7 @@ class AdvancedSearchService extends BrowserEventEmitter {
       if (filters.lastModified) {
         const itemDate = new Date(item.metadata.updatedAt || item.metadata.createdAt);
         const now = new Date();
-        let cutoffDate = new Date();
+        const cutoffDate = new Date();
         
         switch (filters.lastModified) {
           case 'today':

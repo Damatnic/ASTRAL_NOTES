@@ -20,8 +20,8 @@ import {
 
 export class AIServiceTestingAgent {
   private mockLibrary: AIResponseMockLibrary;
-  private performanceThresholds: Map<string, number>;
-  private qualityStandards: Map<string, QualityStandard>;
+  private performanceThresholds: Map<string, number> = new Map();
+  private qualityStandards: Map<string, QualityStandard> = new Map();
   private testResults: Map<string, AgentTestResult> = new Map();
 
   constructor() {
@@ -130,7 +130,7 @@ export class AIServiceTestingAgent {
     service: any,
     scenario: AITestScenario
   ): Promise<ScenarioResult> {
-    const startTime = performance.now();
+    const startTime = globalThis.performance.now();
     let response: any;
     let error: string | null = null;
 
@@ -138,7 +138,7 @@ export class AIServiceTestingAgent {
       // Execute the test scenario
       response = await this.executeScenario(service, scenario);
       
-      const endTime = performance.now();
+      const endTime = globalThis.performance.now();
       const duration = endTime - startTime;
 
       // Validate response structure
@@ -149,7 +149,7 @@ export class AIServiceTestingAgent {
 
       // Assess performance
       const expectedThreshold = this.performanceThresholds.get(serviceName) || 3000;
-      const performance: PerformanceMetric = {
+      const performanceMetric: PerformanceMetric = {
         scenario: scenario.name,
         duration,
         threshold: expectedThreshold,
@@ -164,7 +164,7 @@ export class AIServiceTestingAgent {
         scenario: scenario.name,
         success: true,
         response,
-        performance,
+        performance: performanceMetric,
         quality,
         timestamp: Date.now()
       };
@@ -336,6 +336,7 @@ export class AIServiceTestingAgent {
     qualityMetrics: QualityMetric[]
   ): string[] {
     const recommendations: string[] = [];
+    const passedServices = results.filter(r => r.success).length;
 
     // Performance recommendations
     const slowScenarios = performanceMetrics.filter(p => !p.passes);
@@ -557,7 +558,8 @@ export class AIServiceTestingAgent {
       recommendations.push(`Quality improvements needed for ${lowQualityServices.length} services`);
     }
 
-    if (results.length > 0 && passedValidation / results.length >= 0.95) {
+    const passedServices = results.filter(r => r.validationResult.passesValidation).length;
+    if (results.length > 0 && passedServices / results.length >= 0.95) {
       recommendations.push('Excellent AI service quality - meets Phase 2 standards');
     }
 

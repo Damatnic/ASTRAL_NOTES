@@ -116,7 +116,7 @@ class AIWritingService {
     ));
 
     let suggestions: WritingSuggestion[] = [];
-    let toneAnalysis = this.analyzeTone(text);
+    const toneAnalysis = this.analyzeTone(text);
 
     // Use real AI service if available and configured
     if (env.features.aiEnabled && openaiService.isConfigured() && text.length > 100) {

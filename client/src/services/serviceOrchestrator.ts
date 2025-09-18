@@ -475,28 +475,26 @@ class ServiceOrchestrator extends EventEmitter {
       .slice(0, limit);
   }
 
-  public executeWorkflow(workflowId: string, parameters: Record<string, any> = {}): Promise<any> {
+  public async executeWorkflow(workflowId: string, parameters: Record<string, any> = {}): Promise<any> {
     // Coordinate multiple services for complex workflows
-    return new Promise(async (resolve, reject) => {
-      try {
-        switch (workflowId) {
-          case 'complete-writing-session':
-            await this.executeWritingSessionWorkflow(parameters);
-            break;
-          case 'content-publishing-pipeline':
+    try {
+      switch (workflowId) {
+        case 'complete-writing-session':
+          await this.executeWritingSessionWorkflow(parameters);
+          break;
+        case 'content-publishing-pipeline':
             await this.executePublishingWorkflow(parameters);
             break;
-          case 'research-and-synthesis':
-            await this.executeResearchWorkflow(parameters);
-            break;
-          default:
-            throw new Error(`Unknown workflow: ${workflowId}`);
-        }
-        resolve({ success: true });
-      } catch (error) {
-        reject(error);
+        case 'research-and-synthesis':
+          await this.executeResearchWorkflow(parameters);
+          break;
+        default:
+          throw new Error(`Unknown workflow: ${workflowId}`);
       }
-    });
+      return { success: true };
+    } catch (error) {
+      throw error;
+    }
   }
 
   private async executeWritingSessionWorkflow(params: any) {

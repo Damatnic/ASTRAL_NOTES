@@ -214,19 +214,22 @@ export class CrossPlatformTestUtils {
 
   static mockTouchEvents(): void {
     // Mock touch events for mobile testing
-    const touchEventMock = {
-      touches: [{ clientX: 100, clientY: 100 }],
-      changedTouches: [{ clientX: 100, clientY: 100 }],
-      targetTouches: [{ clientX: 100, clientY: 100 }],
-      preventDefault: vi.fn(),
-      stopPropagation: vi.fn()
-    };
-
-    Element.prototype.dispatchEvent = vi.fn().mockImplementation((event) => {
-      if (event.type.startsWith('touch')) {
-        Object.assign(event, touchEventMock);
+    const originalCreateEvent = document.createEvent;
+    document.createEvent = vi.fn().mockImplementation((eventType: string) => {
+      if (eventType === 'TouchEvent') {
+        return {
+          type: 'touchstart',
+          touches: [{ clientX: 100, clientY: 100 }],
+          changedTouches: [{ clientX: 100, clientY: 100 }],
+          targetTouches: [{ clientX: 100, clientY: 100 }],
+          preventDefault: vi.fn(),
+          stopPropagation: vi.fn(),
+          initEvent: vi.fn(),
+          bubbles: true,
+          cancelable: true
+        };
       }
-      return true;
+      return originalCreateEvent.call(document, eventType);
     });
   }
 }

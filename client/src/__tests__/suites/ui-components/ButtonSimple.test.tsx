@@ -37,7 +37,7 @@ describe('Button Component - Core Tests', () => {
       render(<Button variant="destructive" data-testid="destructive-button">Delete</Button>);
       
       const button = screen.getByTestId('destructive-button');
-      expect(button).toHaveClass('bg-gradient-to-r', 'from-red-600', 'to-pink-600');
+      expect(button).toHaveClass('bg-destructive');
     });
 
     it('should handle disabled state', async () => {

@@ -520,6 +520,17 @@ class TimelineManagementService extends BrowserEventEmitter {
 
   private saveUserData(): void {
     try {
+      // Ensure Maps are properly initialized before accessing
+      if (!this.timelines || typeof this.timelines.values !== 'function') {
+        this.timelines = new Map();
+      }
+      if (!this.events || typeof this.events.values !== 'function') {
+        this.events = new Map();
+      }
+      if (!this.templates || typeof this.templates.values !== 'function') {
+        this.templates = new Map();
+      }
+
       const timelines = Array.from(this.timelines.values());
       localStorage.setItem('timelineManagement_timelines', JSON.stringify(timelines));
 
@@ -535,7 +546,7 @@ class TimelineManagementService extends BrowserEventEmitter {
 
   public createTimeline(timelineData: Partial<Timeline>): Timeline {
     const timeline: Timeline = {
-      id: `timeline-${Date.now()}`,
+      id: `timeline-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       name: timelineData.name || 'New Timeline',
       description: timelineData.description || '',
       type: timelineData.type || 'main',
@@ -605,7 +616,7 @@ class TimelineManagementService extends BrowserEventEmitter {
     }
 
     const event: TimelineEvent = {
-      id: `event-${Date.now()}`,
+      id: `event-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       title: eventData.title || 'New Event',
       description: eventData.description || '',
       date: eventData.date || new Date(),
@@ -922,7 +933,7 @@ class TimelineManagementService extends BrowserEventEmitter {
     const startDate = new Date(events[0].date);
     const endDate = new Date(events[events.length - 1].date);
     
-    let currentWeekStart = new Date(startDate);
+    const currentWeekStart = new Date(startDate);
     currentWeekStart.setDate(currentWeekStart.getDate() - currentWeekStart.getDay());
 
     while (currentWeekStart <= endDate) {
@@ -1257,6 +1268,18 @@ class TimelineManagementService extends BrowserEventEmitter {
         popular: templateUsage
       }
     };
+  }
+
+  /** 
+   * Reset service state for testing purposes
+   * @internal - For testing only
+   */
+  public resetForTesting(): void {
+    this.timelines = new Map();
+    this.events = new Map();
+    this.templates = new Map();
+    this.suggestions = new Map();
+    this.initializeTemplates();
   }
 }
 

@@ -442,7 +442,7 @@ class PromptLibraryService {
       
       // Sort steps by order
       const sortedSteps = recipe.steps.sort((a, b) => a.order - b.order);
-      let currentContext = { ...input };
+      const currentContext = { ...input };
 
       for (const step of sortedSteps) {
         const stepResult = await this.executeRecipeStep(step, currentContext, recipe);

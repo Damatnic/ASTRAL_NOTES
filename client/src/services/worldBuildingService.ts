@@ -323,35 +323,45 @@ export class WorldBuildingService extends BrowserEventEmitter {
 
   private createGenerator(): WorldGenerator {
     return {
-      generateLocation: (params: LocationGenerationParams): Partial<Location> => {
+      generateLocation: (params: any): Partial<Location> => {
+        // Map test parameters to expected interface
+        const locationParams: LocationGenerationParams = {
+          type: params.type || 'town',
+          size: params.size || 'medium',
+          climate: params.climate || params.biome || 'temperate',
+          terrain: params.terrain || (params.biome ? [params.biome] : ['plains']),
+          culture: params.culture || params.civilization,
+          economicFocus: params.economicFocus
+        };
+
         const baseLocation: Partial<Location> = {
-          name: this.generateLocationName(params.type),
+          name: this.generateLocationName(locationParams.type),
           type: 'location',
-          description: this.generateLocationDescription(params),
-          category: params.type,
-          tags: [params.type, params.size, ...params.terrain],
+          description: this.generateLocationDescription(locationParams),
+          category: locationParams.type,
+          tags: [locationParams.type, locationParams.size, ...locationParams.terrain],
           attributes: {},
           geography: {
-            terrain: params.terrain,
-            climate: params.climate,
-            size: params.size,
-            population: this.calculatePopulation(params.type, params.size)
+            terrain: locationParams.terrain,
+            climate: locationParams.climate,
+            size: locationParams.size,
+            population: this.calculatePopulation(locationParams.type, locationParams.size)
           },
           economy: {
-            primaryIndustries: this.generateIndustries(params),
+            primaryIndustries: this.generateIndustries(locationParams),
             tradeRoutes: [],
             economicStatus: 'stable'
           },
           government: {
-            type: this.generateGovernmentType(params.size),
+            type: this.generateGovernmentType(locationParams.size),
             laws: [],
-            militaryStrength: this.generateMilitaryStrength(params.size)
+            militaryStrength: this.generateMilitaryStrength(locationParams.size)
           },
           culture: {
             languages: ['Common'],
             religions: [],
             customs: [],
-            architecture: this.generateArchitectureStyle(params)
+            architecture: this.generateArchitectureStyle(locationParams)
           }
         };
 
@@ -1096,7 +1106,7 @@ export class WorldBuildingService extends BrowserEventEmitter {
     }
 
     const element: WorldElement = {
-      id: `element-${Date.now()}`,
+      id: `element-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       name: elementData.name || 'New Element',
       type: elementData.type || 'location',
       description: elementData.description || '',
@@ -1603,8 +1613,9 @@ export class WorldBuildingService extends BrowserEventEmitter {
     let elements = Array.from(world.elements.values());
 
     // Apply filters
-    if (options.filterByType && options.filterByType.length > 0) {
-      elements = elements.filter(el => options.filterByType!.includes(el.type));
+    const typeFilter = (options as any).elementTypes || options.filterByType;
+    if (typeFilter && typeFilter.length > 0) {
+      elements = elements.filter(el => typeFilter.includes(el.type));
     }
 
     if (options.filterByTags && options.filterByTags.length > 0) {

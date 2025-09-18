@@ -446,7 +446,7 @@ class AdvancedAICompanion extends BrowserEventEmitter {
       .sort((a, b) => b.startTime.getTime() - a.startTime.getTime());
 
     let streak = 0;
-    let currentDate = new Date();
+    const currentDate = new Date();
     currentDate.setHours(0, 0, 0, 0);
 
     for (const session of sessions) {

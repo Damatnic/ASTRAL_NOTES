@@ -19,7 +19,9 @@ describe('SceneBeatService', () => {
   const testSceneId = 'test-scene-1';
 
   beforeEach(() => {
-    // Clear any existing beats
+    // Reset the service to clear state between tests
+    sceneBeatService.reset();
+    // Clear any existing mocks
     vi.clearAllMocks();
   });
 

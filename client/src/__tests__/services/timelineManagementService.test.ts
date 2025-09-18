@@ -27,14 +27,8 @@ describe('TimelineManagementService', () => {
     mockLocalStorage.clear();
     vi.clearAllMocks();
     
-    // Properly reset the service state
-    (timelineManagementService as any).timelines = new Map();
-    (timelineManagementService as any).events = new Map();
-    (timelineManagementService as any).templates = new Map();
-    (timelineManagementService as any).suggestions = new Map();
-    (timelineManagementService as any).removeAllListeners();
-    
-    (timelineManagementService as any).initializeTemplates();
+    // Use the new reset method for cleaner test setup
+    timelineManagementService.resetForTesting();
     
     // Add small delay to ensure cleanup is complete
     await new Promise(resolve => setTimeout(resolve, 10));
@@ -52,7 +46,7 @@ describe('TimelineManagementService', () => {
 
       const timeline = timelineManagementService.createTimeline(timelineData);
       
-      expect(timeline.id).toMatch(/^timeline-\d+$/);
+      expect(timeline.id).toMatch(/^timeline-\d+-[a-z0-9]+$/);
       expect(timeline.name).toBe(timelineData.name);
       expect(timeline.type).toBe(timelineData.type);
       expect(timeline.startDate).toEqual(timelineData.startDate);
@@ -146,7 +140,7 @@ describe('TimelineManagementService', () => {
       const event = timelineManagementService.createEvent(timeline.id, eventData);
       
       expect(event).toBeDefined();
-      expect(event?.id).toMatch(/^event-\d+$/);
+      expect(event?.id).toMatch(/^event-\d+-[a-z0-9]+$/);
       expect(event?.title).toBe(eventData.title);
       expect(event?.type).toBe(eventData.type);
       expect(event?.importance).toBe(eventData.importance);

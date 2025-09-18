@@ -59,6 +59,7 @@ class SceneBeatService {
       type,
       position: position ?? this.getNextPosition(sceneId),
       isExpanded: false,
+      expandedContent: undefined,
       createdAt: new Date(),
       updatedAt: new Date(),
     };
@@ -80,14 +81,14 @@ class SceneBeatService {
 
   // Parse slash commands from editor content
   parseSlashCommands(content: string): Array<{ command: string; args: string; position: number }> {
-    const slashCommandRegex = /\/(\w+)(?:\s+(.+?))?(?=\s*\/\w+|\s*$)/g;
+    const slashCommandRegex = /\/([\w-]+)(?:\s+([^/]+?))?(?=\s*\/|$)/g;
     const commands: Array<{ command: string; args: string; position: number }> = [];
     let match;
 
     while ((match = slashCommandRegex.exec(content)) !== null) {
       commands.push({
         command: match[1],
-        args: match[2] || '',
+        args: match[2] ? match[2].trim() : '',
         position: match.index,
       });
     }
@@ -249,6 +250,15 @@ Suggest beats that would naturally follow and advance the scene. Format as JSON 
   private getFallbackSuggestions(context: any): Array<{ type: SceneBeat['type']; content: string; confidence: number }> {
     const suggestions = [];
 
+    // For longer scenes, prioritize transition
+    if (context.beatCount > 3) {
+      suggestions.push({
+        type: 'transition' as const,
+        content: 'Transition to next scene or moment',
+        confidence: 0.9,
+      });
+    }
+
     if (!context.hasDialogue) {
       suggestions.push({
         type: 'dialogue' as const,
@@ -261,7 +271,7 @@ Suggest beats that would naturally follow and advance the scene. Format as JSON 
       suggestions.push({
         type: 'conflict' as const,
         content: 'Tension or disagreement arises',
-        confidence: 0.7,
+        confidence: 0.6,
       });
     }
 
@@ -269,23 +279,15 @@ Suggest beats that would naturally follow and advance the scene. Format as JSON 
       suggestions.push({
         type: 'action' as const,
         content: 'Character performs an action',
-        confidence: 0.6,
+        confidence: 0.5,
       });
     }
 
     suggestions.push({
       type: 'description' as const,
       content: 'Describe the setting or atmosphere',
-      confidence: 0.5,
+      confidence: 0.4,
     });
-
-    if (context.beatCount > 3) {
-      suggestions.push({
-        type: 'transition' as const,
-        content: 'Transition to next scene or moment',
-        confidence: 0.6,
-      });
-    }
 
     return suggestions.slice(0, 3);
   }
@@ -410,6 +412,13 @@ Suggest beats that would naturally follow and advance the scene. Format as JSON 
   }
 
   // Default templates
+  // Reset method for testing
+  reset(): void {
+    this.beats.clear();
+    this.beatCounter = 0;
+    this.templates = this.getDefaultTemplates();
+  }
+
   private getDefaultTemplates(): BeatTemplate[] {
     return [
       {
@@ -418,9 +427,9 @@ Suggest beats that would naturally follow and advance the scene. Format as JSON 
         description: 'High-energy action scene with conflict and resolution',
         category: 'action',
         beats: [
-          { type: 'description', content: 'Set the scene - danger approaches' },
+          { type: 'description', content: 'Set the scene - danger approaches in [LOCATION]' },
           { type: 'action', content: '[CHARACTER] reacts to the threat' },
-          { type: 'conflict', content: 'The conflict escalates' },
+          { type: 'conflict', content: 'The conflict escalates within [LOCATION]' },
           { type: 'action', content: '[CHARACTER] fights back or tries to escape' },
           { type: 'transition', content: 'The aftermath - what changed?' },
         ],

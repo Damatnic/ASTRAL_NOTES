@@ -108,7 +108,7 @@ export function Projects() {
 
   // Advanced filtering and sorting with memoization
   const filteredAndSortedProjects = useMemo(() => {
-    let filtered = projects.filter(project => {
+    const filtered = projects.filter(project => {
       // Status filter
       if (filter.status !== 'all' && project.status !== filter.status) {
         return false;

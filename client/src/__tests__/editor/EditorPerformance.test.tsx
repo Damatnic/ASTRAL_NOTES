@@ -355,7 +355,7 @@ describe('Enhanced Note Editor - Performance Tests', () => {
     });
 
     it('should clean up editor instances properly', async () => {
-      let editors: any[] = [];
+      const editors: any[] = [];
       
       const initialMemory = monitor.getMemoryUsage();
       

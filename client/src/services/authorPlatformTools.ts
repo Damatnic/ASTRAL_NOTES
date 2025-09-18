@@ -863,7 +863,7 @@ With gratitude,
       ['#SneakPeek', '#ComingSoon', '#NewBook']
     ];
 
-    let currentDate = new Date(start);
+    const currentDate = new Date(start);
     let contentIndex = 0;
 
     while (currentDate <= end) {
@@ -1229,5 +1229,9 @@ With gratitude,
     }
   }
 }
+
+// Export singleton instance
+export const authorPlatformTools = new AuthorPlatformToolsService();
+export default authorPlatformTools;
 
 export default new AuthorPlatformToolsService();

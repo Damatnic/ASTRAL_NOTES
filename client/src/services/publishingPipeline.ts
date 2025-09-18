@@ -489,7 +489,7 @@ export class PublishingPipeline extends BrowserEventEmitter {
   }
 
   private convertToHTML(content: string, options: ExportOptions): string {
-    let html = `<!DOCTYPE html>
+    const html = `<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">

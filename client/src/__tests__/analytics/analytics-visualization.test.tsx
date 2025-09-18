@@ -119,6 +119,15 @@ const mockAnalyticsData = {
     date: new Date(2024, 0, i + 1),
     value: Math.floor(Math.random() * 1000),
   })),
+  personalData: {
+    writingStyle: 'narrative',
+    preferredGenres: ['fiction', 'mystery'],
+    averageSessionLength: 45,
+    mostProductiveTime: 'morning',
+    writingStreak: 12,
+    totalProjects: 5,
+    completedProjects: 2,
+  },
 };
 
 describe('📊 Analytics & Visualization Components Test Suite', () => {
@@ -133,15 +142,447 @@ describe('📊 Analytics & Visualization Components Test Suite', () => {
     vi.resetAllMocks();
   });
 
+  // Define Mock components at test suite level for reuse
+  const MockWritingDashboard = ({ 
+    data = mockAnalyticsData.writingStats,
+    period = 'week',
+    onPeriodChange = () => {} 
+  }: any) => (
+    <div data-testid="writing-dashboard">
+      <div data-testid="period-selector">
+        <select value={period} onChange={(e) => onPeriodChange()}>
+          <option value="day">Day</option>
+          <option value="week">Week</option>
+          <option value="month">Month</option>
+        </select>
+      </div>
+      <div data-testid="stats">
+        <div data-testid="word-count">{data.wordsWritten}</div>
+        <div data-testid="session-count">{data.sessionsCompleted}</div>
+        <div data-testid="streak">{data.streak}</div>
+      </div>
+    </div>
+  );
+
+  const MockWritingGoalCard = ({ 
+    goal = { target: 1000, current: 0 },
+    onUpdate = () => {} 
+  }: any) => (
+    <div data-testid="writing-goal-card">
+      <div data-testid="goal-progress">{goal.current}/{goal.target}</div>
+      <div 
+        data-testid="progress-bar" 
+        style={{ width: `${(goal.current / goal.target) * 100}%` }}
+      />
+      <button data-testid="update-goal" onClick={() => onUpdate()}>
+        Update Goal
+      </button>
+    </div>
+  );
+
+  const MockSessionTimer = ({ 
+    time = 0,
+    isActive = false,
+    onStart = () => {},
+    onPause = () => {},
+    onReset = () => {} 
+  }: any) => (
+    <div data-testid="session-timer">
+      <div data-testid="timer-display">
+        {Math.floor(time / 60)}:{String(time % 60).padStart(2, '0')}
+      </div>
+      <div data-testid="timer-status" className={isActive ? 'active' : 'paused'}>
+        {isActive ? 'Active' : 'Paused'}
+      </div>
+      <div data-testid="timer-controls">
+        <button onClick={onStart}>Start</button>
+        <button onClick={onPause}>Pause</button>
+        <button onClick={onReset}>Reset</button>
+      </div>
+    </div>
+  );
+
+  const MockProgressChart = ({ 
+    data = mockAnalyticsData.timelineData,
+    type = 'line',
+    showLegend = true 
+  }: any) => (
+    <div data-testid="progress-chart">
+      <div data-testid="chart-type">{type}</div>
+      {showLegend && <div data-testid="chart-legend">Legend</div>}
+      <div data-testid="chart-data">{JSON.stringify(data)}</div>
+    </div>
+  );
+
+  const MockWritingHeatmap = ({ 
+    data = [],
+    onDateClick = () => {} 
+  }: any) => (
+    <div data-testid="writing-heatmap">
+      <div data-testid="heatmap-grid">
+        {data.map((day: any, index: number) => (
+          <div 
+            key={index}
+            data-testid={`heatmap-day-${index}`}
+            className={`heatmap-cell intensity-${Math.floor(day.value / 250)}`}
+            onClick={() => onDateClick()}
+          >
+            {day.value}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+
+  const MockProductivityDashboard = ({ 
+    metrics = mockAnalyticsData.productivityMetrics,
+    showGoals = true,
+    onMetricClick = () => {} 
+  }: any) => (
+    <div data-testid="productivity-dashboard">
+      <div data-testid="metrics-grid">
+        <div data-testid="focus-time">{metrics.focusTime} min</div>
+        <div data-testid="productivity-score">{metrics.productivityScore}%</div>
+        <div data-testid="goals-completed">{metrics.goalsCompleted}</div>
+        <div data-testid="tasks-done">{metrics.tasksDone}</div>
+      </div>
+      {showGoals && (
+        <div data-testid="daily-goals">
+          Daily Goals
+        </div>
+      )}
+    </div>
+  );
+
+  const MockPersonalWritingAnalytics = ({ 
+    userData = mockAnalyticsData.personalData,
+    timeRange = '30days',
+    onExport = () => {} 
+  }: any) => (
+    <div data-testid="personal-analytics">
+      <div data-testid="time-range-selector">{timeRange}</div>
+      <div data-testid="personal-stats">
+        <div data-testid="avg-words">{userData.averageWords}</div>
+        <div data-testid="best-time">{userData.bestWritingTime}</div>
+        <div data-testid="favorite-genre">{userData.favoriteGenre}</div>
+      </div>
+      <button onClick={onExport}>Export Analytics</button>
+    </div>
+  );
+
+  const MockAnalyticsDashboard = ({ 
+    view = 'overview',
+    dateRange = { start: new Date(), end: new Date() },
+    onViewChange = () => {} 
+  }: any) => (
+    <div data-testid="analytics-dashboard">
+      <div data-testid="view-selector">
+        <select value={view} onChange={(e) => onViewChange()}>
+          <option value="overview">Overview</option>
+          <option value="detailed">Detailed</option>
+          <option value="comparison">Comparison</option>
+        </select>
+      </div>
+      <div data-testid="date-range">
+        {dateRange.start.toLocaleDateString()} - {dateRange.end.toLocaleDateString()}
+      </div>
+      <div data-testid="analytics-content">
+        Analytics for {view} view
+      </div>
+    </div>
+  );
+
+  const MockVisualPlotboard = ({ 
+    plots = [] as Array<{name: string}>,
+    selectedPlot = null,
+    onPlotSelect = () => {},
+    onPlotCreate = () => {} 
+  }: any) => (
+    <div data-testid="visual-plotboard">
+      <button data-testid="create-plot" onClick={onPlotCreate}>
+        Create Plot
+      </button>
+      <div data-testid="plot-grid">
+        {plots.map((plot: any, index: number) => (
+          <div 
+            key={index}
+            data-testid={`plot-${index}`}
+            className={selectedPlot === index ? 'selected' : ''}
+            onClick={() => onPlotSelect()}
+          >
+            {plot.name}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+
+  const MockPlotboardLane = ({ 
+    lane = { id: '1', name: 'Main Plot', scenes: [] as Array<{title: string}> },
+    onSceneAdd = () => {},
+    onSceneRemove = () => {} 
+  }: any) => (
+    <div data-testid="plotboard-lane">
+      <div data-testid="lane-header">{lane.name}</div>
+      <div data-testid="lane-scenes">
+        {lane.scenes.map((scene: any, index: number) => (
+          <div key={index} data-testid={`scene-${index}`}>
+            {scene.title}
+            <button onClick={() => onSceneRemove()}>Remove</button>
+          </div>
+        ))}
+      </div>
+      <button data-testid="add-scene" onClick={onSceneAdd}>
+        Add Scene
+      </button>
+    </div>
+  );
+
+  const MockPlotboardScene = ({ 
+    scene = { id: '1', title: 'Opening', duration: 5, characters: [] as string[] },
+    isDragging = false,
+    onEdit = () => {},
+    onDelete = () => {} 
+  }: any) => (
+    <div 
+      data-testid="plotboard-scene"
+      className={`scene ${isDragging ? 'dragging' : ''}`}
+    >
+      <div data-testid="scene-title">{scene.title}</div>
+      <div data-testid="scene-duration">{scene.duration}min</div>
+      <div data-testid="scene-characters">
+        {scene.characters.length} characters
+      </div>
+      <div data-testid="scene-actions">
+        <button onClick={onEdit}>Edit</button>
+        <button onClick={onDelete}>Delete</button>
+      </div>
+    </div>
+  );
+
+  const MockPlotboardConnections = ({ 
+    connections = [] as Array<{from: {x: number, y: number}, to: {x: number, y: number}}>,
+    onConnectionCreate = () => {},
+    onConnectionDelete = () => {} 
+  }: any) => (
+    <div data-testid="plotboard-connections">
+      <svg data-testid="connections-svg" width="800" height="600">
+        {connections.map((connection: any, index: number) => (
+          <line
+            key={index}
+            data-testid={`connection-${index}`}
+            x1={connection.from.x}
+            y1={connection.from.y}
+            x2={connection.to.x}
+            y2={connection.to.y}
+            stroke="blue"
+            onClick={() => onConnectionDelete()}
+          />
+        ))}
+      </svg>
+      <button onClick={onConnectionCreate}>Create Connection</button>
+    </div>
+  );
+
+  const MockPlot3DCanvas = ({ 
+    scenes = [] as Array<{id: string}>,
+    camera = { x: 0, y: 0, z: 10 },
+    onSceneClick = () => {},
+    onCameraMove = () => {} 
+  }: any) => (
+    <div data-testid="plot-3d-canvas">
+      <canvas 
+        data-testid="3d-canvas" 
+        width="800" 
+        height="600"
+        onClick={onSceneClick}
+      >
+        3D Plot Visualization
+      </canvas>
+      <div data-testid="camera-controls">
+        <div data-testid="camera-position">
+          X: {camera.x}, Y: {camera.y}, Z: {camera.z}
+        </div>
+        <button 
+          data-testid="reset-camera" 
+          onClick={() => onCameraMove()}
+        >
+          Reset Camera
+        </button>
+      </div>
+      <div data-testid="scene-count">{scenes.length} scenes</div>
+    </div>
+  );
+
+  const MockDualTimeline = ({ 
+    storyTimeline = [] as Array<{}>,
+    realTimeline = [] as Array<{}>,
+    syncMode = 'story',
+    onSyncChange = () => {} 
+  }: any) => (
+    <div data-testid="dual-timeline">
+      <div data-testid="timeline-controls">
+        <select value={syncMode} onChange={(e) => onSyncChange()}>
+          <option value="story">Story Time</option>
+          <option value="real">Real Time</option>
+          <option value="both">Both</option>
+        </select>
+      </div>
+      <div data-testid="story-timeline">
+        Story: {storyTimeline.length} events
+      </div>
+      <div data-testid="real-timeline">
+        Real: {realTimeline.length} events
+      </div>
+    </div>
+  );
+
+  const MockTimelineTrack = ({ 
+    track = { id: '1', name: 'Main Events', events: [] as Array<{title: string}> },
+    isVisible = true,
+    onToggleVisibility = () => {} 
+  }: any) => (
+    <div 
+      data-testid="timeline-track"
+      className={isVisible ? 'visible' : 'hidden'}
+    >
+      <div data-testid="track-header">
+        {track.name}
+        <button onClick={onToggleVisibility}>
+          {isVisible ? 'Hide' : 'Show'}
+        </button>
+      </div>
+      <div data-testid="track-events">
+        {track.events.map((event: any, index: number) => (
+          <div key={index} data-testid={`event-${index}`}>
+            {event.title}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+
+  const MockTimelineEvent = ({ 
+    event = { id: '1', title: 'Chapter 1', timestamp: Date.now() },
+    isSelected = false,
+    onEventClick = () => {} 
+  }: any) => (
+    <div 
+      data-testid="timeline-event"
+      className={isSelected ? 'selected' : ''}
+      onClick={onEventClick}
+    >
+      <div data-testid="event-title">{event.title}</div>
+      <div data-testid="event-time">
+        {new Date(event.timestamp).toLocaleString()}
+      </div>
+    </div>
+  );
+
+  const MockCharacterTimeline = ({ 
+    character = { id: '1', name: 'Hero' },
+    arc = [] as Array<{scene: string, emotion: string}>,
+    showEmotions = true 
+  }: any) => (
+    <div data-testid="character-timeline">
+      <div data-testid="character-name">{character.name}</div>
+      <div data-testid="character-arc">
+        {arc.map((point: any, index: number) => (
+          <div key={index} data-testid={`arc-point-${index}`}>
+            {point.scene}: {point.emotion}
+          </div>
+        ))}
+      </div>
+      {showEmotions && (
+        <div data-testid="emotion-graph">
+          Emotion visualization
+        </div>
+      )}
+    </div>
+  );
+
+  const MockInteractiveSceneFlow = ({ 
+    scenes = [] as Array<{id: string, title: string}>,
+    flowType = 'linear',
+    onFlowChange = () => {},
+    onSceneConnect = () => {} 
+  }: any) => (
+    <div data-testid="interactive-scene-flow">
+      <div data-testid="flow-controls">
+        <select value={flowType} onChange={(e) => onFlowChange()}>
+          <option value="linear">Linear</option>
+          <option value="branching">Branching</option>
+          <option value="circular">Circular</option>
+        </select>
+      </div>
+      <div data-testid="scene-flow-canvas">
+        {scenes.map((scene: any, index: number) => (
+          <div 
+            key={index}
+            data-testid={`flow-scene-${index}`}
+            onClick={() => onSceneConnect()}
+          >
+            {scene.title}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+
+  const MockAttachmentAnalytics = ({ 
+    attachments = [] as Array<any>,
+    totalSize = 0,
+    fileTypes = {},
+    onAnalyze = () => {} 
+  }: any) => (
+    <div data-testid="attachment-analytics">
+      <div data-testid="total-size">{totalSize} MB</div>
+      <div data-testid="file-types">
+        {Object.entries(fileTypes).map(([type, count]) => (
+          <div key={type} data-testid={`type-${type}`}>
+            {type}: {count}
+          </div>
+        ))}
+      </div>
+      <div data-testid="attachment-list">
+        {attachments.length} files
+      </div>
+      <button onClick={onAnalyze}>Analyze</button>
+    </div>
+  );
+
+  const MockPacingDashboard = ({ 
+    scenes = [] as Array<{name: string, pace: number}>,
+    showPacing = true,
+    pacingMetrics = { average: 2.4, variance: 0.8 } 
+  }: any) => (
+    <div data-testid="pacing-dashboard">
+      <div data-testid="pacing-metrics">
+        <div data-testid="average-pace">Average: {pacingMetrics.average}</div>
+        <div data-testid="pace-variance">Variance: {pacingMetrics.variance}</div>
+      </div>
+      {showPacing && (
+        <div data-testid="scene-pacing">
+          {scenes.map((scene: any, index: number) => (
+            <div key={index} data-testid={`scene-${index}`}>
+              {scene.name} - Pace: {scene.pace}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+
   describe('1-4. Dashboard Components', () => {
-    const MockWritingDashboard = ({ 
+    // Mock components are now defined at the suite level above
+    /* const MockWritingDashboard = ({ 
       data = mockAnalyticsData.writingStats,
       period = 'week',
       onPeriodChange = () => {} 
     }) => (
       <div data-testid="writing-dashboard">
         <div data-testid="period-selector">
-          <select value={period} onChange={(e) => onPeriodChange(e.target.value)}>
+          <select value={period} onChange={(e) => onPeriodChange()}>
             <option value="day">Day</option>
             <option value="week">Week</option>
             <option value="month">Month</option>
@@ -158,7 +599,7 @@ describe('📊 Analytics & Visualization Components Test Suite', () => {
           <div className="bar-chart" data-testid="word-progress" />
         </div>
       </div>
-    );
+    ); */
 
     const MockProductivityDashboard = ({ 
       metrics = mockAnalyticsData.productivityMetrics,
@@ -295,7 +736,7 @@ describe('📊 Analytics & Visualization Components Test Suite', () => {
   });
 
   describe('5-9. Goal & Progress Components', () => {
-    const MockWritingGoalCard = ({ 
+    /* const MockWritingGoalCard = ({ 
       goal = { target: 1000, current: 750, type: 'daily' },
       onUpdate = () => {} 
     }) => (
@@ -312,9 +753,9 @@ describe('📊 Analytics & Visualization Components Test Suite', () => {
           Update Goal
         </button>
       </div>
-    );
+    ); */
 
-    const MockSessionTimer = ({ 
+    /* const MockSessionTimer = ({ 
       isActive = false,
       time = 0,
       onStart = () => {},
@@ -348,9 +789,9 @@ describe('📊 Analytics & Visualization Components Test Suite', () => {
           {isActive ? 'Running' : 'Stopped'}
         </div>
       </div>
-    );
+    ); */
 
-    const MockProgressChart = ({ 
+    /* const MockProgressChart = ({ 
       data = mockAnalyticsData.timelineData,
       chartType = 'line',
       showTrend = true 
@@ -366,9 +807,9 @@ describe('📊 Analytics & Visualization Components Test Suite', () => {
           </div>
         )}
       </div>
-    );
+    ); */
 
-    const MockWritingHeatmap = ({ 
+    /* const MockWritingHeatmap = ({ 
       data = mockAnalyticsData.heatmapData,
       year = 2024,
       onDateClick = () => {} 
@@ -393,10 +834,10 @@ describe('📊 Analytics & Visualization Components Test Suite', () => {
           <span>More</span>
         </div>
       </div>
-    );
+    ); */
 
-    const MockPacingDashboard = ({ 
-      scenes = [],
+    /* const MockPacingDashboard = ({ 
+      scenes = [] as Array<{name: string, pace: number}>,
       showPacing = true,
       pacingMetrics = { average: 2.4, variance: 0.8 } 
     }) => (
@@ -418,7 +859,7 @@ describe('📊 Analytics & Visualization Components Test Suite', () => {
           ))}
         </div>
       </div>
-    );
+    ); */
 
     test('WritingGoalCard should display goal progress', () => {
       const goal = { target: 1000, current: 750, type: 'daily' };
@@ -509,7 +950,7 @@ describe('📊 Analytics & Visualization Components Test Suite', () => {
     const MockVisualPlotboard = ({ 
       plots = [],
       selectedPlot = null,
-      onPlotSelect = () => {},
+      onPlotSelect = (_index: number) => {},
       onPlotCreate = () => {} 
     }) => (
       <div data-testid="visual-plotboard">
@@ -542,7 +983,7 @@ describe('📊 Analytics & Visualization Components Test Suite', () => {
           {lane.scenes.map((scene: any, index: number) => (
             <div key={index} data-testid={`scene-${index}`}>
               {scene.title}
-              <button onClick={() => onSceneRemove(index)}>Remove</button>
+              <button onClick={() => onSceneRemove()}>Remove</button>
             </div>
           ))}
         </div>
@@ -553,7 +994,7 @@ describe('📊 Analytics & Visualization Components Test Suite', () => {
     );
 
     const MockPlotboardScene = ({ 
-      scene = { id: '1', title: 'Opening', duration: 5, characters: [] },
+      scene = { id: '1', title: 'Opening', duration: 5, characters: [] as string[] },
       isDragging = false,
       onEdit = () => {},
       onDelete = () => {} 
@@ -575,7 +1016,7 @@ describe('📊 Analytics & Visualization Components Test Suite', () => {
     );
 
     const MockPlotboardConnections = ({ 
-      connections = [],
+      connections = [] as Array<{from: {x: number, y: number}, to: {x: number, y: number}}>,
       onConnectionCreate = () => {},
       onConnectionDelete = () => {} 
     }) => (
@@ -601,7 +1042,7 @@ describe('📊 Analytics & Visualization Components Test Suite', () => {
     );
 
     const MockPlot3DCanvas = ({ 
-      scenes = [],
+      scenes = [] as Array<{id: string}>,
       camera = { x: 0, y: 0, z: 10 },
       onSceneClick = () => {},
       onCameraMove = () => {} 
@@ -621,7 +1062,7 @@ describe('📊 Analytics & Visualization Components Test Suite', () => {
           </div>
           <button 
             data-testid="reset-camera" 
-            onClick={() => onCameraMove({ x: 0, y: 0, z: 10 })}
+            onClick={() => onCameraMove()}
           >
             Reset Camera
           </button>
@@ -740,14 +1181,14 @@ describe('📊 Analytics & Visualization Components Test Suite', () => {
 
   describe('15-20. Timeline & Analysis Components', () => {
     const MockDualTimeline = ({ 
-      storyTimeline = [],
-      realTimeline = [],
+      storyTimeline = [] as Array<{}>,
+      realTimeline = [] as Array<{}>,
       syncMode = 'story',
       onSyncChange = () => {} 
     }) => (
       <div data-testid="dual-timeline">
         <div data-testid="timeline-controls">
-          <select value={syncMode} onChange={(e) => onSyncChange(e.target.value)}>
+          <select value={syncMode} onChange={(e) => onSyncChange()}>
             <option value="story">Story Time</option>
             <option value="real">Real Time</option>
             <option value="both">Both</option>
@@ -763,7 +1204,7 @@ describe('📊 Analytics & Visualization Components Test Suite', () => {
     );
 
     const MockTimelineTrack = ({ 
-      track = { id: '1', name: 'Main Events', events: [] },
+      track = { id: '1', name: 'Main Events', events: [] as Array<{title: string}> },
       isVisible = true,
       onToggleVisibility = () => {} 
     }) => (
@@ -813,7 +1254,7 @@ describe('📊 Analytics & Visualization Components Test Suite', () => {
 
     const MockCharacterTimeline = ({ 
       character = { id: '1', name: 'Hero' },
-      arc = [],
+      arc = [] as Array<{scene: string, emotion: string}>,
       showEmotions = true 
     }) => (
       <div data-testid="character-timeline">
@@ -834,14 +1275,14 @@ describe('📊 Analytics & Visualization Components Test Suite', () => {
     );
 
     const MockInteractiveSceneFlow = ({ 
-      scenes = [],
+      scenes = [] as Array<{id: string, title: string}>,
       flowType = 'linear',
       onFlowChange = () => {},
       onSceneConnect = () => {} 
     }) => (
       <div data-testid="interactive-scene-flow">
         <div data-testid="flow-controls">
-          <select value={flowType} onChange={(e) => onFlowChange(e.target.value)}>
+          <select value={flowType} onChange={(e) => onFlowChange()}>
             <option value="linear">Linear</option>
             <option value="branching">Branching</option>
             <option value="circular">Circular</option>
@@ -852,7 +1293,7 @@ describe('📊 Analytics & Visualization Components Test Suite', () => {
             <div 
               key={index}
               data-testid={`flow-scene-${index}`}
-              onClick={() => onSceneConnect(scene.id)}
+              onClick={() => onSceneConnect()}
             >
               {scene.title}
             </div>
@@ -862,7 +1303,7 @@ describe('📊 Analytics & Visualization Components Test Suite', () => {
     );
 
     const MockAttachmentAnalytics = ({ 
-      attachments = [],
+      attachments = [] as Array<any>,
       totalSize = 0,
       fileTypes = {},
       onAnalyze = () => {} 

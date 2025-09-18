@@ -186,7 +186,15 @@ class AdvancedFormattingService extends BrowserEventEmitter {
     // Apply paragraph indentation
     if (typography.indentFirstLine) {
       const indentSpaces = ' '.repeat(typography.indentSize);
-      formatted = formatted.replace(/^(?!.*\n\n)/gm, indentSpaces);
+      // Split by double newlines to identify paragraphs
+      const paragraphs = formatted.split('\n\n');
+      formatted = paragraphs.map(para => {
+        // Add indent to first line of each non-empty paragraph
+        if (para.trim()) {
+          return indentSpaces + para;
+        }
+        return para;
+      }).join('\n\n');
     }
 
     // Apply scene breaks
@@ -197,10 +205,13 @@ class AdvancedFormattingService extends BrowserEventEmitter {
 
     // Apply dialogue formatting
     if (this.settings.dialogue.indentDialogue) {
-      formatted = formatted.replace(
-        /^"([^"]*)"$/gm,
-        `    "${$1}"`
-      );
+      // Match lines that start with quotes
+      formatted = formatted.split('\n').map(line => {
+        if (line.trim().startsWith('"')) {
+          return '    ' + line.trim();
+        }
+        return line;
+      }).join('\n');
     }
 
     return formatted;
@@ -416,8 +427,8 @@ class AdvancedFormattingService extends BrowserEventEmitter {
       },
       headers: {
         showPageNumbers: true,
-        showTitle: false,
-        showAuthor: false,
+        showTitle: true,
+        showAuthor: true,
         showChapter: false,
         position: 'top',
         alignment: 'right'

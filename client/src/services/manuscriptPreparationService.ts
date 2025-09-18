@@ -557,7 +557,7 @@ class ManuscriptPreparationService extends BrowserEventEmitter {
 
   public createCustomFormat(formatData: Partial<ManuscriptFormat>): ManuscriptFormat {
     const format: ManuscriptFormat = {
-      id: `custom-${Date.now()}`,
+      id: `custom-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       name: formatData.name || 'Custom Format',
       description: formatData.description || '',
       category: formatData.category || 'self-publishing',
@@ -716,7 +716,7 @@ class ManuscriptPreparationService extends BrowserEventEmitter {
 
   public createSubmissionPackage(packageData: Partial<SubmissionPackage>): SubmissionPackage {
     const pkg: SubmissionPackage = {
-      id: `package-${Date.now()}`,
+      id: `package-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       name: packageData.name || 'New Submission Package',
       targetPublisher: packageData.targetPublisher || '',
       submissionType: packageData.submissionType || 'query',
@@ -755,7 +755,7 @@ class ManuscriptPreparationService extends BrowserEventEmitter {
   }
 
   public exportManuscript(content: string, format: ExportFormat, settings: ManuscriptSettings): string {
-    const jobId = `export-${Date.now()}`;
+    const jobId = `export-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
     
     const job: ExportJob = {
       id: jobId,

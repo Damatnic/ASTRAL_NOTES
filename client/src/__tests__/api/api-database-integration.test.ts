@@ -180,6 +180,8 @@ describe('🔌 API & Database Integration Testing Suite', () => {
       
       try {
         let response;
+        let actualResponse;
+        
         switch (endpoint) {
           case '/auth/register':
             response = { 
@@ -187,6 +189,7 @@ describe('🔌 API & Database Integration Testing Suite', () => {
               status: 201 
             };
             mockApiClient.post.mockResolvedValue(response);
+            actualResponse = await mockApiClient.post(endpoint, data);
             break;
           case '/auth/login':
             response = { 
@@ -194,6 +197,7 @@ describe('🔌 API & Database Integration Testing Suite', () => {
               status: 200 
             };
             mockApiClient.post.mockResolvedValue(response);
+            actualResponse = await mockApiClient.post(endpoint, data);
             break;
           case '/auth/refresh':
             response = { 
@@ -201,6 +205,7 @@ describe('🔌 API & Database Integration Testing Suite', () => {
               status: 200 
             };
             mockApiClient.post.mockResolvedValue(response);
+            actualResponse = await mockApiClient.post(endpoint, data);
             break;
           case '/auth/logout':
             response = { 
@@ -208,6 +213,7 @@ describe('🔌 API & Database Integration Testing Suite', () => {
               status: 200 
             };
             mockApiClient.post.mockResolvedValue(response);
+            actualResponse = await mockApiClient.post(endpoint, data);
             break;
           case '/auth/verify':
             response = { 
@@ -215,6 +221,7 @@ describe('🔌 API & Database Integration Testing Suite', () => {
               status: 200 
             };
             mockApiClient.get.mockResolvedValue(response);
+            actualResponse = await mockApiClient.get(endpoint);
             break;
         }
         
@@ -1211,6 +1218,46 @@ describe('🔌 API & Database Integration Testing Suite', () => {
   });
 
   describe('API Performance & Reliability Tests', () => {
+    // Define testAuthAPI helper within this describe block
+    const testAuthAPI = async (endpoint: string, method: string, data: any): Promise<APITestResult> => {
+      const startTime = performance.now();
+      const errors: Error[] = [];
+      
+      try {
+        const response = { 
+          data: { valid: true, user: mockAuth.user },
+          status: 200 
+        };
+        mockApiClient.get.mockResolvedValue(response);
+        
+        // Actually call the mocked API client
+        const actualResponse = await mockApiClient.get(endpoint);
+        
+        const responseTime = performance.now() - startTime;
+        
+        return {
+          category: 'Authentication_Flow',
+          endpoint,
+          method,
+          passed: true,
+          responseTime,
+          statusCode: 200,
+          errors,
+        };
+      } catch (error) {
+        errors.push(error as Error);
+        return {
+          category: 'Authentication_Flow',
+          endpoint,
+          method,
+          passed: false,
+          responseTime: performance.now() - startTime,
+          statusCode: 500,
+          errors,
+        };
+      }
+    };
+
     test('should handle high-load scenarios', async () => {
       const requests = [];
       const requestCount = 50;
@@ -1236,7 +1283,7 @@ describe('🔌 API & Database Integration Testing Suite', () => {
       // Test error handling
       mockApiClient.get.mockRejectedValueOnce(new Error('Network error'));
       
-      const result = await testAuthAPI('/auth/verify', 'GET', null).catch(error => ({
+      const result = await testAuthAPI('/auth/verify', 'GET', null).catch((error: Error) => ({
         category: 'Authentication_Flow',
         endpoint: '/auth/verify',
         method: 'GET',

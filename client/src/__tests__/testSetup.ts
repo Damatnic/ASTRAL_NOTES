@@ -2,8 +2,29 @@
 // Vitest global configuration and test utilities
 
 import '@testing-library/jest-dom';
-import 'fake-indexeddb/auto';
 import { vi } from 'vitest';
+import FDBFactory from 'fake-indexeddb/lib/FDBFactory';
+import FDBDatabase from 'fake-indexeddb/lib/FDBDatabase';
+import FDBObjectStore from 'fake-indexeddb/lib/FDBObjectStore';
+import FDBIndex from 'fake-indexeddb/lib/FDBIndex';
+import FDBCursor from 'fake-indexeddb/lib/FDBCursor';
+import FDBKeyRange from 'fake-indexeddb/lib/FDBKeyRange';
+import FDBRequest from 'fake-indexeddb/lib/FDBRequest';
+import FDBOpenDBRequest from 'fake-indexeddb/lib/FDBOpenDBRequest';
+import FDBVersionChangeEvent from 'fake-indexeddb/lib/FDBVersionChangeEvent';
+import FDBTransaction from 'fake-indexeddb/lib/FDBTransaction';
+
+// Set up fake IndexedDB globally
+global.indexedDB = new FDBFactory();
+global.IDBDatabase = FDBDatabase;
+global.IDBObjectStore = FDBObjectStore;
+global.IDBIndex = FDBIndex;
+global.IDBCursor = FDBCursor;
+global.IDBKeyRange = FDBKeyRange;
+global.IDBRequest = FDBRequest;
+global.IDBOpenDBRequest = FDBOpenDBRequest;
+global.IDBVersionChangeEvent = FDBVersionChangeEvent;
+global.IDBTransaction = FDBTransaction;
 
 // Mock window.matchMedia (used by many UI components)
 Object.defineProperty(window, 'matchMedia', {
@@ -37,42 +58,83 @@ global.IntersectionObserver = vi.fn().mockImplementation(() => ({
   thresholds: [],
 }));
 
-// Mock localStorage
-const localStorageMock = {
-  getItem: vi.fn(),
-  setItem: vi.fn(),
-  removeItem: vi.fn(),
-  clear: vi.fn(),
-  length: 0,
-  key: vi.fn(),
-};
+// Mock localStorage with proper implementation
+class LocalStorageMock {
+  private store: { [key: string]: string } = {};
+  
+  getItem = vi.fn((key: string) => {
+    return this.store[key] || null;
+  });
+  
+  setItem = vi.fn((key: string, value: string) => {
+    this.store[key] = value.toString();
+  });
+  
+  removeItem = vi.fn((key: string) => {
+    delete this.store[key];
+  });
+  
+  clear = vi.fn(() => {
+    this.store = {};
+  });
+  
+  get length() {
+    return Object.keys(this.store).length;
+  }
+  
+  key = vi.fn((index: number) => {
+    const keys = Object.keys(this.store);
+    return keys[index] || null;
+  });
+}
+
+const localStorageMock = new LocalStorageMock();
 Object.defineProperty(window, 'localStorage', {
   value: localStorageMock,
+  writable: true,
 });
 
-// Mock sessionStorage
-const sessionStorageMock = {
-  getItem: vi.fn(),
-  setItem: vi.fn(),
-  removeItem: vi.fn(),
-  clear: vi.fn(),
-  length: 0,
-  key: vi.fn(),
-};
+// Mock sessionStorage with proper implementation
+class SessionStorageMock {
+  private store: { [key: string]: string } = {};
+  
+  getItem = vi.fn((key: string) => {
+    return this.store[key] || null;
+  });
+  
+  setItem = vi.fn((key: string, value: string) => {
+    this.store[key] = value.toString();
+  });
+  
+  removeItem = vi.fn((key: string) => {
+    delete this.store[key];
+  });
+  
+  clear = vi.fn(() => {
+    this.store = {};
+  });
+  
+  get length() {
+    return Object.keys(this.store).length;
+  }
+  
+  key = vi.fn((index: number) => {
+    const keys = Object.keys(this.store);
+    return keys[index] || null;
+  });
+}
+
+const sessionStorageMock = new SessionStorageMock();
 Object.defineProperty(window, 'sessionStorage', {
   value: sessionStorageMock,
+  writable: true,
 });
 
 // Mock fetch for API calls
 global.fetch = vi.fn();
 
-// Mock IndexedDB for offline storage
-global.indexedDB = {
-  open: vi.fn(),
-  deleteDatabase: vi.fn(),
-  databases: vi.fn(),
-  cmp: vi.fn(),
-} as any;
+// IndexedDB is now properly mocked with fake-indexeddb above
+// No need for additional mocking
 
 // Mock URL.createObjectURL and URL.revokeObjectURL
 global.URL.createObjectURL = vi.fn(() => 'mock-url');
@@ -166,14 +228,17 @@ global.performance = {
 // Setup console suppressions for cleaner test output
 const originalError = console.error;
 const originalWarn = console.warn;
+const originalLog = console.log;
 
 beforeAll(() => {
   console.error = (...args: any[]) => {
-    // Suppress known React testing warnings
+    // Suppress known React testing warnings and IndexedDB fallback messages
     if (
       typeof args[0] === 'string' &&
       (args[0].includes('Warning: ReactDOM.render is deprecated') ||
-       args[0].includes('Warning: findDOMNode is deprecated'))
+       args[0].includes('Warning: findDOMNode is deprecated') ||
+       args[0].includes('IndexedDB initialization failed') ||
+       args[0].includes('falling back to localStorage'))
     ) {
       return;
     }
@@ -184,17 +249,31 @@ beforeAll(() => {
     // Suppress known development warnings
     if (
       typeof args[0] === 'string' &&
-      args[0].includes('componentWillReceiveProps has been renamed')
+      (args[0].includes('componentWillReceiveProps has been renamed') ||
+       args[0].includes('IndexedDB'))
     ) {
       return;
     }
     originalWarn.call(console, ...args);
+  };
+  
+  console.log = (...args: any[]) => {
+    // Suppress test environment logs
+    if (
+      typeof args[0] === 'string' &&
+      (args[0].includes('Astral Notes - Environment Configuration') ||
+       args[0].includes('Starting Phase'))
+    ) {
+      return;
+    }
+    originalLog.call(console, ...args);
   };
 });
 
 afterAll(() => {
   console.error = originalError;
   console.warn = originalWarn;
+  console.log = originalLog;
 });
 
 // Reset all mocks after each test

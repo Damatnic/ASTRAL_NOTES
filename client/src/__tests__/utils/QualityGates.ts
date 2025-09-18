@@ -311,7 +311,7 @@ export class QualityGates {
     const wcagLevel = this.config.accessibility.wcagLevel;
     const minimumScore = this.config.accessibility.minimumScore;
 
-    let score = mockScore;
+    const score = mockScore;
 
     if (mockScore < minimumScore) {
       violations.push(

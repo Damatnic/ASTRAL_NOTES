@@ -34,7 +34,7 @@ export function WritingHeatmap({
     endDate.setHours(23, 59, 59, 999);
 
     // Determine start date based on time range
-    let startDate = new Date(today);
+    const startDate = new Date(today);
     switch (timeRange) {
       case 'week':
         startDate.setDate(startDate.getDate() - 6);

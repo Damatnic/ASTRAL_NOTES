@@ -136,35 +136,35 @@ class ServiceValidator {
 
     try {
       // Writing Services
-      services.aiWritingCompanion = (await import('../services/aiWritingCompanion')).default;
-      services.creativityBooster = (await import('../services/creativityBooster')).default;
-      services.storyAssistant = (await import('../services/storyAssistant')).default;
-      services.voiceStyleCoach = (await import('../services/voiceStyleCoach')).default;
-      services.predictiveWritingAssistant = (await import('../services/predictiveWritingAssistant')).default;
-      services.writingMastery = (await import('../services/writingMastery')).default;
-      services.writingPhilosophy = (await import('../services/writingPhilosophy')).default;
-      services.writingWellness = (await import('../services/writingWellness')).default;
+      services.aiWritingCompanion = (await import('../services/aiWritingCompanion')).aiWritingCompanion;
+      services.creativityBooster = (await import('../services/creativityBooster')).creativityBooster;
+      services.storyAssistant = (await import('../services/storyAssistant')).storyAssistant;
+      services.voiceStyleCoach = (await import('../services/voiceStyleCoach')).voiceStyleCoach;
+      services.predictiveWritingAssistant = (await import('../services/predictiveWritingAssistant')).predictiveWritingAssistant;
+      services.writingMastery = (await import('../services/writingMastery')).writingMastery;
+      services.writingPhilosophy = (await import('../services/writingPhilosophy')).writingPhilosophy;
+      services.writingWellness = (await import('../services/writingWellness')).writingWellness;
 
       // Productivity Services
-      services.personalAICoach = (await import('../services/personalAICoach')).default;
-      services.habitTracker = (await import('../services/habitTracker')).default;
-      services.progressTracker = (await import('../services/progressTracker')).default;
-      services.smartTemplates = (await import('../services/smartTemplates')).default;
-      services.voiceInteraction = (await import('../services/voiceInteraction')).default;
-      services.projectAutomation = (await import('../services/projectAutomation')).default;
+      services.personalAICoach = (await import('../services/personalAICoach')).personalAICoach;
+      services.habitTracker = (await import('../services/habitTracker')).habitTracker;
+      services.progressTracker = (await import('../services/progressTracker')).progressTracker;
+      services.smartTemplates = (await import('../services/smartTemplates')).smartTemplates;
+      services.voiceInteraction = (await import('../services/voiceInteraction')).voiceInteraction;
+      services.projectAutomation = (await import('../services/projectAutomation')).projectAutomation;
 
       // Analytics Services
-      services.personalAchievements = (await import('../services/personalAchievements')).default;
-      services.patternRecognition = (await import('../services/patternRecognition')).default;
-      services.publicationAnalytics = (await import('../services/publicationAnalytics')).default;
-      services.emotionalIntelligence = (await import('../services/emotionalIntelligence')).default;
-      services.learningCurriculum = (await import('../services/learningCurriculum')).default;
+      services.personalAchievements = (await import('../services/personalAchievements')).personalAchievements;
+      services.patternRecognition = (await import('../services/patternRecognition')).patternRecognition;
+      services.publicationAnalytics = (await import('../services/publicationAnalytics')).publicationAnalytics;
+      services.emotionalIntelligence = (await import('../services/emotionalIntelligence')).emotionalIntelligence;
+      services.learningCurriculum = (await import('../services/learningCurriculum')).learningCurriculum;
 
       // Research & Knowledge
-      services.personalKnowledgeAI = (await import('../services/personalKnowledgeAI')).default;
-      services.personalKnowledgeBase = (await import('../services/personalKnowledgeBase')).default;
-      services.researchAssistant = (await import('../services/researchAssistant')).default;
-      services.intelligentContentSuggestions = (await import('../services/intelligentContentSuggestions')).default;
+      services.personalKnowledgeAI = (await import('../services/personalKnowledgeAI')).personalKnowledgeAI;
+      services.personalKnowledgeBase = (await import('../services/personalKnowledgeBase')).personalKnowledgeBaseService;
+      services.researchAssistant = (await import('../services/researchAssistant')).researchAssistant;
+      services.intelligentContentSuggestions = (await import('../services/intelligentContentSuggestions')).intelligentContentSuggestions;
 
       // Publishing & Platform
       services.authorPlatformTools = (await import('../services/authorPlatformTools')).default;
@@ -174,18 +174,18 @@ class ServiceValidator {
       services.personalLegacy = (await import('../services/personalLegacy')).default;
 
       // Infrastructure Services
-      services.ultimateIntegration = (await import('../services/ultimateIntegration')).default;
+      services.ultimateIntegration = (await import('../services/ultimateIntegration')).ultimateIntegration;
       services.serviceOrchestrator = (await import('../services/serviceOrchestrator')).default;
       services.backupVersioning = (await import('../services/backupVersioning')).default;
-      services.predictiveWorkflow = (await import('../services/predictiveWorkflow')).default;
+      services.predictiveWorkflow = (await import('../services/predictiveWorkflow')).predictiveWorkflow;
       services.personalGoalSetting = (await import('../services/personalGoalSetting')).default;
       
       // NovelCrafter features
-      services.writingChallengesService = (await import('../services/writingChallengesService')).default;
-      services.referenceImagesService = (await import('../services/referenceImagesService')).default;
-      services.chapterPlanningService = (await import('../services/chapterPlanningService')).default;
-      services.dialogueWorkshopService = (await import('../services/dialogueWorkshopService')).default;
-      services.characterArcService = (await import('../services/characterArcService')).default;
+      services.writingChallengesService = (await import('../services/writingChallengesService')).writingChallengesService;
+      services.referenceImagesService = (await import('../services/referenceImagesService')).referenceImagesService;
+      services.chapterPlanningService = (await import('../services/chapterPlanningService')).chapterPlanningService;
+      services.dialogueWorkshopService = (await import('../services/dialogueWorkshopService')).dialogueWorkshopService;
+      services.characterArcService = (await import('../services/characterArcService')).characterArcService;
       services.analyticsService = (await import('../services/analyticsService')).analyticsService;
 
     } catch (error) {

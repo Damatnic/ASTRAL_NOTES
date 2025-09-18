@@ -1009,6 +1009,7 @@ export class ContentManagementAgent {
 
   private generateGlobalContentRecommendations(results: ContentTestResult[]): string[] {
     const recommendations: string[] = [];
+    const passedServices = results.filter(r => r.passesValidation).length;
     
     const lowConsistencyServices = results.filter(r => r.consistencyScore < 0.9);
     if (lowConsistencyServices.length > 0) {
@@ -1020,7 +1021,7 @@ export class ContentManagementAgent {
       recommendations.push(`Optimize performance for ${slowServices.length} content services`);
     }
 
-    if (results.length > 0 && passedValidation / results.length >= 0.95) {
+    if (results.length > 0 && passedServices / results.length >= 0.95) {
       recommendations.push('Content management services meet Phase 2 quality standards');
     }
 

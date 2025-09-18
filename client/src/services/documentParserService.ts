@@ -1011,7 +1011,7 @@ class DocumentParserService {
       };
 
       if (metaData) {
-        const officeMeta = metaData['office:document-meta']?.['\office:meta']?.[0];
+        const officeMeta = metaData['office:document-meta']?.['office:meta']?.[0];
         if (officeMeta) {
           metadata.title = officeMeta['dc:title']?.[0] || metadata.title;
           metadata.author = officeMeta['dc:creator']?.[0];
@@ -1075,7 +1075,7 @@ class DocumentParserService {
       /^\*\s/m,
       /^-\s/m,
       /^\d+\.\s/m,
-      /^\>/m,
+      /^>/m,
       /```/,
       /\*\*.*\*\*/,
       /\*.*\*/,

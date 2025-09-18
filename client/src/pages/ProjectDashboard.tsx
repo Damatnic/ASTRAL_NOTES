@@ -102,7 +102,7 @@ export function ProjectDashboard() {
 
   // Filtered and sorted notes
   const filteredAndSortedNotes = useMemo(() => {
-    let filtered = notes.filter(note => {
+    const filtered = notes.filter(note => {
       // Type filter
       if (selectedNoteType !== 'all' && note.type !== selectedNoteType) {
         return false;

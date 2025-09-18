@@ -70,7 +70,7 @@ export function SceneTimelineView({
 
   // Sort and group scenes
   const { sortedScenes, groupedScenes } = useMemo(() => {
-    let sorted = [...scenes];
+    const sorted = [...scenes];
 
     // Sort based on timeline mode
     if (timelineMode === 'narrative') {

@@ -26,6 +26,14 @@ describe('AdvancedFormattingService', () => {
     vi.clearAllMocks();
     // Reset localStorage mock
     mockLocalStorage.getItem.mockReturnValue(null);
+    
+    // Reset service state by clearing presets and reloading defaults
+    (advancedFormattingService as any).presets = [];
+    (advancedFormattingService as any).settings = (advancedFormattingService as any).getDefaultSettings();
+    (advancedFormattingService as any).initializePresets();
+    if ((advancedFormattingService as any).removeAllListeners) {
+      (advancedFormattingService as any).removeAllListeners();
+    }
   });
 
   afterEach(() => {
