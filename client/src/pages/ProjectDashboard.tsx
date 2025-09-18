@@ -34,6 +34,7 @@ import { Tabs, TabItem } from '@/components/ui/Tabs';
 import { Modal, ConfirmModal } from '@/components/ui/Modal';
 import { Dropdown, type DropdownOption } from '@/components/ui/Dropdown';
 import { useToast } from '@/components/ui/Toast';
+import { CreateStoryModal, type StoryFormData } from '@/components/modals/CreateStoryModal';
 import { projectService } from '@/services/projectService';
 import { noteService } from '@/services/noteService';
 import { exportService } from '@/services/exportService';
@@ -62,6 +63,7 @@ export function ProjectDashboard() {
   const [showArchiveConfirm, setShowArchiveConfirm] = useState(false);
   const [selectedNote, setSelectedNote] = useState<Note | null>(null);
   const [showEditProjectModal, setShowEditProjectModal] = useState(false);
+  const [showCreateStoryModal, setShowCreateStoryModal] = useState(false);
 
   // Load project and notes
   useEffect(() => {
@@ -236,6 +238,23 @@ export function ProjectDashboard() {
 
   const handleCreateNote = () => {
     navigate(`/projects/${projectId}/notes/new`);
+  };
+
+  const handleCreateStory = async (storyData: StoryFormData) => {
+    try {
+      // In a real app, this would call your API to create the story
+      const newStoryId = `story-${Date.now()}`;
+      
+      // For now, navigate to the story editor with the new story
+      navigate(`/projects/${projectId}/stories/${newStoryId}/edit`, {
+        state: { storyData }
+      });
+      
+      setShowCreateStoryModal(false);
+      toast.success('Story created successfully!');
+    } catch (error) {
+      toast.error('Failed to create story');
+    }
   };
 
   const formatTimeAgo = (dateString: string): string => {
@@ -510,13 +529,35 @@ export function ProjectDashboard() {
                 placeholder="Sort by"
               />
               
-              <Button
-                variant="cosmic"
-                onClick={handleCreateNote}
-                leftIcon={<Plus className="h-4 w-4" />}
-              >
-                New Note
-              </Button>
+              <Dropdown
+                trigger={
+                  <Button
+                    variant="cosmic"
+                    leftIcon={<Plus className="h-4 w-4" />}
+                  >
+                    Create New
+                  </Button>
+                }
+                options={[
+                  { 
+                    label: 'Quick Note', 
+                    value: 'note',
+                    icon: <FileText className="h-4 w-4" />
+                  },
+                  { 
+                    label: 'Story/Novel', 
+                    value: 'story',
+                    icon: <BookOpen className="h-4 w-4" />
+                  }
+                ]}
+                onSelect={(value) => {
+                  if (value === 'note') {
+                    handleCreateNote();
+                  } else if (value === 'story') {
+                    setShowCreateStoryModal(true);
+                  }
+                }}
+              />
             </div>
           </div>
 
@@ -678,6 +719,13 @@ export function ProjectDashboard() {
         title="Archive Project"
         description={`Are you sure you want to archive "${project.title}"? You can restore it later from archived projects.`}
         confirmText="Archive"
+      />
+
+      <CreateStoryModal
+        isOpen={showCreateStoryModal}
+        onClose={() => setShowCreateStoryModal(false)}
+        onSubmit={handleCreateStory}
+        projectId={projectId}
       />
     </div>
   );

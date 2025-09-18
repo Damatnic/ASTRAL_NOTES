@@ -25,6 +25,7 @@ const Projects = React.lazy(() => import('@/pages/Projects').then(m => ({ defaul
 const ProjectDashboard = React.lazy(() => import('@/pages/ProjectDashboard').then(m => ({ default: m.ProjectDashboard })));
 const ProjectEditor = React.lazy(() => import('@/pages/ProjectEditor').then(m => ({ default: m.ProjectEditor })));
 const NoteEditor = React.lazy(() => import('@/pages/NoteEditor').then(m => ({ default: m.NoteEditor })));
+const StoryEditor = React.lazy(() => import('@/pages/StoryEditor').then(m => ({ default: m.StoryEditor })));
 const StandaloneNoteEditor = React.lazy(() => import('@/pages/StandaloneNoteEditor').then(m => ({ default: m.StandaloneNoteEditor })));
 const QuickNotes = React.lazy(() => import('@/pages/QuickNotes').then(m => ({ default: m.QuickNotes })));
 const AIWriting = React.lazy(() => import('@/pages/AIWriting').then(m => ({ default: m.AIWriting })));
@@ -94,6 +95,7 @@ export function AppContent() {
             <Route path="projects/:id/edit" element={<ProjectEditor />} />
             <Route path="projects/:projectId/notes/new" element={<NoteEditor />} />
             <Route path="projects/:projectId/notes/:noteId" element={<NoteEditor />} />
+            <Route path="projects/:projectId/stories/:storyId/edit" element={<StoryEditor />} />
             <Route path="notes/:id/edit" element={<StandaloneNoteEditor />} />
             <Route path="quick-notes" element={<QuickNotes />} />
             <Route path="ai-writing" element={<AIWriting />} />
