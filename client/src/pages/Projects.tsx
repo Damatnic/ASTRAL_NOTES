@@ -448,30 +448,47 @@ export function Projects() {
 
   return (
     <div className="p-6 space-y-6" data-testid="projects-overview">
-      {/* Header with Stats */}
-      <div className="space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div>
-            <h1 className="text-3xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
+      {/* Enhanced Header with Stats */}
+      <div className="space-y-6">
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
+          <div className="space-y-2">
+            <h1 className="text-4xl lg:text-5xl font-bold text-gradient">
               My Writing Projects
             </h1>
-            <p className="text-muted-foreground">
-              Your creative writing workspace
+            <p className="text-lg text-muted-foreground text-balance">
+              Organize, create, and manage your literary masterpieces
             </p>
+            
+            {/* Quick stats */}
+            <div className="flex items-center gap-4 text-sm text-muted-foreground mt-3">
+              <div className="flex items-center gap-1">
+                <div className="w-2 h-2 bg-primary rounded-full"></div>
+                {projects.length} projects
+              </div>
+              <div className="flex items-center gap-1">
+                <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                {projects.filter(p => p.status === 'active').length} active
+              </div>
+              <div className="flex items-center gap-1">
+                <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                {projects.filter(p => p.status === 'completed').length} completed
+              </div>
+            </div>
           </div>
           
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
             <Button 
-              variant="outline" 
+              variant="glass" 
               onClick={() => setShowBulkOrganization(true)} 
               leftIcon={<Wand2 className="h-4 w-4" />}
             >
               Organize Notes
             </Button>
             <Button 
-              variant="default" 
+              variant="gradient" 
               onClick={() => setShowNewProjectModal(true)}
               leftIcon={<PlusCircle className="h-4 w-4" />}
+              shimmer
             >
               New Project
             </Button>
@@ -660,7 +677,7 @@ export function Projects() {
       ) : (
         <div className={viewMode === 'grid' ? 'grid gap-6 md:grid-cols-2 lg:grid-cols-3' : 'space-y-4'}>
           {filteredAndSortedProjects.map((project) => (
-            <Card key={project.id} className="group hover:shadow-lg transition-all duration-200 hover:scale-[1.02]">
+            <Card key={project.id} variant="modern" className="group hover:shadow-xl transition-all duration-300 hover:scale-[1.02] hover:-translate-y-1">
               <CardHeader>
                 <div className="flex items-start justify-between">
                   <div className="space-y-1 flex-1">

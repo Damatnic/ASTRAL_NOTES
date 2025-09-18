@@ -11,7 +11,10 @@ import { OfflineIndicator } from '@/components/offline/OfflineIndicator';
 import { CreateNoteModal } from '@/components/quick-notes';
 import { OnboardingManager } from '@/components/onboarding/OnboardingManager';
 import { HelpSystem } from '@/components/onboarding/HelpSystem';
+import { CommandPalette, useCommandPalette } from '@/components/ui/CommandPalette';
+import { ShortcutsHelp, useShortcutsHelpModal } from '@/components/ui/ShortcutsHelp';
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
+import { useGlobalShortcuts } from '@/hooks/useGlobalShortcuts';
 import { quickNotesService } from '@/services/quickNotesService';
 import { projectService } from '@/services/projectService';
 import { Loader2 } from 'lucide-react';
@@ -44,11 +47,24 @@ function LoadingSpinner() {
 export function AppContent() {
   const [showGlobalQuickNote, setShowGlobalQuickNote] = useState(false);
   const [showHelpSystem, setShowHelpSystem] = useState(false);
+  const commandPalette = useCommandPalette();
+  const shortcutsHelp = useShortcutsHelpModal();
   
   // Set up global keyboard shortcuts
   useKeyboardShortcuts({
     onQuickNote: () => setShowGlobalQuickNote(true),
     onHelp: () => setShowHelpSystem(true),
+  });
+
+  // Set up enhanced global shortcuts
+  useGlobalShortcuts({
+    onQuickNote: () => setShowGlobalQuickNote(true),
+    onCommandPalette: commandPalette.open,
+    onHelp: shortcutsHelp.open,
+    onNewProject: () => {
+      // Navigate to projects and trigger new project modal
+      window.location.href = '/projects?new=true';
+    },
   });
 
   const handleCreateGlobalNote = async (data: any) => {
@@ -120,6 +136,18 @@ export function AppContent() {
       <HelpSystem
         isOpen={showHelpSystem}
         onClose={() => setShowHelpSystem(false)}
+      />
+
+      {/* Command Palette */}
+      <CommandPalette
+        isOpen={commandPalette.isOpen}
+        onClose={commandPalette.close}
+      />
+
+      {/* Shortcuts Help Modal */}
+      <ShortcutsHelp
+        isOpen={shortcutsHelp.isOpen}
+        onClose={shortcutsHelp.close}
       />
     </div>
   );

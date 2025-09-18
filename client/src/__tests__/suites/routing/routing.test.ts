@@ -591,9 +591,9 @@ describe('🧭 Comprehensive Routing Test Suite', () => {
       renderApp(['/']);
       
       // Rapidly click multiple navigation links
-      const dashboardLink = screen.getByText('Dashboard');
+      const dashboardLink = screen.getByText('Writing Hub');
       const projectsLink = screen.getByText('Projects');
-      const analyticsLink = screen.getByText('Analytics');
+      const analyticsLink = screen.getByText('AI Assistant');
       
       await user.click(projectsLink);
       await user.click(analyticsLink);
@@ -616,7 +616,7 @@ describe('🧭 Comprehensive Routing Test Suite', () => {
       expect(window.scrollY).toBe(500);
       
       // Navigate away and back
-      await user.click(screen.getByText('Dashboard'));
+      await user.click(screen.getByText('Writing Hub'));
       await user.click(screen.getByText('Projects'));
       
       // Scroll position should be restored
@@ -649,7 +649,7 @@ describe('🧭 Comprehensive Routing Test Suite', () => {
       // Route should update Redux state
       await waitFor(() => {
         const state = store.getState();
-        expect(state.router.currentProject).toBe('123');
+        expect(state.projects.currentProject?.id).toBe('123');
       });
     });
   });

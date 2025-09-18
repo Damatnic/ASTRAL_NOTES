@@ -194,7 +194,7 @@ export function WritingAssistance({
 
   // Read content aloud
   const readAloud = useCallback(() => {
-    if ('speechSynthesis' in window) {
+    if ('speechSynthesis' in window && typeof SpeechSynthesisUtterance !== 'undefined') {
       if (readAloudEnabled) {
         window.speechSynthesis.cancel();
         setReadAloudEnabled(false);

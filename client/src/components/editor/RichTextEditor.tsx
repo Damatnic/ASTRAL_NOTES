@@ -283,7 +283,7 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
       )}
 
       <div className="flex-1 flex flex-col overflow-hidden">
-        <div className="flex-1 overflow-auto p-4">
+        <div className="flex-1 overflow-auto p-4" data-testid="rich-text-editor">
           <EditorContent
             editor={editor}
             className={editorClasses}

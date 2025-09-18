@@ -85,8 +85,8 @@ export function Sidebar({ className }: SidebarProps) {
             </Button>
           </div>
 
-          {/* Navigation */}
-          <nav className="flex-1 px-4 py-6 space-y-2">
+          {/* Enhanced Navigation */}
+          <nav className="flex-1 px-4 py-6 space-y-1">
             {navigation.map((item) => {
               const isActive = location.pathname === item.href;
               return (
@@ -94,14 +94,27 @@ export function Sidebar({ className }: SidebarProps) {
                   key={item.name}
                   to={item.href}
                   className={cn(
-                    'flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-lg transition-colors',
+                    'group flex items-center gap-3 px-3 py-3 text-sm font-medium rounded-xl transition-all duration-200 relative overflow-hidden',
                     isActive
-                      ? 'bg-primary text-primary-foreground'
-                      : 'text-muted-foreground hover:text-foreground hover:bg-accent'
+                      ? 'bg-primary/10 text-primary border-l-4 border-primary shadow-sm backdrop-blur-sm'
+                      : 'text-muted-foreground hover:text-foreground hover:bg-accent/50'
                   )}
                 >
-                  <item.icon className="h-5 w-5" />
-                  {item.name}
+                  {/* Hover effect background */}
+                  <div className="absolute inset-0 bg-gradient-to-r from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                  
+                  <item.icon className={cn(
+                    'h-5 w-5 relative z-10 transition-transform group-hover:scale-110',
+                    isActive && 'text-primary'
+                  )} />
+                  <span className="relative z-10 group-hover:translate-x-1 transition-transform">
+                    {item.name}
+                  </span>
+                  
+                  {/* Active indicator */}
+                  {isActive && (
+                    <div className="ml-auto w-2 h-2 bg-primary rounded-full animate-pulse relative z-10" />
+                  )}
                 </Link>
               );
             })}
@@ -148,6 +161,7 @@ export function MobileMenuButton() {
       onClick={() => dispatch(toggleSidebar())}
       className="lg:hidden"
       aria-label="Open sidebar"
+      data-testid="mobile-menu-button"
     >
       <Menu className="h-5 w-5" />
     </Button>

@@ -44,6 +44,9 @@ export interface AIPromptTemplate {
 }
 
 class AIWritingService {
+  private initialized = false;
+  private config: any = {};
+  private featureToggles: any = {};
   private suggestions: WritingSuggestion[] = [];
   private promptTemplates: AIPromptTemplate[] = [
     {
@@ -442,6 +445,61 @@ class AIWritingService {
   async generateContent(prompt: string, options?: { type?: 'continuation' | 'expansion' | 'alternative' }): Promise<string> {
     const suggestions = await this.generateContentSuggestions(prompt, options?.type || 'expansion');
     return suggestions[0] || '';
+  }
+
+  // Additional methods expected by tests
+  async initialize(): Promise<boolean> {
+    this.initialized = true;
+    return true;
+  }
+
+  async generateSuggestions(text: string, options?: any): Promise<WritingSuggestion[]> {
+    const analysis = await this.analyzeText(text);
+    return analysis.suggestions;
+  }
+
+  async getContextualAssistance(context: any): Promise<any> {
+    return {
+      suggestions: await this.generateSuggestions(context.text || ''),
+      contextualTips: ['Consider the genre and tone', 'Focus on character development'],
+      relevantPrompts: this.getPromptTemplates().slice(0, 3)
+    };
+  }
+
+  async analyzeWritingStyle(text: string): Promise<any> {
+    const analysis = await this.analyzeText(text);
+    return {
+      style: {
+        formality: analysis.toneAnalysis.formal > 0.5 ? 'formal' : 'casual',
+        complexity: analysis.avgSentenceLength > 20 ? 'complex' : 'simple',
+        tone: analysis.toneAnalysis
+      },
+      metrics: {
+        wordCount: analysis.wordCount,
+        sentenceCount: analysis.sentenceCount,
+        readabilityScore: analysis.readabilityScore
+      }
+    };
+  }
+
+  async getCorrections(text: string): Promise<any> {
+    const analysis = await this.analyzeText(text);
+    return {
+      corrections: analysis.suggestions.filter(s => s.type === 'grammar'),
+      suggestions: analysis.suggestions.filter(s => s.type === 'style')
+    };
+  }
+
+  async configure(config: any): Promise<void> {
+    this.config = { ...this.config, ...config };
+  }
+
+  getConfiguration(): any {
+    return { ...this.config };
+  }
+
+  async setFeatureToggles(features: any): Promise<void> {
+    this.featureToggles = { ...this.featureToggles, ...features };
   }
 }
 

@@ -568,7 +568,7 @@ export function ImportExportPanel({
       console.error('Import failed:', error);
       
       // Fallback to simple text import for basic formats
-      const extension = file.name.split('.').pop()?.toLowerCase();
+      const extension = file.name?.split?.('.').pop()?.toLowerCase();
       if (['txt', 'md', 'html'].includes(extension || '')) {
         const reader = new FileReader();
         reader.onload = (e) => {

@@ -416,22 +416,22 @@ describe('SceneBeatService', () => {
       expect(beats).toHaveLength(2);
     });
 
-    test('should update beat', () => {
+    test('should update beat', async () => {
       const sceneId = 'scene-1';
       const beat = sceneBeatService.createBeat(sceneId, 'Original content', 'action');
       const originalUpdatedAt = beat.updatedAt;
 
       // Wait a bit to ensure timestamp difference
-      setTimeout(() => {
-        const updated = sceneBeatService.updateBeat(sceneId, beat.id, {
-          content: 'Updated content',
-          type: 'dialogue',
-        });
+      await new Promise(resolve => setTimeout(resolve, 1));
+      
+      const updated = sceneBeatService.updateBeat(sceneId, beat.id, {
+        content: 'Updated content',
+        type: 'dialogue',
+      });
 
-        expect(updated?.content).toBe('Updated content');
-        expect(updated?.type).toBe('dialogue');
-        expect(updated?.updatedAt.getTime()).toBeGreaterThan(originalUpdatedAt.getTime());
-      }, 1);
+      expect(updated?.content).toBe('Updated content');
+      expect(updated?.type).toBe('dialogue');
+      expect(updated?.updatedAt.getTime()).toBeGreaterThan(originalUpdatedAt.getTime());
     });
 
     test('should delete beat', () => {

@@ -70,82 +70,116 @@ export function Dashboard() {
 
   return (
     <div className="p-6 space-y-8" data-testid="dashboard">
-      {/* Welcome section */}
-      <div className="space-y-2">
-        <h1 className="text-3xl font-bold">
-          Your Personal Writing Assistant
-        </h1>
-        <p className="text-muted-foreground">
-          {stats.totalProjects > 0 
-            ? "Welcome back! Ready to continue writing?" 
-            : "Let's begin your creative writing journey together"
-          }
-        </p>
+      {/* Enhanced Welcome section */}
+      <div className="space-y-4">
+        <div className="text-center lg:text-left">
+          <h1 className="text-4xl lg:text-5xl font-bold text-gradient mb-2">
+            Your Personal Writing Assistant
+          </h1>
+          <p className="text-xl text-muted-foreground text-balance">
+            {stats.totalProjects > 0 
+              ? "Welcome back! Ready to continue writing?" 
+              : "Let's begin your creative writing journey together"
+            }
+          </p>
+        </div>
+        
+        {/* Status indicator */}
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+          All systems ready
+        </div>
       </div>
 
-      {/* Quick actions */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* Enhanced Quick actions */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <Button
-          variant="default"
+          variant="gradient"
           size="lg"
-          className="h-24 flex-col gap-2"
+          className="h-28 flex-col gap-3 group"
+          shimmer
           asChild
         >
           <Link to="/quick-notes">
-            <PlusCircle className="h-6 w-6" />
-            Quick Note
+            <PlusCircle className="h-7 w-7 group-hover:scale-110 transition-transform" />
+            <div className="text-center">
+              <div className="font-semibold">Quick Note</div>
+              <div className="text-xs opacity-90">Start writing instantly</div>
+            </div>
           </Link>
         </Button>
         
         <Button
-          variant="outline"
+          variant="elevated"
           size="lg"
-          className="h-24 flex-col gap-2"
+          className="h-28 flex-col gap-3 group"
           asChild
         >
           <Link to="/ai-writing">
-            <Brain className="h-6 w-6" />
-            AI Writing Help
+            <Brain className="h-7 w-7 group-hover:scale-110 transition-transform text-primary" />
+            <div className="text-center">
+              <div className="font-semibold">AI Assistant</div>
+              <div className="text-xs text-muted-foreground">Get writing help</div>
+            </div>
           </Link>
         </Button>
         
         <Button
-          variant="outline"
+          variant="glass"
           size="lg"
-          className="h-24 flex-col gap-2"
+          className="h-28 flex-col gap-3 group"
           asChild
         >
           <Link to="/projects">
-            <FolderOpen className="h-6 w-6" />
-            My Projects
+            <FolderOpen className="h-7 w-7 group-hover:scale-110 transition-transform text-primary" />
+            <div className="text-center">
+              <div className="font-semibold">My Projects</div>
+              <div className="text-xs text-muted-foreground">Manage your work</div>
+            </div>
           </Link>
         </Button>
         
         <Button
-          variant="outline"
+          variant="ghost"
           size="lg"
-          className="h-24 flex-col gap-2"
+          className="h-28 flex-col gap-3 group border border-border/50 hover:border-border"
           asChild
         >
           <Link to="/search">
-            <FileText className="h-6 w-6" />
-            Search Writing
+            <FileText className="h-7 w-7 group-hover:scale-110 transition-transform text-muted-foreground group-hover:text-foreground" />
+            <div className="text-center">
+              <div className="font-semibold">Search Writing</div>
+              <div className="text-xs text-muted-foreground">Find your content</div>
+            </div>
           </Link>
         </Button>
       </div>
 
-      {/* Stats overview */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        {dashboardStats.map((stat) => (
-          <Card key={stat.label}>
+      {/* Enhanced Stats overview */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        {dashboardStats.map((stat, index) => (
+          <Card key={stat.label} variant="modern" className="group hover:scale-105 transition-transform">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">
+              <CardTitle className="text-sm font-medium text-muted-foreground">
                 {stat.label}
               </CardTitle>
-              <stat.icon className={`h-4 w-4 ${stat.color}`} />
+              <div className={`p-2 rounded-lg bg-gradient-to-br ${
+                index === 0 ? 'from-blue-500/10 to-blue-600/20' :
+                index === 1 ? 'from-green-500/10 to-green-600/20' :
+                index === 2 ? 'from-purple-500/10 to-purple-600/20' :
+                'from-orange-500/10 to-orange-600/20'
+              }`}>
+                <stat.icon className={`h-5 w-5 ${stat.color} group-hover:scale-110 transition-transform`} />
+              </div>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{stat.value}</div>
+              <div className="text-3xl font-bold tracking-tight">{stat.value}</div>
+              <div className="text-xs text-muted-foreground mt-1">
+                {index === 0 && 'Currently active'}
+                {index === 1 && 'Total written'}
+                {index === 2 && 'Completed works'}
+                {index === 3 && 'This week'}
+              </div>
             </CardContent>
           </Card>
         ))}

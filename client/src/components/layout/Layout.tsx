@@ -13,7 +13,7 @@ export function Layout() {
   const { sidebarCollapsed } = useAppSelector((state) => state.ui);
 
   return (
-    <div className="flex h-screen bg-background">
+    <div className="flex h-screen bg-background" data-testid="tablet-layout">
       {/* Sidebar */}
       <Sidebar />
 

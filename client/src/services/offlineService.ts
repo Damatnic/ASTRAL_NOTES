@@ -101,9 +101,19 @@ export class OfflineService {
 
   private async initializeDB(): Promise<void> {
     return new Promise((resolve, reject) => {
+      if (!indexedDB) {
+        reject(new Error('IndexedDB not supported'));
+        return;
+      }
+      
       const request = indexedDB.open('AstralNotesDB', 2);
 
-      request.onerror = () => reject(request.error);
+      if (request) {
+        request.onerror = () => reject(request.error || new Error('Failed to open database'));
+      } else {
+        reject(new Error('Failed to create database request'));
+        return;
+      }
       request.onsuccess = () => {
         this.db = request.result;
         resolve();

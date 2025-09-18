@@ -9,20 +9,24 @@ import { cn } from '@/utils/cn';
 import { Loader2 } from 'lucide-react';
 
 const buttonVariants = cva(
-  'inline-flex items-center justify-center rounded-lg text-sm font-medium transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none ring-offset-background relative overflow-hidden group',
+  'inline-flex items-center justify-center rounded-lg text-sm font-medium transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none ring-offset-background relative overflow-hidden group active:scale-95',
   {
     variants: {
       variant: {
-        default: 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white hover:from-indigo-700 hover:to-purple-700 shadow-lg hover:shadow-xl focus-visible:ring-indigo-500',
-        destructive: 'bg-gradient-to-r from-red-600 to-pink-600 text-white hover:from-red-700 hover:to-pink-700 shadow-lg hover:shadow-xl focus-visible:ring-red-500',
-        outline: 'border-2 border-indigo-200 dark:border-indigo-800 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-50 dark:hover:bg-indigo-950 hover:border-indigo-300 dark:hover:border-indigo-700 focus-visible:ring-indigo-500',
-        secondary: 'bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-slate-100 hover:bg-slate-200 dark:hover:bg-slate-700 focus-visible:ring-slate-500',
-        ghost: 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100 focus-visible:ring-slate-500',
-        link: 'text-indigo-600 dark:text-indigo-400 underline-offset-4 hover:underline hover:text-indigo-700 dark:hover:text-indigo-300 focus-visible:ring-indigo-500',
-        cosmic: 'bg-gradient-to-r from-violet-600 via-purple-600 to-indigo-600 text-white hover:from-violet-700 hover:via-purple-700 hover:to-indigo-700 shadow-lg hover:shadow-xl focus-visible:ring-violet-500 before:absolute before:inset-0 before:bg-gradient-to-r before:from-violet-400/20 before:to-indigo-400/20 before:opacity-0 hover:before:opacity-100 before:transition-opacity',
-        astral: 'bg-gradient-to-r from-slate-900 via-purple-900 to-slate-900 text-white hover:from-slate-800 hover:via-purple-800 hover:to-slate-800 shadow-xl hover:shadow-2xl focus-visible:ring-purple-500 border border-purple-500/30 hover:border-purple-400/50',
-        success: 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white hover:from-emerald-700 hover:to-teal-700 shadow-lg hover:shadow-xl focus-visible:ring-emerald-500',
-        warning: 'bg-gradient-to-r from-amber-500 to-orange-500 text-white hover:from-amber-600 hover:to-orange-600 shadow-lg hover:shadow-xl focus-visible:ring-amber-500',
+        default: 'bg-primary text-primary-foreground shadow hover:bg-primary/90 hover:shadow-md focus-visible:ring-primary',
+        destructive: 'bg-destructive text-destructive-foreground shadow hover:bg-destructive/90 hover:shadow-md focus-visible:ring-destructive',
+        outline: 'border border-input bg-background shadow-sm hover:bg-accent hover:text-accent-foreground focus-visible:ring-ring',
+        secondary: 'bg-secondary text-secondary-foreground shadow-sm hover:bg-secondary/80 focus-visible:ring-ring',
+        ghost: 'hover:bg-accent hover:text-accent-foreground focus-visible:ring-ring',
+        link: 'text-primary underline-offset-4 hover:underline focus-visible:ring-primary',
+        success: 'bg-green-600 text-white shadow hover:bg-green-700 hover:shadow-md focus-visible:ring-green-500',
+        warning: 'bg-yellow-600 text-white shadow hover:bg-yellow-700 hover:shadow-md focus-visible:ring-yellow-500',
+        // Enhanced modern variants
+        gradient: 'bg-gradient-to-r from-primary via-primary/90 to-primary/80 text-primary-foreground shadow-lg hover:shadow-xl hover:from-primary/90 hover:via-primary/80 hover:to-primary/70 focus-visible:ring-primary',
+        cosmic: 'bg-gradient-to-r from-violet-600 via-purple-600 to-indigo-600 text-white shadow-lg hover:shadow-xl hover:from-violet-700 hover:via-purple-700 hover:to-indigo-700 focus-visible:ring-violet-500 before:absolute before:inset-0 before:bg-gradient-to-r before:from-violet-400/20 before:to-indigo-400/20 before:opacity-0 hover:before:opacity-100 before:transition-opacity',
+        astral: 'bg-gradient-to-r from-slate-900 via-purple-900 to-slate-900 text-white shadow-xl hover:shadow-2xl hover:from-slate-800 hover:via-purple-800 hover:to-slate-800 focus-visible:ring-purple-500 border border-purple-500/30 hover:border-purple-400/50',
+        glass: 'bg-background/80 backdrop-blur-sm border border-border/50 text-foreground hover:bg-background/90 hover:border-border/70 focus-visible:ring-ring',
+        elevated: 'bg-card shadow-lg hover:shadow-xl border border-border/50 text-card-foreground hover:bg-card/90 focus-visible:ring-ring hover:-translate-y-0.5',
       },
       size: {
         xs: 'h-7 px-2 text-xs rounded-md',
@@ -56,6 +60,10 @@ export interface ButtonProps
   leftIcon?: React.ReactNode;
   rightIcon?: React.ReactNode;
   tooltip?: string;
+  pulse?: boolean;
+  shimmer?: boolean;
+  badge?: string | number;
+  badgeVariant?: 'default' | 'destructive' | 'success' | 'warning';
 }
 
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
@@ -72,6 +80,10 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     children, 
     disabled,
     tooltip,
+    pulse = false,
+    shimmer = false,
+    badge,
+    badgeVariant = 'default',
     'aria-label': ariaLabel,
     ...props 
   }, ref) => {
@@ -94,9 +106,21 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       </>
     );
 
+    const badgeColors = {
+      default: 'bg-primary text-primary-foreground',
+      destructive: 'bg-destructive text-destructive-foreground',
+      success: 'bg-green-500 text-white',
+      warning: 'bg-yellow-500 text-white',
+    };
+
     return (
       <button
-        className={cn(buttonVariants({ variant, size, fullWidth, className }))}
+        className={cn(
+          buttonVariants({ variant, size, fullWidth }),
+          pulse && 'animate-pulse',
+          shimmer && 'relative before:absolute before:inset-0 before:bg-gradient-to-r before:from-transparent before:via-white/20 before:to-transparent before:-translate-x-full hover:before:translate-x-full before:transition-transform before:duration-700',
+          className
+        )}
         ref={ref}
         disabled={isDisabled}
         aria-label={ariaLabel || (typeof children === 'string' ? children : undefined)}
@@ -104,6 +128,14 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         {...props}
       >
         {buttonContent}
+        {badge && (
+          <span className={cn(
+            'absolute -top-1 -right-1 h-5 min-w-[1.25rem] px-1 text-xs font-medium rounded-full flex items-center justify-center',
+            badgeColors[badgeVariant]
+          )}>
+            {badge}
+          </span>
+        )}
       </button>
     );
   }
