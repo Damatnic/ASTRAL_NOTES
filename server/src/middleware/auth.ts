@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
+import { getJwtSecret } from '../utils/jwt.js';
 import { PrismaClient } from '@prisma/client';
 import { logger } from '../utils/logger.js';
 
@@ -17,7 +18,7 @@ export const authenticateToken = async (
   req: AuthRequest,
   res: Response,
   next: NextFunction
-) => {
+): Promise<Response | void> => {
   try {
     const token = req.header('Authorization')?.replace('Bearer ', '');
 
@@ -28,7 +29,7 @@ export const authenticateToken = async (
       });
     }
 
-    const jwtSecret = process.env.JWT_SECRET;
+    const jwtSecret = getJwtSecret();
     if (!jwtSecret) {
       logger.error('JWT_SECRET not configured');
       return res.status(500).json({
@@ -72,12 +73,12 @@ export const optionalAuth = async (
   req: AuthRequest,
   res: Response,
   next: NextFunction
-) => {
+): Promise<Response | void> => {
   try {
     const token = req.header('Authorization')?.replace('Bearer ', '');
 
     if (token) {
-      const jwtSecret = process.env.JWT_SECRET;
+      const jwtSecret = getJwtSecret();
       if (jwtSecret) {
         const decoded = jwt.verify(token, jwtSecret) as { userId: string };
         const user = await prisma.user.findUnique({

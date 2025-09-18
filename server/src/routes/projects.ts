@@ -1,8 +1,9 @@
-import express from 'express';
+import express, { Response } from 'express';
 import { z } from 'zod';
 import { PrismaClient } from '@prisma/client';
 import { asyncHandler } from '../middleware/errorHandler.js';
 import { AuthRequest } from '../middleware/auth.js';
+import { ApiResponse } from '../types/api.js';
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -26,7 +27,7 @@ const inviteCollaboratorSchema = z.object({
 });
 
 // Get all projects for current user
-router.get('/', asyncHandler(async (req: AuthRequest, res) => {
+router.get('/', asyncHandler(async (req: AuthRequest, res: Response<ApiResponse<{ projects: any[] }>>): Promise<Response<ApiResponse<{ projects: any[] }>> | void> => {
   const projects = await prisma.project.findMany({
     where: {
       OR: [
@@ -75,10 +76,18 @@ router.get('/', asyncHandler(async (req: AuthRequest, res) => {
 }));
 
 // Get single project
-router.get('/:id', asyncHandler(async (req: AuthRequest, res) => {
+router.get('/:id', asyncHandler(async (req: AuthRequest, res: Response<ApiResponse<{ project: any }>>): Promise<Response<ApiResponse<{ project: any }>> | void> => {
+  const id = req.params.id;
+  if (!id) {
+    return res.status(400).json({
+      success: false,
+      error: { message: 'Project ID is required' }
+    });
+  }
+  
   const project = await prisma.project.findFirst({
     where: {
-      id: req.params.id,
+      id: id,
       OR: [
         { ownerId: req.user!.id },
         {
@@ -155,7 +164,7 @@ router.get('/:id', asyncHandler(async (req: AuthRequest, res) => {
 }));
 
 // Create new project
-router.post('/', asyncHandler(async (req: AuthRequest, res) => {
+router.post('/', asyncHandler(async (req: AuthRequest, res: Response<ApiResponse<{ project: any }>>): Promise<Response<ApiResponse<{ project: any }>> | void> => {
   const validatedData = createProjectSchema.parse(req.body);
 
   const project = await prisma.project.create({
@@ -182,13 +191,21 @@ router.post('/', asyncHandler(async (req: AuthRequest, res) => {
 }));
 
 // Update project
-router.patch('/:id', asyncHandler(async (req: AuthRequest, res) => {
+router.patch('/:id', asyncHandler(async (req: AuthRequest, res: Response<ApiResponse<{ project: any }>>): Promise<Response<ApiResponse<{ project: any }>> | void> => {
+  const id = req.params.id;
+  if (!id) {
+    return res.status(400).json({
+      success: false,
+      error: { message: 'Project ID is required' }
+    });
+  }
+  
   const validatedData = updateProjectSchema.parse(req.body);
 
   // Check if user owns the project or has editor access
   const existingProject = await prisma.project.findFirst({
     where: {
-      id: req.params.id,
+      id: id,
       OR: [
         { ownerId: req.user!.id },
         {
@@ -211,7 +228,7 @@ router.patch('/:id', asyncHandler(async (req: AuthRequest, res) => {
   }
 
   const project = await prisma.project.update({
-    where: { id: req.params.id },
+    where: { id: id },
     data: validatedData,
     include: {
       _count: {
@@ -232,10 +249,18 @@ router.patch('/:id', asyncHandler(async (req: AuthRequest, res) => {
 }));
 
 // Delete project
-router.delete('/:id', asyncHandler(async (req: AuthRequest, res) => {
+router.delete('/:id', asyncHandler(async (req: AuthRequest, res: Response<ApiResponse<{ message: string }>>): Promise<Response<ApiResponse<{ message: string }>> | void> => {
+  const id = req.params.id;
+  if (!id) {
+    return res.status(400).json({
+      success: false,
+      error: { message: 'Project ID is required' }
+    });
+  }
+  
   const project = await prisma.project.findFirst({
     where: {
-      id: req.params.id,
+      id: id,
       ownerId: req.user!.id // Only owner can delete
     }
   });
@@ -248,7 +273,7 @@ router.delete('/:id', asyncHandler(async (req: AuthRequest, res) => {
   }
 
   await prisma.project.delete({
-    where: { id: req.params.id }
+    where: { id: id }
   });
 
   res.json({
@@ -258,13 +283,21 @@ router.delete('/:id', asyncHandler(async (req: AuthRequest, res) => {
 }));
 
 // Invite collaborator
-router.post('/:id/collaborators', asyncHandler(async (req: AuthRequest, res) => {
+router.post('/:id/collaborators', asyncHandler(async (req: AuthRequest, res: Response<ApiResponse<{ collaborator: any }>>): Promise<Response<ApiResponse<{ collaborator: any }>> | void> => {
+  const id = req.params.id;
+  if (!id) {
+    return res.status(400).json({
+      success: false,
+      error: { message: 'Project ID is required' }
+    });
+  }
+  
   const validatedData = inviteCollaboratorSchema.parse(req.body);
 
   // Check if user owns the project
   const project = await prisma.project.findFirst({
     where: {
-      id: req.params.id,
+      id: id,
       ownerId: req.user!.id
     }
   });
@@ -293,7 +326,7 @@ router.post('/:id/collaborators', asyncHandler(async (req: AuthRequest, res) => 
   const existingCollaborator = await prisma.projectCollaborator.findUnique({
     where: {
       projectId_userId: {
-        projectId: req.params.id,
+        projectId: id,
         userId: userToInvite.id
       }
     }
@@ -308,7 +341,7 @@ router.post('/:id/collaborators', asyncHandler(async (req: AuthRequest, res) => 
 
   const collaborator = await prisma.projectCollaborator.create({
     data: {
-      projectId: req.params.id,
+      projectId: id,
       userId: userToInvite.id,
       role: validatedData.role,
     },
@@ -332,7 +365,16 @@ router.post('/:id/collaborators', asyncHandler(async (req: AuthRequest, res) => 
 }));
 
 // Update collaborator role
-router.patch('/:id/collaborators/:userId', asyncHandler(async (req: AuthRequest, res) => {
+router.patch('/:id/collaborators/:userId', asyncHandler(async (req: AuthRequest, res: Response<ApiResponse<{ collaborator: any }>>): Promise<Response<ApiResponse<{ collaborator: any }>> | void> => {
+  const id = req.params.id;
+  const userId = req.params.userId;
+  if (!id || !userId) {
+    return res.status(400).json({
+      success: false,
+      error: { message: 'Project ID and User ID are required' }
+    });
+  }
+  
   const { role } = z.object({
     role: z.enum(['editor', 'viewer'])
   }).parse(req.body);
@@ -340,7 +382,7 @@ router.patch('/:id/collaborators/:userId', asyncHandler(async (req: AuthRequest,
   // Check if user owns the project
   const project = await prisma.project.findFirst({
     where: {
-      id: req.params.id,
+      id: id,
       ownerId: req.user!.id
     }
   });
@@ -355,8 +397,8 @@ router.patch('/:id/collaborators/:userId', asyncHandler(async (req: AuthRequest,
   const collaborator = await prisma.projectCollaborator.update({
     where: {
       projectId_userId: {
-        projectId: req.params.id,
-        userId: req.params.userId
+        projectId: id,
+        userId: userId
       }
     },
     data: { role },
@@ -380,11 +422,20 @@ router.patch('/:id/collaborators/:userId', asyncHandler(async (req: AuthRequest,
 }));
 
 // Remove collaborator
-router.delete('/:id/collaborators/:userId', asyncHandler(async (req: AuthRequest, res) => {
+router.delete('/:id/collaborators/:userId', asyncHandler(async (req: AuthRequest, res: Response<ApiResponse<{ message: string }>>): Promise<Response<ApiResponse<{ message: string }>> | void> => {
+  const id = req.params.id;
+  const userId = req.params.userId;
+  if (!id || !userId) {
+    return res.status(400).json({
+      success: false,
+      error: { message: 'Project ID and User ID are required' }
+    });
+  }
+  
   // Check if user owns the project
   const project = await prisma.project.findFirst({
     where: {
-      id: req.params.id,
+      id: id,
       ownerId: req.user!.id
     }
   });
@@ -399,8 +450,8 @@ router.delete('/:id/collaborators/:userId', asyncHandler(async (req: AuthRequest
   await prisma.projectCollaborator.delete({
     where: {
       projectId_userId: {
-        projectId: req.params.id,
-        userId: req.params.userId
+        projectId: id,
+        userId: userId
       }
     }
   });

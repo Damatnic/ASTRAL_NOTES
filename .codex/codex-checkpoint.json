@@ -1,0 +1,17 @@
+{
+  "timestamp": "2025-09-18T14:35:37.008Z",
+  "progress": {
+    "completed": 9,
+    "inProgress": 0,
+    "remaining": 3
+  },
+  "results": [],
+  "nextTask": {
+    "id": "task-vnm246",
+    "description": "Add loading skeletons",
+    "priority": "LOW",
+    "category": "ux",
+    "estimatedTime": "45m",
+    "createdAt": "2025-09-18T13:18:44.668Z"
+  }
+}

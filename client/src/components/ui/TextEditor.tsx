@@ -23,6 +23,7 @@ import {
   EyeOff
 } from 'lucide-react';
 import { cn } from '@/utils/cn';
+import { toSafeInnerHtml } from '@/utils/sanitizeHtml';
 import { Button } from './Button';
 import { Tabs, TabItem } from './Tabs';
 
@@ -57,11 +58,11 @@ export function TextEditor({
   onSave,
   onAutoSave,
 }: TextEditorProps) {
-  const [localContent, setLocalContent] = useState(content);
+  const [localContent, setLocalContent] = useState(content || '');
   const [isPreview, setIsPreview] = useState(false);
-  const [history, setHistory] = useState<string[]>([content]);
+  const [history, setHistory] = useState<string[]>([content || '']);
   const [historyIndex, setHistoryIndex] = useState(0);
-  const [savedContent, setSavedContent] = useState(content);
+  const [savedContent, setSavedContent] = useState(content || '');
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -69,7 +70,7 @@ export function TextEditor({
 
   // Update local content when prop changes
   useEffect(() => {
-    setLocalContent(content);
+    setLocalContent(content || '');
   }, [content]);
 
   // Auto-save functionality
@@ -161,8 +162,8 @@ export function TextEditor({
   };
 
   // Calculate word count and reading time
-  const wordCount = localContent.trim().split(/\s+/).filter(word => word.length > 0).length;
-  const charCount = localContent.length;
+  const wordCount = (localContent || '').trim().split(/\s+/).filter(word => word.length > 0).length;
+  const charCount = (localContent || '').length;
   const readingTime = Math.ceil(wordCount / 200); // Average reading speed
 
   // Keyboard shortcuts
@@ -254,8 +255,8 @@ export function TextEditor({
             variantStyles[variant]
           )}
           style={{ minHeight: '200px', maxHeight }}
-          dangerouslySetInnerHTML={{
-            __html: localContent
+          dangerouslySetInnerHTML={toSafeInnerHtml(
+            localContent
               .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
               .replace(/\*(.*?)\*/g, '<em>$1</em>')
               .replace(/`(.*?)`/g, '<code>$1</code>')
@@ -263,7 +264,7 @@ export function TextEditor({
               .replace(/^- (.+)$/gm, '<li>$1</li>')
               .replace(/^\d+\. (.+)$/gm, '<li>$1</li>')
               .replace(/\n/g, '<br>')
-          }}
+          )}
         />
       ),
     },

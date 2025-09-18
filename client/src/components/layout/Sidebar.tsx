@@ -11,7 +11,14 @@ import {
   Search,
   PlusCircle,
   Menu,
-  X
+  X,
+  FileText,
+  Brain,
+  BarChart3,
+  Zap,
+  Workflow,
+  Briefcase,
+  PenTool
 } from 'lucide-react';
 import { cn } from '@/utils/cn';
 import { Button } from '@/components/ui/Button';
@@ -23,8 +30,11 @@ interface SidebarProps {
 }
 
 const navigation = [
-  { name: 'Dashboard', href: '/dashboard', icon: Home },
+  { name: 'Writing Hub', href: '/dashboard', icon: Home },
+  { name: 'Quick Notes', href: '/quick-notes', icon: FileText },
   { name: 'Projects', href: '/projects', icon: FolderOpen },
+  { name: 'AI Assistant', href: '/ai-writing', icon: Brain },
+  { name: 'Professional', href: '/professional', icon: Briefcase },
   { name: 'Search', href: '/search', icon: Search },
   { name: 'Settings', href: '/settings', icon: Settings },
 ];
@@ -62,7 +72,7 @@ export function Sidebar({ className }: SidebarProps) {
           {/* Header */}
           <div className="flex h-16 items-center justify-between px-6 border-b">
             <h1 className="text-xl font-semibold text-foreground">
-              Astral Notes
+              Writing Assistant
             </h1>
             <Button
               variant="ghost"
@@ -98,15 +108,25 @@ export function Sidebar({ className }: SidebarProps) {
           </nav>
 
           {/* Footer actions */}
-          <div className="px-4 py-4 border-t">
+          <div className="px-4 py-4 border-t space-y-2">
+            <Button
+              variant="default"
+              className="w-full justify-start gap-2"
+              asChild
+            >
+              <Link to="/quick-notes">
+                <PlusCircle className="h-4 w-4" />
+                Quick Note
+              </Link>
+            </Button>
             <Button
               variant="outline"
               className="w-full justify-start gap-2"
               asChild
             >
-              <Link to="/projects/new">
-                <PlusCircle className="h-4 w-4" />
-                New Project
+              <Link to="/ai-writing">
+                <Zap className="h-4 w-4" />
+                AI Writing Help
               </Link>
             </Button>
           </div>

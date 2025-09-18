@@ -1,8 +1,9 @@
-import express from 'express';
+import express, { Response } from 'express';
 import { z } from 'zod';
 import { PrismaClient } from '@prisma/client';
 import { asyncHandler } from '../middleware/errorHandler.js';
 import { AuthRequest } from '../middleware/auth.js';
+import { ApiResponse } from '../types/api.js';
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -156,8 +157,16 @@ async function checkTimelineAccess(timelineId: string, userId: string, requireEd
 }
 
 // Get timelines for a project
-router.get('/project/:projectId', asyncHandler(async (req: AuthRequest, res) => {
-  const project = await checkProjectAccess(req.params.projectId, req.user!.id);
+router.get('/project/:projectId', asyncHandler(async (req: AuthRequest, res: Response<ApiResponse<any>>): Promise<Response<ApiResponse<any>> | void> => {
+  const projectId = req.params.projectId;
+  if (!projectId) {
+    return res.status(400).json({
+      success: false,
+      error: { message: 'Project ID is required' }
+    });
+  }
+  
+  const project = await checkProjectAccess(projectId, req.user!.id);
   
   if (!project) {
     return res.status(404).json({
@@ -168,7 +177,7 @@ router.get('/project/:projectId', asyncHandler(async (req: AuthRequest, res) => 
 
   const { type } = req.query;
 
-  const where: any = { projectId: req.params.projectId };
+  const where: any = { projectId: projectId };
   if (type) where.type = type;
 
   const timelines = await prisma.timeline.findMany({
@@ -190,8 +199,16 @@ router.get('/project/:projectId', asyncHandler(async (req: AuthRequest, res) => 
 }));
 
 // Get timelines for a story
-router.get('/story/:storyId', asyncHandler(async (req: AuthRequest, res) => {
-  const story = await checkStoryAccess(req.params.storyId, req.user!.id);
+router.get('/story/:storyId', asyncHandler(async (req: AuthRequest, res: Response<ApiResponse<any>>): Promise<Response<ApiResponse<any>> | void> => {
+  const storyId = req.params.storyId;
+  if (!storyId) {
+    return res.status(400).json({
+      success: false,
+      error: { message: 'Story ID is required' }
+    });
+  }
+  
+  const story = await checkStoryAccess(storyId, req.user!.id);
   
   if (!story) {
     return res.status(404).json({
@@ -204,7 +221,7 @@ router.get('/story/:storyId', asyncHandler(async (req: AuthRequest, res) => {
 
   const where: any = { 
     OR: [
-      { storyId: req.params.storyId },
+      { storyId: storyId },
       { projectId: story.projectId }
     ]
   };
@@ -229,8 +246,16 @@ router.get('/story/:storyId', asyncHandler(async (req: AuthRequest, res) => {
 }));
 
 // Get single timeline with entries
-router.get('/:id', asyncHandler(async (req: AuthRequest, res) => {
-  const timeline = await checkTimelineAccess(req.params.id, req.user!.id);
+router.get('/:id', asyncHandler(async (req: AuthRequest, res: Response<ApiResponse<any>>): Promise<Response<ApiResponse<any>> | void> => {
+  const id = req.params.id;
+  if (!id) {
+    return res.status(400).json({
+      success: false,
+      error: { message: 'Timeline ID is required' }
+    });
+  }
+  
+  const timeline = await checkTimelineAccess(id, req.user!.id);
   
   if (!timeline) {
     return res.status(404).json({
@@ -240,7 +265,7 @@ router.get('/:id', asyncHandler(async (req: AuthRequest, res) => {
   }
 
   const timelineWithEntries = await prisma.timeline.findUnique({
-    where: { id: req.params.id },
+    where: { id: id },
     include: {
       entries: {
         include: {
@@ -272,7 +297,7 @@ router.get('/:id', asyncHandler(async (req: AuthRequest, res) => {
 }));
 
 // Create new timeline
-router.post('/', asyncHandler(async (req: AuthRequest, res) => {
+router.post('/', asyncHandler(async (req: AuthRequest, res: Response<ApiResponse<any>>): Promise<Response<ApiResponse<any>> | void> => {
   const validatedData = createTimelineSchema.parse(req.body);
 
   // Validate that either projectId or storyId is provided
@@ -326,10 +351,18 @@ router.post('/', asyncHandler(async (req: AuthRequest, res) => {
 }));
 
 // Update timeline
-router.patch('/:id', asyncHandler(async (req: AuthRequest, res) => {
+router.patch('/:id', asyncHandler(async (req: AuthRequest, res: Response<ApiResponse<any>>): Promise<Response<ApiResponse<any>> | void> => {
+  const id = req.params.id;
+  if (!id) {
+    return res.status(400).json({
+      success: false,
+      error: { message: 'Timeline ID is required' }
+    });
+  }
+  
   const validatedData = updateTimelineSchema.parse(req.body);
 
-  const timeline = await checkTimelineAccess(req.params.id, req.user!.id, true);
+  const timeline = await checkTimelineAccess(id, req.user!.id, true);
   
   if (!timeline) {
     return res.status(404).json({
@@ -339,7 +372,7 @@ router.patch('/:id', asyncHandler(async (req: AuthRequest, res) => {
   }
 
   const updatedTimeline = await prisma.timeline.update({
-    where: { id: req.params.id },
+    where: { id: id },
     data: {
       ...validatedData,
       startDate: validatedData.startDate ? new Date(validatedData.startDate) : undefined,
@@ -361,8 +394,16 @@ router.patch('/:id', asyncHandler(async (req: AuthRequest, res) => {
 }));
 
 // Delete timeline
-router.delete('/:id', asyncHandler(async (req: AuthRequest, res) => {
-  const timeline = await checkTimelineAccess(req.params.id, req.user!.id, true);
+router.delete('/:id', asyncHandler(async (req: AuthRequest, res: Response<ApiResponse<any>>): Promise<Response<ApiResponse<any>> | void> => {
+  const id = req.params.id;
+  if (!id) {
+    return res.status(400).json({
+      success: false,
+      error: { message: 'Timeline ID is required' }
+    });
+  }
+  
+  const timeline = await checkTimelineAccess(id, req.user!.id, true);
   
   if (!timeline) {
     return res.status(404).json({
@@ -372,7 +413,7 @@ router.delete('/:id', asyncHandler(async (req: AuthRequest, res) => {
   }
 
   await prisma.timeline.delete({
-    where: { id: req.params.id }
+    where: { id: id }
   });
 
   res.json({
@@ -382,10 +423,18 @@ router.delete('/:id', asyncHandler(async (req: AuthRequest, res) => {
 }));
 
 // Create timeline entry
-router.post('/:id/entries', asyncHandler(async (req: AuthRequest, res) => {
+router.post('/:id/entries', asyncHandler(async (req: AuthRequest, res: Response<ApiResponse<any>>): Promise<Response<ApiResponse<any>> | void> => {
+  const id = req.params.id;
+  if (!id) {
+    return res.status(400).json({
+      success: false,
+      error: { message: 'Timeline ID is required' }
+    });
+  }
+  
   const validatedData = createTimelineEntrySchema.parse(req.body);
 
-  const timeline = await checkTimelineAccess(req.params.id, req.user!.id, true);
+  const timeline = await checkTimelineAccess(id, req.user!.id, true);
   
   if (!timeline) {
     return res.status(404).json({
@@ -397,6 +446,7 @@ router.post('/:id/entries', asyncHandler(async (req: AuthRequest, res) => {
   const entry = await prisma.timelineEntry.create({
     data: {
       ...validatedData,
+      tags: JSON.stringify(validatedData.tags || []),
       date: new Date(validatedData.date),
       endDate: validatedData.endDate ? new Date(validatedData.endDate) : undefined,
     },
@@ -426,11 +476,19 @@ router.post('/:id/entries', asyncHandler(async (req: AuthRequest, res) => {
 }));
 
 // Update timeline entry
-router.patch('/entries/:entryId', asyncHandler(async (req: AuthRequest, res) => {
+router.patch('/entries/:entryId', asyncHandler(async (req: AuthRequest, res: Response<ApiResponse<any>>): Promise<Response<ApiResponse<any>> | void> => {
+  const entryId = req.params.entryId;
+  if (!entryId) {
+    return res.status(400).json({
+      success: false,
+      error: { message: 'Entry ID is required' }
+    });
+  }
+  
   const validatedData = updateTimelineEntrySchema.parse(req.body);
 
   const entry = await prisma.timelineEntry.findUnique({
-    where: { id: req.params.entryId },
+    where: { id: entryId },
     include: {
       timeline: true
     }
@@ -453,13 +511,19 @@ router.patch('/entries/:entryId', asyncHandler(async (req: AuthRequest, res) => 
     });
   }
 
+  const updateData: any = {
+    ...validatedData,
+    date: validatedData.date ? new Date(validatedData.date) : undefined,
+    endDate: validatedData.endDate ? new Date(validatedData.endDate) : undefined,
+  };
+  
+  if (validatedData.tags) {
+    updateData.tags = JSON.stringify(validatedData.tags);
+  }
+  
   const updatedEntry = await prisma.timelineEntry.update({
-    where: { id: req.params.entryId },
-    data: {
-      ...validatedData,
-      date: validatedData.date ? new Date(validatedData.date) : undefined,
-      endDate: validatedData.endDate ? new Date(validatedData.endDate) : undefined,
-    },
+    where: { id: entryId },
+    data: updateData,
     include: {
       scene: {
         select: { id: true, title: true, summary: true }
@@ -486,9 +550,17 @@ router.patch('/entries/:entryId', asyncHandler(async (req: AuthRequest, res) => 
 }));
 
 // Delete timeline entry
-router.delete('/entries/:entryId', asyncHandler(async (req: AuthRequest, res) => {
+router.delete('/entries/:entryId', asyncHandler(async (req: AuthRequest, res: Response<ApiResponse<any>>): Promise<Response<ApiResponse<any>> | void> => {
+  const entryId = req.params.entryId;
+  if (!entryId) {
+    return res.status(400).json({
+      success: false,
+      error: { message: 'Entry ID is required' }
+    });
+  }
+  
   const entry = await prisma.timelineEntry.findUnique({
-    where: { id: req.params.entryId },
+    where: { id: entryId },
     include: {
       timeline: true
     }
@@ -512,7 +584,7 @@ router.delete('/entries/:entryId', asyncHandler(async (req: AuthRequest, res) =>
   }
 
   await prisma.timelineEntry.delete({
-    where: { id: req.params.entryId }
+    where: { id: entryId }
   });
 
   res.json({
@@ -522,8 +594,16 @@ router.delete('/entries/:entryId', asyncHandler(async (req: AuthRequest, res) =>
 }));
 
 // Get timeline conflicts (overlapping events)
-router.get('/:id/conflicts', asyncHandler(async (req: AuthRequest, res) => {
-  const timeline = await checkTimelineAccess(req.params.id, req.user!.id);
+router.get('/:id/conflicts', asyncHandler(async (req: AuthRequest, res: Response<ApiResponse<any>>): Promise<Response<ApiResponse<any>> | void> => {
+  const id = req.params.id;
+  if (!id) {
+    return res.status(400).json({
+      success: false,
+      error: { message: 'Timeline ID is required' }
+    });
+  }
+  
+  const timeline = await checkTimelineAccess(id, req.user!.id);
   
   if (!timeline) {
     return res.status(404).json({
@@ -534,7 +614,7 @@ router.get('/:id/conflicts', asyncHandler(async (req: AuthRequest, res) => {
 
   // Find entries with overlapping dates
   const entries = await prisma.timelineEntry.findMany({
-    where: { timelineId: req.params.id },
+    where: { timelineId: id },
     orderBy: { date: 'asc' }
   });
 
@@ -543,6 +623,8 @@ router.get('/:id/conflicts', asyncHandler(async (req: AuthRequest, res) => {
     for (let j = i + 1; j < entries.length; j++) {
       const entry1 = entries[i];
       const entry2 = entries[j];
+      
+      if (!entry1 || !entry2) continue;
       
       const end1 = entry1.endDate || entry1.date;
       const start2 = entry2.date;

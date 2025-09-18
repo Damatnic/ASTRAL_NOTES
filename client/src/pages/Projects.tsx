@@ -25,7 +25,12 @@ import {
   Download,
   Upload,
   Settings,
-  MoreHorizontal
+  MoreHorizontal,
+  FileText,
+  Link2,
+  BarChart3,
+  Wand2,
+  ChevronRight
 } from 'lucide-react';
 import { useSelector, useDispatch } from 'react-redux';
 import { Button } from '@/components/ui/Button';
@@ -38,6 +43,9 @@ import { useToast } from '@/components/ui/Toast';
 import { CreateProjectModal } from '@/components/modals/CreateProjectModal';
 import { fetchProjectsAsync, deleteProjectAsync, setSearchFilter, setStatusFilter } from '@/store/slices/projectsSlice';
 import { projectService } from '@/services/projectService';
+import { quickNotesService, type QuickNote } from '@/services/quickNotesService';
+import { projectAttachmentService } from '@/services/projectAttachmentService';
+import { AttachmentAnalytics, BulkOrganizationModal } from '@/components/attachment';
 import { exportService } from '@/services/exportService';
 import { PROJECT_STATUS_OPTIONS, WRITING_GENRES } from '@/utils/constants';
 import type { RootState, AppDispatch } from '@/store/store';
@@ -65,14 +73,38 @@ export function Projects() {
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showArchiveConfirm, setShowArchiveConfirm] = useState(false);
+  const [showBulkOrganization, setShowBulkOrganization] = useState(false);
+  const [showAttachmentAnalytics, setShowAttachmentAnalytics] = useState(false);
   
   // Batch operations
   const [selectedProjects, setSelectedProjects] = useState<Set<string>>(new Set());
+  
+  // Attachment data
+  const [attachedNotes, setAttachedNotes] = useState<Record<string, QuickNote[]>>({});
+  const [showAttachedNotes, setShowAttachedNotes] = useState<Record<string, boolean>>({});
 
   // Load projects on component mount
   useEffect(() => {
     dispatch(fetchProjectsAsync());
+    loadAttachedNotes();
   }, [dispatch]);
+
+  // Load attached notes for all projects
+  const loadAttachedNotes = () => {
+    const allQuickNotes = quickNotesService.getAllQuickNotes();
+    const notesByProject: Record<string, QuickNote[]> = {};
+    
+    allQuickNotes.forEach(note => {
+      if (note.projectId) {
+        if (!notesByProject[note.projectId]) {
+          notesByProject[note.projectId] = [];
+        }
+        notesByProject[note.projectId].push(note);
+      }
+    });
+    
+    setAttachedNotes(notesByProject);
+  };
 
   // Advanced filtering and sorting with memoization
   const filteredAndSortedProjects = useMemo(() => {
@@ -133,7 +165,7 @@ export function Projects() {
     return filtered;
   }, [projects, filter, sortField, sortDirection]);
 
-  // Project statistics
+  // Project statistics with attachment data
   const projectStats = useMemo(() => {
     const total = projects.length;
     const byStatus = projects.reduce((acc, project) => {
@@ -143,9 +175,22 @@ export function Projects() {
     
     const totalWords = projects.reduce((sum, project) => sum + project.wordCount, 0);
     const averageWords = total > 0 ? Math.round(totalWords / total) : 0;
+    
+    // Calculate attachment statistics
+    const totalAttachedNotes = Object.values(attachedNotes).reduce((sum, notes) => sum + notes.length, 0);
+    const projectsWithNotes = Object.keys(attachedNotes).length;
+    const attachmentAnalytics = projectAttachmentService.getAttachmentAnalytics();
 
-    return { total, byStatus, totalWords, averageWords };
-  }, [projects]);
+    return { 
+      total, 
+      byStatus, 
+      totalWords, 
+      averageWords, 
+      totalAttachedNotes,
+      projectsWithNotes,
+      unattachedNotes: attachmentAnalytics.unattachedNotes
+    };
+  }, [projects, attachedNotes]);
 
   // Format time since last edit
   const formatTimeAgo = (dateString: string): string => {
@@ -355,26 +400,76 @@ export function Projects() {
     }
   };
 
+  // Attachment-related event handlers
+  const handleToggleAttachedNotes = (projectId: string) => {
+    setShowAttachedNotes(prev => ({
+      ...prev,
+      [projectId]: !prev[projectId]
+    }));
+  };
+
+  const handleDetachNote = async (noteId: string) => {
+    try {
+      const success = projectAttachmentService.detachNoteFromProject(noteId);
+      if (success) {
+        loadAttachedNotes();
+        toast.success('Note detached successfully');
+      } else {
+        toast.error('Failed to detach note');
+      }
+    } catch (error) {
+      console.error('Error detaching note:', error);
+      toast.error('Error detaching note');
+    }
+  };
+
+  const handleBulkOrganizationComplete = (results: any) => {
+    loadAttachedNotes();
+    toast.success(`Organization complete: ${results.results.successful} notes processed`);
+    setShowBulkOrganization(false);
+  };
+
+  const handleGenerateSmartSuggestions = async (projectId: string) => {
+    try {
+      // This would open a modal or generate suggestions for the specific project
+      const suggestions = projectAttachmentService.generateAttachmentSuggestions();
+      const projectSuggestions = suggestions.filter(s => s.projectId === projectId);
+      
+      if (projectSuggestions.length > 0) {
+        toast.success(`Found ${projectSuggestions.length} smart suggestions for this project`);
+      } else {
+        toast.info('No new suggestions found for this project');
+      }
+    } catch (error) {
+      console.error('Error generating suggestions:', error);
+      toast.error('Failed to generate suggestions');
+    }
+  };
+
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-6 space-y-6" data-testid="projects-overview">
       {/* Header with Stats */}
       <div className="space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <h1 className="text-3xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
-              Projects
+              My Writing Projects
             </h1>
             <p className="text-muted-foreground">
-              Organize and manage your writing projects
+              Your creative writing workspace
             </p>
           </div>
           
           <div className="flex items-center gap-2">
-            <Button variant="outline" onClick={handleExportAll} leftIcon={<Download className="h-4 w-4" />}>
-              Export All
+            <Button 
+              variant="outline" 
+              onClick={() => setShowBulkOrganization(true)} 
+              leftIcon={<Wand2 className="h-4 w-4" />}
+            >
+              Organize Notes
             </Button>
             <Button 
-              variant="cosmic" 
+              variant="default" 
               onClick={() => setShowNewProjectModal(true)}
               leftIcon={<PlusCircle className="h-4 w-4" />}
             >
@@ -398,7 +493,7 @@ export function Projects() {
             <div className="flex items-center gap-2">
               <Target className="h-5 w-5 text-green-600" />
               <div>
-                <p className="text-sm text-muted-foreground">Total Words</p>
+                <p className="text-sm text-muted-foreground">Words Written</p>
                 <p className="text-2xl font-bold">{projectStats.totalWords.toLocaleString()}</p>
               </div>
             </div>
@@ -407,7 +502,7 @@ export function Projects() {
             <div className="flex items-center gap-2">
               <BookOpen className="h-5 w-5 text-purple-600" />
               <div>
-                <p className="text-sm text-muted-foreground">Active Projects</p>
+                <p className="text-sm text-muted-foreground">Active Writing</p>
                 <p className="text-2xl font-bold">{projectStats.byStatus.writing || 0}</p>
               </div>
             </div>
@@ -629,7 +724,7 @@ export function Projects() {
                     <div className="flex items-center gap-4">
                       <span className="flex items-center gap-1">
                         <Target className="h-3 w-3" />
-                        {project.wordCount.toLocaleString()} words
+                        {(project.wordCount ?? 0).toLocaleString()} words
                       </span>
                       <span className="flex items-center gap-1">
                         <Calendar className="h-3 w-3" />
@@ -644,9 +739,9 @@ export function Projects() {
                     </div>
                   </div>
                   
-                  {project.tags.length > 0 && (
+                  {(project.tags ?? []).length > 0 && (
                     <div className="flex flex-wrap gap-1">
-                      {project.tags.slice(0, 3).map((tag) => (
+                      {(project.tags ?? []).slice(0, 3).map((tag) => (
                         <span
                           key={tag}
                           className="px-2 py-1 bg-gradient-to-r from-violet-100 to-indigo-100 dark:from-violet-900/50 dark:to-indigo-900/50 text-violet-700 dark:text-violet-300 rounded-md text-xs font-medium"
@@ -654,10 +749,68 @@ export function Projects() {
                           {tag}
                         </span>
                       ))}
-                      {project.tags.length > 3 && (
+                      {(project.tags ?? []).length > 3 && (
                         <span className="px-2 py-1 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 rounded-md text-xs">
-                          +{project.tags.length - 3}
+                          +{(project.tags ?? []).length - 3}
                         </span>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Attached Notes Section */}
+                  {attachedNotes[project.id] && attachedNotes[project.id].length > 0 && (
+                    <div className="mt-3 pt-3 border-t border-gray-200">
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-2">
+                          <Link2 className="h-4 w-4 text-blue-500" />
+                          <span className="text-sm font-medium text-muted-foreground">
+                            Attached Notes ({attachedNotes[project.id].length})
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleGenerateSmartSuggestions(project.id)}
+                            className="text-xs"
+                          >
+                            <Wand2 className="h-3 w-3" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleToggleAttachedNotes(project.id)}
+                            className="text-xs"
+                          >
+                            <ChevronRight className={`h-3 w-3 transition-transform ${showAttachedNotes[project.id] ? 'rotate-90' : ''}`} />
+                          </Button>
+                        </div>
+                      </div>
+
+                      {showAttachedNotes[project.id] && (
+                        <div className="space-y-2 max-h-32 overflow-y-auto">
+                          {attachedNotes[project.id].slice(0, 3).map(note => (
+                            <div key={note.id} className="flex items-center justify-between p-2 bg-gray-50 rounded text-xs">
+                              <div className="flex-1 min-w-0">
+                                <p className="font-medium truncate">{note.title}</p>
+                                <p className="text-muted-foreground truncate">{note.content.slice(0, 50)}...</p>
+                              </div>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleDetachNote(note.id)}
+                                className="text-red-500 hover:text-red-700 p-1"
+                              >
+                                <X className="h-3 w-3" />
+                              </Button>
+                            </div>
+                          ))}
+                          {attachedNotes[project.id].length > 3 && (
+                            <p className="text-xs text-muted-foreground text-center">
+                              +{attachedNotes[project.id].length - 3} more notes
+                            </p>
+                          )}
+                        </div>
                       )}
                     </div>
                   )}
@@ -692,6 +845,17 @@ export function Projects() {
         description={`Are you sure you want to archive "${selectedProject?.title}"? You can restore it later from archived projects.`}
         confirmText="Archive"
       />
+
+      {/* Attachment System Modals */}
+      <BulkOrganizationModal
+        isOpen={showBulkOrganization}
+        onClose={() => setShowBulkOrganization(false)}
+        onComplete={handleBulkOrganizationComplete}
+      />
+
+      <Modal isOpen={showAttachmentAnalytics} onClose={() => setShowAttachmentAnalytics(false)} size="large">
+        <AttachmentAnalytics />
+      </Modal>
     </div>
   );
 }

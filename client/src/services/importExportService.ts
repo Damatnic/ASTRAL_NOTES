@@ -8,9 +8,11 @@ import JSZip from 'jszip';
 import { Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType, PageBreak } from 'docx';
 import { marked } from 'marked';
 import type { Project, Story, Scene, Character, Location, Note } from '@/types/story';
+import { documentParserService, DocumentStructure, ImportOptions } from './documentParserService';
+import { entityExtractionService, EntityExtractionOptions, CodexEntry } from './entityExtractionService';
 
 export interface ExportOptions {
-  format: 'markdown' | 'docx' | 'epub' | 'pdf' | 'scrivener' | 'json' | 'html';
+  format: 'markdown' | 'docx' | 'epub' | 'pdf' | 'scrivener' | 'json' | 'html' | 'mobi' | 'latex' | 'celtx' | 'fountain' | 'finaldraft' | 'rtf' | 'odt';
   includeMetadata?: boolean;
   includeNotes?: boolean;
   includeCharacters?: boolean;
@@ -26,6 +28,12 @@ export interface ExportOptions {
     left: number;
     right: number;
   };
+  template?: ExportTemplate;
+  customStyles?: CustomStyle[];
+  watermark?: string;
+  drm?: boolean;
+  mobileOptimized?: boolean;
+  cloudService?: 'gdrive' | 'dropbox' | 'onedrive';
 }
 
 export interface ImportResult {
@@ -33,6 +41,100 @@ export interface ImportResult {
   project?: Project;
   errors?: string[];
   warnings?: string[];
+  extractedEntities?: CodexEntry[];
+  structureAnalysis?: StructureAnalysis;
+  suggestions?: ImportSuggestion[];
+  statistics?: ImportStatistics;
+}
+
+export interface ExportTemplate {
+  id: string;
+  name: string;
+  description: string;
+  format: string;
+  styles: Record<string, any>;
+  layout: LayoutSettings;
+  variables: Record<string, string>;
+}
+
+export interface CustomStyle {
+  name: string;
+  type: 'paragraph' | 'character' | 'heading' | 'list';
+  properties: StyleProperties;
+}
+
+export interface StyleProperties {
+  fontFamily?: string;
+  fontSize?: number;
+  bold?: boolean;
+  italic?: boolean;
+  underline?: boolean;
+  color?: string;
+  backgroundColor?: string;
+  alignment?: 'left' | 'center' | 'right' | 'justify';
+  spacing?: SpacingSettings;
+  borders?: BorderSettings;
+}
+
+export interface SpacingSettings {
+  before?: number;
+  after?: number;
+  lineHeight?: number;
+  indent?: number;
+}
+
+export interface BorderSettings {
+  width?: number;
+  style?: 'solid' | 'dashed' | 'dotted';
+  color?: string;
+}
+
+export interface LayoutSettings {
+  pageSize: 'A4' | 'Letter' | 'A5' | 'Legal';
+  orientation: 'portrait' | 'landscape';
+  margins: MarginSettings;
+  header?: HeaderFooterSettings;
+  footer?: HeaderFooterSettings;
+  columns?: number;
+}
+
+export interface MarginSettings {
+  top: number;
+  bottom: number;
+  left: number;
+  right: number;
+}
+
+export interface HeaderFooterSettings {
+  content: string;
+  alignment: 'left' | 'center' | 'right';
+  fontSize: number;
+  includePageNumber: boolean;
+}
+
+export interface StructureAnalysis {
+  totalWords: number;
+  totalCharacters: number;
+  chapters: number;
+  scenes: number;
+  readingTime: number;
+  complexity: 'simple' | 'moderate' | 'complex';
+  suggestions: string[];
+}
+
+export interface ImportSuggestion {
+  type: 'structure' | 'content' | 'entity' | 'formatting';
+  priority: 'low' | 'medium' | 'high';
+  description: string;
+  action: string;
+}
+
+export interface ImportStatistics {
+  processingTime: number;
+  entitiesExtracted: number;
+  structureElementsFound: number;
+  formattingPreserved: number;
+  confidence: number;
 }
 
 class ImportExportService {
@@ -71,31 +173,113 @@ class ImportExportService {
         return this.exportToJson(project, stories, scenes, options);
       case 'html':
         return this.exportToHtml(project, stories, scenes, options);
+      case 'mobi':
+        return this.exportToMobi(project, stories, scenes, options);
+      case 'latex':
+        return this.exportToLatex(project, stories, scenes, options);
+      case 'celtx':
+        return this.exportToCeltx(project, stories, scenes, options);
+      case 'fountain':
+        return this.exportToFountain(project, stories, scenes, options);
+      case 'finaldraft':
+        return this.exportToFinalDraft(project, stories, scenes, options);
+      case 'rtf':
+        return this.exportToRtf(project, stories, scenes, options);
+      case 'odt':
+        return this.exportToOdt(project, stories, scenes, options);
       default:
         throw new Error(`Unsupported export format: ${options.format}`);
     }
   }
 
   /**
-   * Import a project from a file
+   * Import a project from a file with advanced parsing
    */
-  public async importProject(file: File, format?: string): Promise<ImportResult> {
-    const detectedFormat = format || this.detectFormat(file);
+  public async importProject(
+    file: File, 
+    format?: string,
+    importOptions?: Partial<ImportOptions>,
+    entityOptions?: Partial<EntityExtractionOptions>
+  ): Promise<ImportResult> {
+    const startTime = Date.now();
     
-    switch (detectedFormat) {
-      case 'markdown':
-        return this.importFromMarkdown(file);
-      case 'docx':
-        return this.importFromDocx(file);
-      case 'scrivener':
-        return this.importFromScrivener(file);
-      case 'json':
-        return this.importFromJson(file);
-      default:
-        return {
-          success: false,
-          errors: [`Unsupported import format: ${detectedFormat}`]
-        };
+    try {
+      // Detect format using advanced detection
+      const formatResult = await documentParserService.detectFormat(file);
+      const finalFormat = format || formatResult.format;
+      
+      // Parse document structure
+      const options: ImportOptions = {
+        preserveFormatting: true,
+        extractEntities: true,
+        detectStructure: true,
+        includeComments: true,
+        includeRevisions: false,
+        mergeTextNodes: true,
+        ...importOptions
+      };
+      
+      const documentStructure = await documentParserService.parseDocument(file, options);
+      
+      // Extract entities if enabled
+      let extractedEntities: CodexEntry[] = [];
+      if (options.extractEntities) {
+        const entityResult = await entityExtractionService.extractEntities(
+          documentStructure.content,
+          {
+            enabledTypes: ['character', 'location', 'organization', 'item', 'concept', 'event'],
+            confidenceThreshold: 0.6,
+            contextWindow: 100,
+            useAdvancedNLP: false,
+            excludeCommonWords: true,
+            groupSimilarEntities: true,
+            extractRelationships: true,
+            ...entityOptions
+          }
+        );
+        extractedEntities = entityResult.entities;
+      }
+      
+      // Convert document structure to project format
+      const project = await this.convertDocumentToProject(documentStructure, file);
+      
+      // Analyze structure
+      const structureAnalysis = this.analyzeDocumentStructure(documentStructure);
+      
+      // Generate suggestions
+      const suggestions = this.generateImportSuggestions(documentStructure, extractedEntities);
+      
+      // Calculate statistics
+      const statistics: ImportStatistics = {
+        processingTime: Date.now() - startTime,
+        entitiesExtracted: extractedEntities.length,
+        structureElementsFound: documentStructure.content.length,
+        formattingPreserved: documentStructure.formatting ? 1 : 0,
+        confidence: formatResult.confidence
+      };
+      
+      return {
+        success: true,
+        project,
+        extractedEntities,
+        structureAnalysis,
+        suggestions,
+        statistics,
+        warnings: this.generateWarnings(documentStructure, formatResult)
+      };
+      
+    } catch (error) {
+      return {
+        success: false,
+        errors: [`Import failed: ${error.message}`],
+        statistics: {
+          processingTime: Date.now() - startTime,
+          entitiesExtracted: 0,
+          structureElementsFound: 0,
+          formattingPreserved: 0,
+          confidence: 0
+        }
+      };
     }
   }
 
@@ -1638,6 +1822,678 @@ p {
     
     // Clean up extra whitespace
     return text.replace(/\s+/g, ' ').trim();
+  }
+
+  /**
+   * Export to MOBI format
+   */
+  private async exportToMobi(
+    project: Project,
+    stories: Story[],
+    scenes: Scene[],
+    options: ExportOptions
+  ): Promise<void> {
+    // MOBI export would require kindlegen or similar tool
+    // For now, we'll create an EPUB and suggest conversion
+    await this.exportToEpub(project, stories, scenes, options);
+    alert('MOBI export: Please use a tool like Kindle Previewer to convert the generated EPUB to MOBI format.');
+  }
+
+  /**
+   * Export to LaTeX format
+   */
+  private async exportToLatex(
+    project: Project,
+    stories: Story[],
+    scenes: Scene[],
+    options: ExportOptions
+  ): Promise<void> {
+    let latex = `\\documentclass[12pt,a4paper]{book}
+`;
+    latex += `\\usepackage[utf8]{inputenc}
+`;
+    latex += `\\usepackage[english]{babel}
+`;
+    latex += `\\usepackage{geometry}
+`;
+    latex += `\\usepackage{setspace}
+`;
+    latex += `\\geometry{margin=1in}
+`;
+    latex += `\\doublespacing
+`;
+    latex += `\\title{${this.escapeLatex(project.title)}}
+`;
+    latex += `\\author{${this.escapeLatex(project.metadata?.author || 'Unknown Author')}}
+`;
+    latex += `\\date{\\today}
+\n`;
+    latex += `\\begin{document}
+`;
+    latex += `\\maketitle
+\n`;
+    
+    if (project.description) {
+      latex += `\\begin{abstract}
+${this.escapeLatex(project.description)}\n\\end{abstract}
+\n`;
+    }
+    
+    latex += `\\tableofcontents
+\n`;
+    
+    stories.forEach((story, storyIndex) => {
+      latex += `\\chapter{${this.escapeLatex(story.title)}}
+\n`;
+      
+      if (story.summary) {
+        latex += `\\textit{${this.escapeLatex(story.summary)}}\n\n`;
+      }
+      
+      const storyScenes = scenes.filter(s => s.storyId === story.id)
+        .sort((a, b) => a.order - b.order);
+      
+      storyScenes.forEach(scene => {
+        latex += `\\section{${this.escapeLatex(scene.title)}}
+\n`;
+        
+        if (options.includeMetadata && scene.metadata) {
+          latex += `\\textbf{Metadata:} `;
+          const metadata = [];
+          if (scene.metadata.pov) metadata.push(`POV: ${scene.metadata.pov}`);
+          if (scene.metadata.location) metadata.push(`Location: ${scene.metadata.location}`);
+          if (scene.metadata.time) metadata.push(`Time: ${scene.metadata.time}`);
+          latex += this.escapeLatex(metadata.join(' | ')) + `\n\n`;
+        }
+        
+        const plainContent = this.htmlToPlainText(scene.content);
+        latex += this.escapeLatex(plainContent) + `\n\n`;
+      });
+    });
+    
+    latex += `\\end{document}`;
+    
+    const blob = new Blob([latex], { type: 'text/plain;charset=utf-8' });
+    saveAs(blob, `${project.title.replace(/[^a-z0-9]/gi, '_')}.tex`);
+  }
+
+  /**
+   * Export to Celtx format
+   */
+  private async exportToCeltx(
+    project: Project,
+    stories: Story[],
+    scenes: Scene[],
+    options: ExportOptions
+  ): Promise<void> {
+    let celtx = `<?xml version="1.0" encoding="UTF-8"?>
+`;
+    celtx += `<project title="${project.title}" xmlns="http://celtx.com/NS/v1/">
+`;
+    celtx += `  <meta>
+`;
+    celtx += `    <title>${project.title}</title>
+`;
+    celtx += `    <author>${project.metadata?.author || 'Unknown Author'}</author>
+`;
+    celtx += `    <created>${new Date().toISOString()}</created>
+`;
+    celtx += `  </meta>
+`;
+    celtx += `  <documents>
+`;
+    
+    stories.forEach((story, storyIndex) => {
+      celtx += `    <document type="script" title="${story.title}">
+`;
+      celtx += `      <content>
+`;
+      
+      const storyScenes = scenes.filter(s => s.storyId === story.id)
+        .sort((a, b) => a.order - b.order);
+      
+      storyScenes.forEach(scene => {
+        celtx += `        <scene>
+`;
+        celtx += `          <heading>${scene.title}</heading>
+`;
+        
+        if (scene.metadata?.location) {
+          celtx += `          <location>${scene.metadata.location}</location>
+`;
+        }
+        
+        if (scene.metadata?.time) {
+          celtx += `          <time>${scene.metadata.time}</time>
+`;
+        }
+        
+        const plainContent = this.htmlToPlainText(scene.content);
+        const lines = plainContent.split('\n');
+        
+        lines.forEach(line => {
+          if (line.trim()) {
+            // Simple heuristic for dialogue vs action
+            if (line.match(/^[A-Z][A-Z\s]+:/) || line.match(/^\s*[A-Z][A-Z\s]+$/)) {
+              celtx += `          <character>${line.trim()}</character>
+`;
+            } else if (line.startsWith('(') && line.endsWith(')')) {
+              celtx += `          <parenthetical>${line.trim()}</parenthetical>
+`;
+            } else if (line === line.toUpperCase() && line.length < 100) {
+              celtx += `          <action>${line.trim()}</action>
+`;
+            } else {
+              celtx += `          <dialogue>${line.trim()}</dialogue>
+`;
+            }
+          }
+        });
+        
+        celtx += `        </scene>
+`;
+      });
+      
+      celtx += `      </content>
+`;
+      celtx += `    </document>
+`;
+    });
+    
+    celtx += `  </documents>
+`;
+    celtx += `</project>`;
+    
+    const blob = new Blob([celtx], { type: 'application/xml;charset=utf-8' });
+    saveAs(blob, `${project.title.replace(/[^a-z0-9]/gi, '_')}.celtx`);
+  }
+
+  /**
+   * Export to Fountain format
+   */
+  private async exportToFountain(
+    project: Project,
+    stories: Story[],
+    scenes: Scene[],
+    options: ExportOptions
+  ): Promise<void> {
+    let fountain = `Title: ${project.title}\n`;
+    fountain += `Author: ${project.metadata?.author || 'Unknown Author'}\n`;
+    if (project.description) {
+      fountain += `Notes: ${project.description}\n`;
+    }
+    fountain += `\n`;
+    
+    stories.forEach((story, storyIndex) => {
+      fountain += `\n# ${story.title}\n\n`;
+      
+      if (story.summary) {
+        fountain += `[[${story.summary}]]\n\n`;
+      }
+      
+      const storyScenes = scenes.filter(s => s.storyId === story.id)
+        .sort((a, b) => a.order - b.order);
+      
+      storyScenes.forEach(scene => {
+        fountain += `\n## ${scene.title}\n\n`;
+        
+        if (scene.metadata?.location) {
+          fountain += `EXT. ${scene.metadata.location.toUpperCase()} - DAY\n\n`;
+        }
+        
+        const plainContent = this.htmlToPlainText(scene.content);
+        const lines = plainContent.split('\n');
+        
+        lines.forEach(line => {
+          const trimmed = line.trim();
+          if (trimmed) {
+            // Convert to Fountain format
+            if (trimmed.match(/^[A-Z][A-Z\s]+:/) || trimmed.match(/^\s*[A-Z][A-Z\s]+$/)) {
+              // Character name
+              fountain += `${trimmed.replace(':', '').toUpperCase()}\n`;
+            } else if (trimmed.startsWith('(') && trimmed.endsWith(')')) {
+              // Parenthetical
+              fountain += `${trimmed}\n`;
+            } else {
+              // Dialogue or action
+              fountain += `${trimmed}\n`;
+            }
+          }
+        });
+        
+        fountain += `\n`;
+      });
+    });
+    
+    const blob = new Blob([fountain], { type: 'text/plain;charset=utf-8' });
+    saveAs(blob, `${project.title.replace(/[^a-z0-9]/gi, '_')}.fountain`);
+  }
+
+  /**
+   * Export to Final Draft format
+   */
+  private async exportToFinalDraft(
+    project: Project,
+    stories: Story[],
+    scenes: Scene[],
+    options: ExportOptions
+  ): Promise<void> {
+    let fdx = `<?xml version="1.0" encoding="UTF-8" standalone="no" ?>\n`;
+    fdx += `<FinalDraft DocumentType="Script" Template="No" Version="1">\n`;
+    fdx += `  <Content>\n`;
+    fdx += `    <TitlePage>\n`;
+    fdx += `      <Content>\n`;
+    fdx += `        <Paragraph Type="Title">\n`;
+    fdx += `          <Text>${project.title}</Text>\n`;
+    fdx += `        </Paragraph>\n`;
+    fdx += `        <Paragraph Type="Written by">\n`;
+    fdx += `          <Text>by</Text>\n`;
+    fdx += `        </Paragraph>\n`;
+    fdx += `        <Paragraph Type="Author">\n`;
+    fdx += `          <Text>${project.metadata?.author || 'Unknown Author'}</Text>\n`;
+    fdx += `        </Paragraph>\n`;
+    fdx += `      </Content>\n`;
+    fdx += `    </TitlePage>\n`;
+    
+    stories.forEach((story, storyIndex) => {
+      const storyScenes = scenes.filter(s => s.storyId === story.id)
+        .sort((a, b) => a.order - b.order);
+      
+      storyScenes.forEach(scene => {
+        if (scene.metadata?.location) {
+          fdx += `    <Paragraph Type="Scene Heading">\n`;
+          fdx += `      <Text>EXT. ${scene.metadata.location.toUpperCase()} - DAY</Text>\n`;
+          fdx += `    </Paragraph>\n`;
+        }
+        
+        const plainContent = this.htmlToPlainText(scene.content);
+        const lines = plainContent.split('\n');
+        
+        lines.forEach(line => {
+          const trimmed = line.trim();
+          if (trimmed) {
+            let elementType = 'Action';
+            
+            if (trimmed.match(/^[A-Z][A-Z\s]+:/) || trimmed.match(/^\s*[A-Z][A-Z\s]+$/)) {
+              elementType = 'Character';
+            } else if (trimmed.startsWith('(') && trimmed.endsWith(')')) {
+              elementType = 'Parenthetical';
+            } else if (trimmed.toUpperCase() === trimmed && trimmed.includes('TO:')) {
+              elementType = 'Transition';
+            }
+            
+            fdx += `    <Paragraph Type="${elementType}">\n`;
+            fdx += `      <Text>${this.escapeXml(trimmed)}</Text>\n`;
+            fdx += `    </Paragraph>\n`;
+          }
+        });
+      });
+    });
+    
+    fdx += `  </Content>\n`;
+    fdx += `</FinalDraft>`;
+    
+    const blob = new Blob([fdx], { type: 'application/xml;charset=utf-8' });
+    saveAs(blob, `${project.title.replace(/[^a-z0-9]/gi, '_')}.fdx`);
+  }
+
+  /**
+   * Export to RTF format
+   */
+  private async exportToRtf(
+    project: Project,
+    stories: Story[],
+    scenes: Scene[],
+    options: ExportOptions
+  ): Promise<void> {
+    let rtf = '{\\rtf1\\ansi\\deff0 {\\fonttbl {\\f0 Times New Roman;}}\\f0\\fs24 ';
+    
+    // Title
+    rtf += `\\qc\\b\\fs36 ${this.escapeRtf(project.title)}\\par\\par`;
+    
+    if (project.metadata?.author) {
+      rtf += `\\qc\\fs24 by ${this.escapeRtf(project.metadata.author)}\\par\\par`;
+    }
+    
+    rtf += '\\page ';
+    
+    stories.forEach((story, storyIndex) => {
+      rtf += `\\ql\\b\\fs28 ${this.escapeRtf(story.title)}\\par\\par`;
+      
+      if (story.summary) {
+        rtf += `\\i ${this.escapeRtf(story.summary)}\\par\\par`;
+      }
+      
+      const storyScenes = scenes.filter(s => s.storyId === story.id)
+        .sort((a, b) => a.order - b.order);
+      
+      storyScenes.forEach(scene => {
+        rtf += `\\b\\fs24 ${this.escapeRtf(scene.title)}\\par\\par`;
+        
+        if (options.includeMetadata && scene.metadata) {
+          const metadata = [];
+          if (scene.metadata.pov) metadata.push(`POV: ${scene.metadata.pov}`);
+          if (scene.metadata.location) metadata.push(`Location: ${scene.metadata.location}`);
+          if (scene.metadata.time) metadata.push(`Time: ${scene.metadata.time}`);
+          if (metadata.length > 0) {
+            rtf += `\\i ${this.escapeRtf(metadata.join(' | '))}\\par\\par`;
+          }
+        }
+        
+        const plainContent = this.htmlToPlainText(scene.content);
+        const paragraphs = plainContent.split('\n\n');
+        
+        paragraphs.forEach(paragraph => {
+          if (paragraph.trim()) {
+            rtf += `${this.escapeRtf(paragraph.trim())}\\par\\par`;
+          }
+        });
+        
+        rtf += '\\par\\qc * * *\\par\\par';
+      });
+      
+      if (storyIndex < stories.length - 1) {
+        rtf += '\\page ';
+      }
+    });
+    
+    rtf += '}';
+    
+    const blob = new Blob([rtf], { type: 'application/rtf;charset=utf-8' });
+    saveAs(blob, `${project.title.replace(/[^a-z0-9]/gi, '_')}.rtf`);
+  }
+
+  /**
+   * Export to OpenDocument Text format
+   */
+  private async exportToOdt(
+    project: Project,
+    stories: Story[],
+    scenes: Scene[],
+    options: ExportOptions
+  ): Promise<void> {
+    const zip = new JSZip();
+    
+    // Add mimetype
+    zip.file('mimetype', 'application/vnd.oasis.opendocument.text');
+    
+    // Create META-INF directory
+    const metaInf = zip.folder('META-INF');
+    metaInf?.file('manifest.xml', `<?xml version="1.0" encoding="UTF-8"?>
+<manifest:manifest xmlns:manifest="urn:oasis:names:tc:opendocument:xmlns:manifest:1.0">
+  <manifest:file-entry manifest:full-path="/" manifest:media-type="application/vnd.oasis.opendocument.text"/>
+  <manifest:file-entry manifest:full-path="content.xml" manifest:media-type="text/xml"/>
+  <manifest:file-entry manifest:full-path="styles.xml" manifest:media-type="text/xml"/>
+  <manifest:file-entry manifest:full-path="meta.xml" manifest:media-type="text/xml"/>
+</manifest:manifest>`);
+    
+    // Create meta.xml
+    zip.file('meta.xml', `<?xml version="1.0" encoding="UTF-8"?>
+<office:document-meta xmlns:office="urn:oasis:names:tc:opendocument:xmlns:office:1.0" xmlns:meta="urn:oasis:names:tc:opendocument:xmlns:meta:1.0" xmlns:dc="http://purl.org/dc/elements/1.1/">
+  <office:meta>
+    <meta:generator>ASTRAL NOTES</meta:generator>
+    <dc:title>${project.title}</dc:title>
+    <dc:creator>${project.metadata?.author || 'Unknown Author'}</dc:creator>
+    <dc:date>${new Date().toISOString()}</dc:date>
+    <dc:description>${project.description || ''}</dc:description>
+  </office:meta>
+</office:document-meta>`);
+    
+    // Create styles.xml (basic styles)
+    zip.file('styles.xml', `<?xml version="1.0" encoding="UTF-8"?>
+<office:document-styles xmlns:office="urn:oasis:names:tc:opendocument:xmlns:office:1.0">
+  <office:styles>
+    <style:default-style style:family="paragraph">
+      <style:paragraph-properties fo:text-align="justify"/>
+      <style:text-properties style:font-name="Times New Roman" fo:font-size="12pt"/>
+    </style:default-style>
+  </office:styles>
+</office:document-styles>`);
+    
+    // Create content.xml
+    let content = `<?xml version="1.0" encoding="UTF-8"?>
+<office:document-content xmlns:office="urn:oasis:names:tc:opendocument:xmlns:office:1.0" xmlns:text="urn:oasis:names:tc:opendocument:xmlns:text:1.0">
+  <office:body>
+    <office:text>
+`;
+    
+    content += `      <text:h text:style-name="Title">${this.escapeXml(project.title)}</text:h>
+`;
+    
+    if (project.metadata?.author) {
+      content += `      <text:p>by ${this.escapeXml(project.metadata.author)}</text:p>
+`;
+    }
+    
+    if (project.description) {
+      content += `      <text:p>${this.escapeXml(project.description)}</text:p>
+`;
+    }
+    
+    stories.forEach((story, storyIndex) => {
+      content += `      <text:h text:outline-level="1">${this.escapeXml(story.title)}</text:h>
+`;
+      
+      if (story.summary) {
+        content += `      <text:p text:style-name="Emphasis">${this.escapeXml(story.summary)}</text:p>
+`;
+      }
+      
+      const storyScenes = scenes.filter(s => s.storyId === story.id)
+        .sort((a, b) => a.order - b.order);
+      
+      storyScenes.forEach(scene => {
+        content += `      <text:h text:outline-level="2">${this.escapeXml(scene.title)}</text:h>
+`;
+        
+        if (options.includeMetadata && scene.metadata) {
+          const metadata = [];
+          if (scene.metadata.pov) metadata.push(`POV: ${scene.metadata.pov}`);
+          if (scene.metadata.location) metadata.push(`Location: ${scene.metadata.location}`);
+          if (scene.metadata.time) metadata.push(`Time: ${scene.metadata.time}`);
+          if (metadata.length > 0) {
+            content += `      <text:p text:style-name="Emphasis">${this.escapeXml(metadata.join(' | '))}</text:p>
+`;
+          }
+        }
+        
+        const plainContent = this.htmlToPlainText(scene.content);
+        const paragraphs = plainContent.split('\n\n');
+        
+        paragraphs.forEach(paragraph => {
+          if (paragraph.trim()) {
+            content += `      <text:p>${this.escapeXml(paragraph.trim())}</text:p>
+`;
+          }
+        });
+      });
+    });
+    
+    content += `    </office:text>
+  </office:body>
+</office:document-content>`;
+    
+    zip.file('content.xml', content);
+    
+    // Generate the ODT file
+    const odtContent = await zip.generateAsync({ type: 'blob' });
+    saveAs(odtContent, `${project.title.replace(/[^a-z0-9]/gi, '_')}.odt`);
+  }
+
+  /**
+   * Convert document structure to project format
+   */
+  private async convertDocumentToProject(
+    documentStructure: DocumentStructure,
+    file: File
+  ): Promise<Project> {
+    const project: Project = {
+      id: this.generateId(),
+      title: documentStructure.title || file.name.replace(/\.[^/.]+$/, ""),
+      description: documentStructure.metadata.description || '',
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      metadata: {
+        currentWordCount: documentStructure.metadata.wordCount || 0,
+        targetWordCount: 50000,
+        genre: documentStructure.metadata.genre || 'Fiction',
+        author: documentStructure.metadata.author,
+        characters: [],
+        locations: [],
+        notes: []
+      }
+    };
+    
+    return project;
+  }
+
+  /**
+   * Analyze document structure
+   */
+  private analyzeDocumentStructure(documentStructure: DocumentStructure): StructureAnalysis {
+    const content = documentStructure.content;
+    const totalWords = content.reduce((sum, node) => sum + (node.content.split(/\s+/).length || 0), 0);
+    const totalCharacters = content.reduce((sum, node) => sum + node.content.length, 0);
+    
+    const chapters = content.filter(node => 
+      node.type === 'chapter' || 
+      (node.type === 'heading' && node.level && node.level <= 2)
+    ).length;
+    
+    const scenes = content.filter(node => 
+      node.type === 'scene' || 
+      (node.type === 'heading' && node.level && node.level <= 4)
+    ).length;
+    
+    const readingTime = Math.ceil(totalWords / 250); // Average reading speed
+    
+    let complexity: 'simple' | 'moderate' | 'complex' = 'simple';
+    if (chapters > 10 || scenes > 50 || totalWords > 100000) {
+      complexity = 'complex';
+    } else if (chapters > 3 || scenes > 15 || totalWords > 25000) {
+      complexity = 'moderate';
+    }
+    
+    const suggestions = [];
+    if (chapters === 0) {
+      suggestions.push('Consider adding chapter breaks to improve structure');
+    }
+    if (totalWords < 1000) {
+      suggestions.push('Document appears to be quite short');
+    }
+    if (documentStructure.structure.outline && documentStructure.structure.outline.length === 0) {
+      suggestions.push('No clear outline structure detected');
+    }
+    
+    return {
+      totalWords,
+      totalCharacters,
+      chapters,
+      scenes,
+      readingTime,
+      complexity,
+      suggestions
+    };
+  }
+
+  /**
+   * Generate import suggestions
+   */
+  private generateImportSuggestions(
+    documentStructure: DocumentStructure,
+    extractedEntities: CodexEntry[]
+  ): ImportSuggestion[] {
+    const suggestions: ImportSuggestion[] = [];
+    
+    // Structure suggestions
+    if (documentStructure.structure.chapters && documentStructure.structure.chapters.length === 0) {
+      suggestions.push({
+        type: 'structure',
+        priority: 'medium',
+        description: 'No clear chapter structure detected',
+        action: 'Consider manually organizing content into chapters'
+      });
+    }
+    
+    // Entity suggestions
+    const characterCount = extractedEntities.filter(e => e.type === 'character').length;
+    if (characterCount === 0) {
+      suggestions.push({
+        type: 'entity',
+        priority: 'low',
+        description: 'No characters detected',
+        action: 'Review document for character names that may have been missed'
+      });
+    } else if (characterCount > 20) {
+      suggestions.push({
+        type: 'entity',
+        priority: 'medium',
+        description: `Large number of characters detected (${characterCount})`,
+        action: 'Review extracted characters and merge duplicates or remove minor mentions'
+      });
+    }
+    
+    // Formatting suggestions
+    if (!documentStructure.formatting || Object.keys(documentStructure.formatting).length === 0) {
+      suggestions.push({
+        type: 'formatting',
+        priority: 'low',
+        description: 'Limited formatting information preserved',
+        action: 'Consider manually applying formatting as needed'
+      });
+    }
+    
+    return suggestions;
+  }
+
+  /**
+   * Generate warnings for import
+   */
+  private generateWarnings(
+    documentStructure: DocumentStructure,
+    formatResult: any
+  ): string[] {
+    const warnings = [];
+    
+    if (formatResult.confidence < 0.8) {
+      warnings.push(`File format detection confidence is low (${Math.round(formatResult.confidence * 100)}%)`);
+    }
+    
+    if (documentStructure.content.length === 0) {
+      warnings.push('No content was extracted from the document');
+    }
+    
+    if (documentStructure.entities.length === 0) {
+      warnings.push('No entities were automatically extracted');
+    }
+    
+    return warnings;
+  }
+
+  // Helper functions for escaping content
+  private escapeLatex(text: string): string {
+    return text
+      .replace(/\\/g, '\\textbackslash{}')
+      .replace(/[{}]/g, '\\$&')
+      .replace(/[#$%&^_]/g, '\\$&')
+      .replace(/~/g, '\\textasciitilde{}')
+      .replace(/\^/g, '\\textasciicircum{}');
+  }
+
+  private escapeXml(text: string): string {
+    return text
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&apos;');
+  }
+
+  private escapeRtf(text: string): string {
+    return text
+      .replace(/\\/g, '\\\\')
+      .replace(/\{/g, '\\{')
+      .replace(/\}/g, '\\}');
   }
 
   /**

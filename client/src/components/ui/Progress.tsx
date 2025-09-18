@@ -1,71 +1,47 @@
-/**
- * Progress Component
- * For displaying progress bars and completion status
- */
-
 import React from 'react';
-import { cn } from '@/lib/utils';
+import { cn } from '../../utils/cn';
 
-export interface ProgressProps extends React.HTMLAttributes<HTMLDivElement> {
+interface ProgressProps {
   value: number;
-  max?: number;
+  className?: string;
   size?: 'sm' | 'md' | 'lg';
-  variant?: 'default' | 'success' | 'warning' | 'danger' | 'cosmic';
-  showLabel?: boolean;
-  label?: string;
+  variant?: 'default' | 'success' | 'warning' | 'danger';
 }
-
-const progressVariants = {
-  size: {
-    sm: 'h-1',
-    md: 'h-2',
-    lg: 'h-3',
-  },
-  variant: {
-    default: 'bg-blue-500',
-    success: 'bg-green-500',
-    warning: 'bg-yellow-500',
-    danger: 'bg-red-500',
-    cosmic: 'bg-gradient-to-r from-violet-500 to-indigo-500',
-  },
-};
 
 export function Progress({ 
   value, 
-  max = 100, 
+  className, 
   size = 'md',
-  variant = 'default',
-  showLabel = false,
-  label,
-  className,
-  ...props 
+  variant = 'default' 
 }: ProgressProps) {
-  const percentage = Math.min(100, Math.max(0, (value / max) * 100));
+  const sizeClasses = {
+    sm: 'h-2',
+    md: 'h-3',
+    lg: 'h-4'
+  };
+
+  const variantClasses = {
+    default: 'bg-blue-600',
+    success: 'bg-green-600',
+    warning: 'bg-yellow-600',
+    danger: 'bg-red-600'
+  };
+
+  const clampedValue = Math.min(Math.max(value, 0), 100);
 
   return (
-    <div className={cn('w-full', className)} {...props}>
-      {showLabel && (
-        <div className="flex justify-between items-center mb-1">
-          <span className="text-sm font-medium text-foreground">
-            {label || 'Progress'}
-          </span>
-          <span className="text-sm text-muted-foreground">
-            {Math.round(percentage)}%
-          </span>
-        </div>
-      )}
-      <div className={cn(
-        'w-full bg-secondary rounded-full overflow-hidden',
-        progressVariants.size[size]
-      )}>
-        <div
-          className={cn(
-            'h-full transition-all duration-300 ease-in-out rounded-full',
-            progressVariants.variant[variant]
-          )}
-          style={{ width: `${percentage}%` }}
-        />
-      </div>
+    <div className={cn(
+      'w-full bg-gray-200 rounded-full overflow-hidden',
+      sizeClasses[size],
+      className
+    )}>
+      <div 
+        className={cn(
+          'h-full transition-all duration-300 ease-out rounded-full',
+          variantClasses[variant]
+        )}
+        style={{ width: `${clampedValue}%` }}
+      />
     </div>
   );
 }

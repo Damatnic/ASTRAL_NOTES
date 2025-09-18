@@ -78,7 +78,7 @@ export function Tabs({
   className,
 }: TabsProps) {
   const [internalActiveTab, setInternalActiveTab] = useState(
-    defaultTab || tabs[0]?.id || ''
+    defaultTab || (tabs && tabs.length > 0 ? tabs[0].id : '')
   );
   
   const activeTab = controlledActiveTab !== undefined ? controlledActiveTab : internalActiveTab;
@@ -170,6 +170,12 @@ export function Tabs({
   };
 
   const classes = variantClasses[variant];
+  
+  // Handle empty or undefined tabs
+  if (!tabs || tabs.length === 0) {
+    return <div className="text-muted-foreground">No tabs available</div>;
+  }
+  
   const activeTabData = tabs.find(tab => tab.id === activeTab);
 
   return (
@@ -305,3 +311,127 @@ export function SimpleTabs({ children, defaultTab, className }: SimpleTabsProps)
     />
   );
 }
+
+// Create a context for tab state management
+const TabsContext = React.createContext<{
+  value?: string;
+  onValueChange?: (value: string) => void;
+}>({});
+
+// Shadcn/ui style exports for compatibility
+export const TabsList = React.forwardRef<
+  HTMLDivElement,
+  React.HTMLAttributes<HTMLDivElement>
+>(({ className, ...props }, ref) => (
+  <div
+    ref={ref}
+    className={cn(
+      "inline-flex h-10 items-center justify-center rounded-md bg-muted p-1 text-muted-foreground",
+      className
+    )}
+    {...props}
+  />
+));
+TabsList.displayName = "TabsList";
+
+interface TabsTriggerProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+  value: string;
+}
+
+export const TabsTrigger = React.forwardRef<
+  HTMLButtonElement,
+  TabsTriggerProps
+>(({ className, value: triggerValue, onClick, ...props }, ref) => {
+  const { value: contextValue, onValueChange } = React.useContext(TabsContext);
+  const isActive = triggerValue === contextValue;
+  
+  const handleClick = (e: React.MouseEvent<HTMLButtonElement>) => {
+    onValueChange?.(triggerValue);
+    onClick?.(e);
+  };
+
+  return (
+    <button
+      ref={ref}
+      className={cn(
+        "inline-flex items-center justify-center whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50",
+        isActive && "bg-background text-foreground shadow-sm",
+        className
+      )}
+      onClick={handleClick}
+      data-state={isActive ? "active" : "inactive"}
+      {...props}
+    />
+  );
+});
+TabsTrigger.displayName = "TabsTrigger";
+
+interface TabsContentProps extends React.HTMLAttributes<HTMLDivElement> {
+  value: string;
+}
+
+export const TabsContent = React.forwardRef<
+  HTMLDivElement,
+  TabsContentProps
+>(({ className, value: contentValue, ...props }, ref) => {
+  const { value: contextValue } = React.useContext(TabsContext);
+  const isActive = contentValue === contextValue;
+  
+  if (!isActive) return null;
+
+  return (
+    <div
+      ref={ref}
+      className={cn(
+        "mt-2 ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+        className
+      )}
+      data-state={isActive ? "active" : "inactive"}
+      {...props}
+    />
+  );
+});
+TabsContent.displayName = "TabsContent";
+
+// Shadcn-style Tabs root component for controlled usage
+interface ShadcnTabsProps {
+  value?: string;
+  onValueChange?: (value: string) => void;
+  defaultValue?: string;
+  className?: string;
+  children: React.ReactNode;
+}
+
+export const ShadcnTabs = React.forwardRef<
+  HTMLDivElement,
+  ShadcnTabsProps
+>(({ value, onValueChange, defaultValue, className, children, ...props }, ref) => {
+  const [internalValue, setInternalValue] = useState(defaultValue || "");
+  const currentValue = value !== undefined ? value : internalValue;
+  
+  const handleValueChange = (newValue: string) => {
+    if (value === undefined) {
+      setInternalValue(newValue);
+    }
+    onValueChange?.(newValue);
+  };
+
+  const contextValue = React.useMemo(() => ({
+    value: currentValue,
+    onValueChange: handleValueChange,
+  }), [currentValue, handleValueChange]);
+
+  return (
+    <TabsContext.Provider value={contextValue}>
+      <div
+        ref={ref}
+        className={cn("", className)}
+        data-orientation="horizontal"
+        {...props}
+      >
+        {children}
+      </div>
+    </TabsContext.Provider>
+  );
+});
+ShadcnTabs.displayName = "ShadcnTabs";

@@ -1,0 +1,660 @@
+# ASTRAL_NOTES CI/CD Pipeline Configuration
+# Enhanced testing pipeline with quality gates and parallel execution
+
+name: ASTRAL_NOTES Testing Pipeline
+
+on:
+  push:
+    branches: [ main, develop, feature/* ]
+  pull_request:
+    branches: [ main, develop ]
+  schedule:
+    # Run comprehensive tests daily at 2 AM UTC
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+    inputs:
+      test_suite:
+        description: 'Test suite to run'
+        required: false
+        default: 'all'
+        type: choice
+        options:
+          - all
+          - unit
+          - integration
+          - e2e
+          - performance
+          - security
+      parallel_execution:
+        description: 'Enable parallel execution'
+        required: false
+        default: true
+        type: boolean
+
+env:
+  NODE_VERSION: '18'
+  CACHE_DEPENDENCY_PATH: |
+    client/package-lock.json
+    server/package-lock.json
+  COVERAGE_THRESHOLD: 95
+  PERFORMANCE_BUDGET: 2000 # ms
+  MEMORY_LIMIT: 512 # MB
+
+jobs:
+  # Pre-flight checks and environment setup
+  setup:
+    name: Environment Setup & Validation
+    runs-on: ubuntu-latest
+    outputs:
+      cache-key: ${{ steps.cache-key.outputs.key }}
+      test-matrix: ${{ steps.test-matrix.outputs.matrix }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Full history for analysis
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: ${{ env.CACHE_DEPENDENCY_PATH }}
+
+      - name: Generate cache key
+        id: cache-key
+        run: |
+          echo "key=deps-${{ hashFiles('client/package-lock.json', 'server/package-lock.json') }}" >> $GITHUB_OUTPUT
+
+      - name: Install dependencies
+        run: |
+          cd client && npm ci
+          cd ../server && npm ci
+
+      - name: Validate environment
+        run: |
+          node --version
+          npm --version
+          cd client && npm audit --audit-level moderate
+          cd ../server && npm audit --audit-level moderate
+
+      - name: Generate test execution matrix
+        id: test-matrix
+        run: |
+          # Dynamic test matrix based on changes
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            echo "matrix={\"suite\":[\"unit\",\"integration\"],\"parallel\":[true]}" >> $GITHUB_OUTPUT
+          else
+            echo "matrix={\"suite\":[\"unit\",\"integration\",\"e2e\",\"performance\"],\"parallel\":[true,false]}" >> $GITHUB_OUTPUT
+          fi
+
+  # Quality Gate 1: Code Quality and Static Analysis
+  quality-gate-1:
+    name: 'QG1: Code Quality & Static Analysis'
+    runs-on: ubuntu-latest
+    needs: setup
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Restore dependencies
+        run: |
+          cd client && npm ci
+          cd ../server && npm ci
+
+      - name: TypeScript compilation
+        run: |
+          cd client && npm run typecheck
+          cd ../server && npm run typecheck
+
+      - name: ESLint analysis
+        run: |
+          cd client && npm run lint -- --format=json --output-file=eslint-report.json
+          cd ../server && npm run lint -- --format=json --output-file=eslint-report.json
+
+      - name: Code complexity analysis
+        run: |
+          # Install complexity analyzer
+          npm install -g complexity-report
+          
+          # Analyze client complexity
+          cd client/src
+          find . -name "*.ts" -o -name "*.tsx" | xargs cr --format json --output ../complexity-client.json
+          
+          # Analyze server complexity
+          cd ../../server/src
+          find . -name "*.ts" | xargs cr --format json --output ../complexity-server.json
+
+      - name: Security vulnerability scan
+        run: |
+          npm install -g audit-ci
+          cd client && audit-ci --moderate
+          cd ../server && audit-ci --moderate
+
+      - name: Upload quality reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: quality-reports
+          path: |
+            client/eslint-report.json
+            server/eslint-report.json
+            client/complexity-client.json
+            server/complexity-server.json
+
+  # Quality Gate 2: Unit Testing with Coverage
+  quality-gate-2:
+    name: 'QG2: Unit Tests & Coverage'
+    runs-on: ubuntu-latest
+    needs: setup
+    strategy:
+      matrix:
+        test-suite: [service, component, utility]
+        parallel: [true]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: |
+          cd client && npm ci
+          cd ../server && npm ci
+
+      - name: Initialize Testing Infrastructure
+        run: |
+          cd client
+          # Start the testing progress tracker
+          npm run test:initialize-infrastructure
+
+      - name: Run Unit Tests - Services
+        if: matrix.test-suite == 'service'
+        run: |
+          cd client
+          npm run test:services -- --coverage --reporter=json --reporter=html
+        env:
+          COVERAGE_THRESHOLD: ${{ env.COVERAGE_THRESHOLD }}
+          PARALLEL_EXECUTION: ${{ matrix.parallel }}
+
+      - name: Run Unit Tests - Components
+        if: matrix.test-suite == 'component'
+        run: |
+          cd client
+          npm run test:components -- --coverage --reporter=json --reporter=html
+        env:
+          COVERAGE_THRESHOLD: ${{ env.COVERAGE_THRESHOLD }}
+
+      - name: Run Unit Tests - Utilities
+        if: matrix.test-suite == 'utility'
+        run: |
+          cd client
+          npm run test:utilities -- --coverage --reporter=json --reporter=html
+        env:
+          COVERAGE_THRESHOLD: ${{ env.COVERAGE_THRESHOLD }}
+
+      - name: Coverage Quality Gate
+        run: |
+          cd client
+          # Check coverage thresholds
+          node -e "
+            const coverage = require('./coverage/coverage-summary.json');
+            const threshold = ${{ env.COVERAGE_THRESHOLD }};
+            
+            const metrics = coverage.total;
+            const failed = [];
+            
+            if (metrics.lines.pct < threshold) failed.push('lines');
+            if (metrics.statements.pct < threshold) failed.push('statements');
+            if (metrics.functions.pct < threshold) failed.push('functions');
+            if (metrics.branches.pct < threshold) failed.push('branches');
+            
+            if (failed.length > 0) {
+              console.error('Coverage below threshold for:', failed.join(', '));
+              process.exit(1);
+            }
+            
+            console.log('Coverage quality gate passed:', JSON.stringify(metrics, null, 2));
+          "
+
+      - name: Upload coverage reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-${{ matrix.test-suite }}
+          path: |
+            client/coverage/
+            client/test-results/
+
+  # Quality Gate 3: Integration & API Testing
+  quality-gate-3:
+    name: 'QG3: Integration & API Tests'
+    runs-on: ubuntu-latest
+    needs: [setup, quality-gate-2]
+    services:
+      postgres:
+        image: postgres:13
+        env:
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: astral_notes_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: |
+          cd client && npm ci
+          cd ../server && npm ci
+
+      - name: Setup test database
+        run: |
+          cd server
+          npm run db:migrate:test
+          npm run db:seed:test
+        env:
+          DATABASE_URL: postgres://postgres:test@localhost:5432/astral_notes_test
+
+      - name: Start test server
+        run: |
+          cd server
+          npm run start:test &
+          
+          # Wait for server to be ready
+          timeout 30s bash -c 'until curl -f http://localhost:3001/health; do sleep 1; done'
+        env:
+          NODE_ENV: test
+          DATABASE_URL: postgres://postgres:test@localhost:5432/astral_notes_test
+
+      - name: Run Integration Tests
+        run: |
+          cd client
+          npm run test:integration -- --verbose
+        env:
+          REACT_APP_API_URL: http://localhost:3001
+          TEST_TIMEOUT: 30000
+
+      - name: Run API Contract Tests
+        run: |
+          cd server
+          npm run test:contracts -- --verbose
+
+      - name: Integration Quality Gates
+        run: |
+          # Check integration test results
+          cd client
+          node -e "
+            const results = require('./test-results/integration-results.json');
+            
+            if (results.numFailedTests > 0) {
+              console.error('Integration tests failed:', results.numFailedTests);
+              process.exit(1);
+            }
+            
+            if (results.success < 0.95) {
+              console.error('Integration success rate below 95%:', results.success);
+              process.exit(1);
+            }
+            
+            console.log('Integration quality gate passed');
+          "
+
+  # Quality Gate 4: Performance & Load Testing
+  quality-gate-4:
+    name: 'QG4: Performance & Load Tests'
+    runs-on: ubuntu-latest
+    needs: [setup, quality-gate-3]
+    if: github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'performance')
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: |
+          cd client && npm ci
+          cd ../server && npm ci
+
+      - name: Build production assets
+        run: |
+          cd client && npm run build
+          cd ../server && npm run build
+
+      - name: Run Performance Tests
+        run: |
+          cd client
+          npm run test:performance -- --budget=${{ env.PERFORMANCE_BUDGET }}
+
+      - name: Bundle Analysis
+        run: |
+          cd client
+          npm run build:analyze
+          
+          # Check bundle size limits
+          node -e "
+            const stats = require('./dist/bundle-stats.json');
+            const limitMB = 5; // 5MB limit
+            
+            if (stats.totalSize > limitMB * 1024 * 1024) {
+              console.error('Bundle size exceeds limit:', stats.totalSize, 'bytes');
+              process.exit(1);
+            }
+          "
+
+      - name: Lighthouse CI
+        uses: treosh/lighthouse-ci-action@v10
+        with:
+          configPath: './client/lighthouse.config.js'
+          uploadArtifacts: true
+          temporaryPublicStorage: true
+
+      - name: Performance Quality Gates
+        run: |
+          # Check performance metrics
+          node -e "
+            const lighthouse = require('./client/lhci_reports/manifest.json');
+            const report = lighthouse[0];
+            
+            const thresholds = {
+              performance: 90,
+              accessibility: 95,
+              'best-practices': 90,
+              seo: 80
+            };
+            
+            for (const [metric, threshold] of Object.entries(thresholds)) {
+              const score = report.summary[metric] * 100;
+              if (score < threshold) {
+                console.error(\`\${metric} score below threshold: \${score} < \${threshold}\`);
+                process.exit(1);
+              }
+            }
+            
+            console.log('Performance quality gate passed');
+          "
+
+  # Quality Gate 5: End-to-End Testing
+  quality-gate-5:
+    name: 'QG5: End-to-End Tests'
+    runs-on: ubuntu-latest
+    needs: [setup, quality-gate-4]
+    if: github.event_name != 'pull_request'
+    strategy:
+      matrix:
+        browser: [chromium, firefox, webkit]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: |
+          cd client && npm ci
+          cd ../server && npm ci
+
+      - name: Install Playwright
+        run: |
+          cd client
+          npx playwright install --with-deps ${{ matrix.browser }}
+
+      - name: Start application
+        run: |
+          cd server && npm start &
+          cd client && npm start &
+          
+          # Wait for both services
+          timeout 60s bash -c 'until curl -f http://localhost:3000 && curl -f http://localhost:3001; do sleep 2; done'
+
+      - name: Run E2E Tests
+        run: |
+          cd client
+          npm run test:e2e:${{ matrix.browser }}
+        env:
+          PLAYWRIGHT_BROWSER: ${{ matrix.browser }}
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: e2e-results-${{ matrix.browser }}
+          path: |
+            client/test-results/
+            client/playwright-report/
+
+  # Quality Gate 6: Security & Accessibility
+  quality-gate-6:
+    name: 'QG6: Security & Accessibility'
+    runs-on: ubuntu-latest
+    needs: [setup, quality-gate-2]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: |
+          cd client && npm ci
+          cd ../server && npm ci
+
+      - name: Security Audit
+        run: |
+          # OWASP ZAP baseline scan
+          docker run -v $(pwd):/zap/wrk/:rw -t owasp/zap2docker-stable zap-baseline.py \
+            -t http://localhost:3000 -g gen.conf -r zap-report.html
+
+      - name: Accessibility Tests
+        run: |
+          cd client
+          npm run test:accessibility
+          
+          # axe-core compliance check
+          npm run test:axe -- --reporter=json --output-file=axe-report.json
+
+      - name: Security Quality Gates
+        run: |
+          # Check for critical vulnerabilities
+          if [ -f "zap-report.html" ]; then
+            # Parse ZAP report for critical issues
+            CRITICAL=$(grep -o "High.*Risk" zap-report.html | wc -l)
+            if [ "$CRITICAL" -gt "0" ]; then
+              echo "Critical security vulnerabilities found: $CRITICAL"
+              exit 1
+            fi
+          fi
+
+      - name: Accessibility Quality Gates
+        run: |
+          cd client
+          # Check accessibility compliance
+          node -e "
+            const axeReport = require('./axe-report.json');
+            
+            if (axeReport.violations && axeReport.violations.length > 0) {
+              const critical = axeReport.violations.filter(v => v.impact === 'critical');
+              if (critical.length > 0) {
+                console.error('Critical accessibility violations:', critical.length);
+                process.exit(1);
+              }
+            }
+            
+            console.log('Accessibility quality gate passed');
+          "
+
+  # Final Deployment Gate
+  deployment-gate:
+    name: 'Final: Deployment Readiness'
+    runs-on: ubuntu-latest
+    needs: [quality-gate-1, quality-gate-2, quality-gate-3, quality-gate-4, quality-gate-5, quality-gate-6]
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Generate Deployment Report
+        run: |
+          cat << EOF > deployment-report.md
+          # ASTRAL_NOTES Deployment Report
+          
+          ## Quality Gates Status
+          - ✅ Code Quality & Static Analysis
+          - ✅ Unit Tests & Coverage (≥${{ env.COVERAGE_THRESHOLD }}%)
+          - ✅ Integration & API Tests
+          - ✅ Performance & Load Tests
+          - ✅ End-to-End Tests
+          - ✅ Security & Accessibility
+          
+          ## Metrics Summary
+          - Test Coverage: ≥${{ env.COVERAGE_THRESHOLD }}%
+          - Performance Budget: <${{ env.PERFORMANCE_BUDGET }}ms
+          - Memory Limit: <${{ env.MEMORY_LIMIT }}MB
+          - Security: No critical vulnerabilities
+          - Accessibility: WCAG 2.1 AA compliant
+          
+          ## Deployment Approval
+          All quality gates passed. Ready for production deployment.
+          
+          Generated: $(date -u)
+          Commit: ${{ github.sha }}
+          Branch: ${{ github.ref_name }}
+          EOF
+
+      - name: Create Deployment Tag
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          
+          TAG="deploy-$(date +%Y%m%d-%H%M%S)"
+          git tag -a "$TAG" -m "Deployment tag: All quality gates passed"
+          git push origin "$TAG"
+
+      - name: Notify Deployment Ready
+        run: |
+          echo "🚀 ASTRAL_NOTES is ready for deployment!"
+          echo "All quality gates passed successfully."
+          echo "Deployment tag created: deploy-$(date +%Y%m%d-%H%M%S)"
+
+  # Test Results Aggregation and Reporting
+  test-report:
+    name: 'Generate Test Report'
+    runs-on: ubuntu-latest
+    needs: [quality-gate-1, quality-gate-2, quality-gate-3, quality-gate-4, quality-gate-5, quality-gate-6]
+    if: always()
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+
+      - name: Generate Comprehensive Test Report
+        run: |
+          # Aggregate all test results
+          node -e "
+            const fs = require('fs');
+            const path = require('path');
+            
+            const report = {
+              timestamp: new Date().toISOString(),
+              pipeline: '${{ github.run_id }}',
+              commit: '${{ github.sha }}',
+              branch: '${{ github.ref_name }}',
+              qualityGates: {
+                codeQuality: '${{ needs.quality-gate-1.result }}',
+                unitTests: '${{ needs.quality-gate-2.result }}',
+                integration: '${{ needs.quality-gate-3.result }}',
+                performance: '${{ needs.quality-gate-4.result }}',
+                e2e: '${{ needs.quality-gate-5.result }}',
+                security: '${{ needs.quality-gate-6.result }}'
+              },
+              overallStatus: Object.values(report.qualityGates).every(r => r === 'success') ? 'PASSED' : 'FAILED'
+            };
+            
+            fs.writeFileSync('comprehensive-test-report.json', JSON.stringify(report, null, 2));
+          "
+
+      - name: Upload Comprehensive Report
+        uses: actions/upload-artifact@v4
+        with:
+          name: comprehensive-test-report
+          path: comprehensive-test-report.json
+
+      - name: Comment PR with Results
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const report = require('./comprehensive-test-report.json');
+            
+            const comment = `
+            ## 🧪 ASTRAL_NOTES Testing Results
+            
+            **Overall Status: ${report.overallStatus === 'PASSED' ? '✅ PASSED' : '❌ FAILED'}**
+            
+            ### Quality Gates
+            ${Object.entries(report.qualityGates).map(([gate, result]) => 
+              `- ${result === 'success' ? '✅' : '❌'} ${gate}`
+            ).join('\n')}
+            
+            ### Details
+            - **Pipeline**: ${report.pipeline}
+            - **Commit**: ${report.commit.substring(0, 7)}
+            - **Timestamp**: ${report.timestamp}
+            
+            Full test reports available in pipeline artifacts.
+            `;
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: comment
+            });
+
+# Reusable workflows and templates
+workflows:
+  template-service-test: &service-test-template
+    steps:
+      - checkout: self
+      - setup-node: ${{ env.NODE_VERSION }}
+      - install-deps: cache
+      - run-tests: coverage
+
+  template-quality-gate: &quality-gate-template
+    requirements:
+      - coverage: ">= 95%"
+      - performance: "< 2000ms"
+      - security: "no-critical"
+      - accessibility: "wcag2aa"

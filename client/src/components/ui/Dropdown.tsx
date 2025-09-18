@@ -18,7 +18,7 @@ export interface DropdownOption {
 }
 
 interface DropdownProps {
-  options: DropdownOption[];
+  options?: DropdownOption[];
   value?: string;
   onChange?: (value: string) => void;
   placeholder?: string;
@@ -29,6 +29,9 @@ interface DropdownProps {
   className?: string;
   variant?: 'default' | 'cosmic' | 'astral';
   size?: 'sm' | 'md' | 'lg';
+  // Popover/trigger mode props
+  trigger?: React.ReactNode;
+  children?: React.ReactNode;
 }
 
 const variantClasses = {
@@ -44,7 +47,7 @@ const sizeClasses = {
 };
 
 export function Dropdown({
-  options,
+  options = [],
   value,
   onChange,
   placeholder = 'Select an option...',
@@ -55,6 +58,8 @@ export function Dropdown({
   className,
   variant = 'default',
   size = 'md',
+  trigger,
+  children,
 }: DropdownProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
@@ -75,12 +80,12 @@ export function Dropdown({
     : options;
 
   // Group options if groups are defined
-  const groupedOptions = filteredOptions.reduce((acc, option) => {
+  const groupedOptions = filteredOptions.length > 0 ? filteredOptions.reduce((acc, option) => {
     const group = option.group || '';
     if (!acc[group]) acc[group] = [];
     acc[group].push(option);
     return acc;
-  }, {} as Record<string, DropdownOption[]>);
+  }, {} as Record<string, DropdownOption[]>) : {};
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -169,6 +174,32 @@ export function Dropdown({
     const selectedOption = options.find(opt => opt.value === value);
     return selectedOption?.label || placeholder;
   };
+
+  // If trigger is provided, use trigger/popover mode
+  if (trigger) {
+    return (
+      <div ref={dropdownRef} className={cn('relative', className)}>
+        {/* Custom Trigger */}
+        <div
+          onClick={() => !disabled && setIsOpen(!isOpen)}
+          className="cursor-pointer"
+        >
+          {trigger}
+        </div>
+        
+        {/* Dropdown Menu */}
+        {isOpen && (
+          <div className={cn(
+            'absolute top-full left-0 z-50 mt-1 rounded-lg border shadow-lg',
+            'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700',
+            'min-w-max'
+          )}>
+            {children}
+          </div>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div ref={dropdownRef} className={cn('relative', className)}>

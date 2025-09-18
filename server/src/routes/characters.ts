@@ -1,8 +1,9 @@
-import express from 'express';
+import express, { Response } from 'express';
 import { z } from 'zod';
 import { PrismaClient } from '@prisma/client';
 import { asyncHandler } from '../middleware/errorHandler.js';
 import { AuthRequest } from '../middleware/auth.js';
+import { ApiResponse } from '../types/api.js';
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -57,8 +58,16 @@ async function checkProjectAccess(projectId: string, userId: string, requireEdit
 }
 
 // Get characters for a project
-router.get('/project/:projectId', asyncHandler(async (req: AuthRequest, res) => {
-  const project = await checkProjectAccess(req.params.projectId, req.user!.id);
+router.get('/project/:projectId', asyncHandler(async (req: AuthRequest, res: Response<ApiResponse<{ characters: any[]; pagination: any }>>): Promise<Response<ApiResponse<{ characters: any[]; pagination: any }>> | void> => {
+  const projectId = req.params.projectId;
+  if (!projectId) {
+    return res.status(400).json({
+      success: false,
+      error: { message: 'Project ID is required' }
+    });
+  }
+  
+  const project = await checkProjectAccess(projectId, req.user!.id);
   
   if (!project) {
     return res.status(404).json({
@@ -69,7 +78,7 @@ router.get('/project/:projectId', asyncHandler(async (req: AuthRequest, res) => 
 
   const { search, tag, limit = '50', offset = '0' } = req.query;
 
-  const where: any = { projectId: req.params.projectId };
+  const where: any = { projectId: projectId };
   
   if (tag) where.tags = { has: tag };
   if (search) {
@@ -111,7 +120,7 @@ router.get('/project/:projectId', asyncHandler(async (req: AuthRequest, res) => 
 }));
 
 // Get single character
-router.get('/:id', asyncHandler(async (req: AuthRequest, res) => {
+router.get('/:id', asyncHandler(async (req: AuthRequest, res: Response<ApiResponse<{ character: any }>>): Promise<Response<ApiResponse<{ character: any }>> | void> => {
   const character = await prisma.character.findUnique({
     where: { id: req.params.id },
     include: {
@@ -198,8 +207,8 @@ router.get('/:id', asyncHandler(async (req: AuthRequest, res) => {
   });
 }));
 
-// Create new character
-router.post('/', asyncHandler(async (req: AuthRequest, res) => {
+// Create character
+router.post('/', asyncHandler(async (req: AuthRequest, res: Response<ApiResponse<{ character: any }>>): Promise<Response<ApiResponse<{ character: any }>> | void> => {
   const validatedData = createCharacterSchema.parse(req.body);
 
   const project = await checkProjectAccess(validatedData.projectId, req.user!.id, true);
@@ -212,7 +221,19 @@ router.post('/', asyncHandler(async (req: AuthRequest, res) => {
   }
 
   const character = await prisma.character.create({
-    data: validatedData,
+    data: {
+      name: validatedData.name,
+      description: validatedData.description,
+      projectId: validatedData.projectId,
+      tags: JSON.stringify(validatedData.tags),
+      traits: JSON.stringify(validatedData.traits),
+      arc: JSON.stringify(validatedData.arc),
+      relationships: JSON.stringify(validatedData.relationships),
+      backstory: validatedData.backstory,
+      motivation: validatedData.motivation,
+      conflict: validatedData.conflict,
+      avatar: validatedData.avatar ?? null,
+    },
     include: {
       _count: {
         select: {
@@ -230,7 +251,14 @@ router.post('/', asyncHandler(async (req: AuthRequest, res) => {
 }));
 
 // Update character
-router.patch('/:id', asyncHandler(async (req: AuthRequest, res) => {
+router.patch('/:id', asyncHandler(async (req: AuthRequest, res: Response<ApiResponse<{ character: any }>>): Promise<Response<ApiResponse<{ character: any }>> | void> => {
+  if (!req.params.id) {
+    return res.status(400).json({
+      success: false,
+      error: { message: 'Character ID is required' }
+    });
+  }
+
   const validatedData = updateCharacterSchema.parse(req.body);
 
   const existingCharacter = await prisma.character.findUnique({
@@ -266,9 +294,22 @@ router.patch('/:id', asyncHandler(async (req: AuthRequest, res) => {
     });
   }
 
+  // Process the update data for Prisma compatibility
+  const updateData: any = {};
+  if (validatedData.name !== undefined) updateData.name = validatedData.name;
+  if (validatedData.description !== undefined) updateData.description = validatedData.description;
+  if (validatedData.avatar !== undefined) updateData.avatar = validatedData.avatar;
+  if (validatedData.backstory !== undefined) updateData.backstory = validatedData.backstory;
+  if (validatedData.motivation !== undefined) updateData.motivation = validatedData.motivation;
+  if (validatedData.conflict !== undefined) updateData.conflict = validatedData.conflict;
+  if (validatedData.traits !== undefined) updateData.traits = JSON.stringify(validatedData.traits);
+  if (validatedData.arc !== undefined) updateData.arc = JSON.stringify(validatedData.arc);
+  if (validatedData.relationships !== undefined) updateData.relationships = JSON.stringify(validatedData.relationships);
+  if (validatedData.tags !== undefined) updateData.tags = JSON.stringify(validatedData.tags);
+
   const character = await prisma.character.update({
     where: { id: req.params.id },
-    data: validatedData,
+    data: updateData,
     include: {
       _count: {
         select: {
@@ -286,7 +327,14 @@ router.patch('/:id', asyncHandler(async (req: AuthRequest, res) => {
 }));
 
 // Delete character
-router.delete('/:id', asyncHandler(async (req: AuthRequest, res) => {
+router.delete('/:id', asyncHandler(async (req: AuthRequest, res: Response<ApiResponse<{ message: string }>>): Promise<Response<ApiResponse<{ message: string }>> | void> => {
+  if (!req.params.id) {
+    return res.status(400).json({
+      success: false,
+      error: { message: 'Character ID is required' }
+    });
+  }
+
   const character = await prisma.character.findUnique({
     where: { id: req.params.id },
     include: {
@@ -331,7 +379,7 @@ router.delete('/:id', asyncHandler(async (req: AuthRequest, res) => {
 }));
 
 // Get character appearances in scenes
-router.get('/:id/appearances', asyncHandler(async (req: AuthRequest, res) => {
+router.get('/:id/appearances', asyncHandler(async (req: AuthRequest, res: Response<ApiResponse<any>>): Promise<Response<ApiResponse<any>> | void> => {
   const character = await prisma.character.findUnique({
     where: { id: req.params.id },
     include: {
@@ -407,7 +455,7 @@ router.get('/:id/appearances', asyncHandler(async (req: AuthRequest, res) => {
       role: appearance.role
     });
     acc[storyId].totalWords += appearance.scene.wordCount;
-    acc[storyId].roleBreakdown[appearance.role as keyof typeof acc[storyId]['roleBreakdown']]++;
+    acc[storyId].roleBreakdown[appearance.role as keyof typeof acc[string]['roleBreakdown']]++;
     return acc;
   }, {} as any);
 

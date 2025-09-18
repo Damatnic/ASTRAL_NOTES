@@ -318,7 +318,7 @@ export class OfflineService {
     const store = tx.objectStore('sync_queue');
     const items = await store.getAll();
     
-    this.syncQueue = items;
+    this.syncQueue = Array.isArray(items) ? items : [];
   }
 
   private async syncPendingChanges(): Promise<void> {
@@ -550,7 +550,8 @@ export class OfflineService {
     for (const storeName of stores) {
       const tx = this.db.transaction([storeName], 'readonly');
       const store = tx.objectStore(storeName);
-      data[storeName] = await store.getAll();
+      const result = await store.getAll();
+      data[storeName] = Array.isArray(result) ? result : [];
     }
 
     return data;
@@ -598,14 +599,16 @@ export class OfflineService {
     const index = store.index('timestamp');
     
     const cutoffDate = Date.now() - (this.backupConfig.retention.days * 24 * 60 * 60 * 1000);
-    const oldBackups = await index.getAllKeys(IDBKeyRange.upperBound(cutoffDate));
+    const oldBackupsResult = await index.getAllKeys(IDBKeyRange.upperBound(cutoffDate));
+    const oldBackups = Array.isArray(oldBackupsResult) ? oldBackupsResult : [];
     
     for (const key of oldBackups) {
       await store.delete(key);
     }
 
     // Also limit by max backups
-    const allBackups = await store.getAllKeys();
+    const allBackupsResult = await store.getAllKeys();
+    const allBackups = Array.isArray(allBackupsResult) ? allBackupsResult : [];
     if (allBackups.length > this.backupConfig.retention.maxBackups) {
       const toDelete = allBackups.slice(0, allBackups.length - this.backupConfig.retention.maxBackups);
       for (const key of toDelete) {
@@ -720,7 +723,8 @@ export class OfflineService {
     const store = tx.objectStore('conflicts');
     const index = store.index('resolved');
     
-    return await index.getAll(false);
+    const conflicts = await index.getAll(false);
+    return Array.isArray(conflicts) ? conflicts : [];
   }
 
   public async resolveConflict(conflictId: string, resolution: 'local' | 'server' | 'merge', mergedData?: any): Promise<void> {
@@ -770,7 +774,7 @@ export class OfflineService {
     
     // Get backups in descending order
     const backups = await index.getAll(null);
-    return backups.reverse();
+    return Array.isArray(backups) ? backups.reverse() : [];
   }
 
   public async deleteBackup(backupId: string): Promise<void> {

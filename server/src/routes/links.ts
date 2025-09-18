@@ -1,6 +1,7 @@
-import { Router } from 'express'
+import { Router, Response } from 'express'
 import { z } from 'zod'
-import { authenticateToken } from '../middleware/noAuth'
+import { authenticateToken } from '../middleware/noAuth.js'
+import { ApiResponse } from '../types/api.js'
 import { prisma } from '../utils/database.js'
 
 const router = Router()
@@ -29,7 +30,7 @@ const searchLinksSchema = z.object({
 })
 
 // Create a new link
-router.post('/', authenticateToken, async (req, res) => {
+router.post('/', authenticateToken, async (req, res): Promise<Response | void> => {
   try {
     const linkData = createLinkSchema.parse(req.body)
     
@@ -66,7 +67,7 @@ router.post('/', authenticateToken, async (req, res) => {
 })
 
 // Get links for a specific entity (both incoming and outgoing)
-router.get('/entity/:entityType/:entityId', authenticateToken, async (req, res) => {
+router.get('/entity/:entityType/:entityId', authenticateToken, async (req, res): Promise<Response | void> => {
   try {
     const { entityType, entityId } = req.params
 
@@ -129,9 +130,9 @@ const getEntityData = async (entityType: string, entityId: string, linkText: str
       case 'character':
         const character = await prisma.character.findUnique({
           where: { id: entityId },
-          select: { id: true, name: true, role: true }
+          select: { id: true, name: true, description: true }
         })
-        return character ? { id: character.id, title: character.name, subtitle: character.role } : null
+        return character ? { id: character.id, title: character.name, subtitle: character.description } : null
 
       case 'location':
         const location = await prisma.location.findUnique({
@@ -143,16 +144,16 @@ const getEntityData = async (entityType: string, entityId: string, linkText: str
       case 'scene':
         const scene = await prisma.scene.findUnique({
           where: { id: entityId },
-          select: { id: true, title: true, mood: true }
+          select: { id: true, title: true, summary: true }
         })
-        return scene ? { id: scene.id, title: scene.title, subtitle: scene.mood } : null
+        return scene ? { id: scene.id, title: scene.title, subtitle: scene.summary } : null
 
       case 'story':
         const story = await prisma.story.findUnique({
           where: { id: entityId },
-          select: { id: true, title: true, genre: true }
+          select: { id: true, title: true, description: true }
         })
-        return story ? { id: story.id, title: story.title, subtitle: story.genre } : null
+        return story ? { id: story.id, title: story.title, subtitle: story.description } : null
 
       case 'project':
         const project = await prisma.project.findUnique({
@@ -162,11 +163,8 @@ const getEntityData = async (entityType: string, entityId: string, linkText: str
         return project ? { id: project.id, title: project.title, subtitle: project.description } : null
 
       case 'note':
-        const note = await prisma.note.findUnique({
-          where: { id: entityId },
-          select: { id: true, title: true, category: true }
-        })
-        return note ? { id: note.id, title: note.title, subtitle: note.category } : null
+        // Note model doesn't exist, return fallback
+        return { id: entityId, title: linkText || `Note ${entityId}`, subtitle: 'note' }
 
       default:
         return { id: entityId, title: linkText || `Unknown ${entityType}`, subtitle: entityType }
@@ -178,7 +176,7 @@ const getEntityData = async (entityType: string, entityId: string, linkText: str
 }
 
 // Search links
-router.post('/search', authenticateToken, async (req, res) => {
+router.post('/search', authenticateToken, async (req, res): Promise<Response | void> => {
   try {
     const searchData = searchLinksSchema.parse(req.body)
     
@@ -254,7 +252,7 @@ router.post('/search', authenticateToken, async (req, res) => {
 })
 
 // Delete a link
-router.delete('/:linkId', authenticateToken, async (req, res) => {
+router.delete('/:linkId', authenticateToken, async (req, res): Promise<Response | void> => {
   try {
     const { linkId } = req.params
 
@@ -278,7 +276,7 @@ router.delete('/:linkId', authenticateToken, async (req, res) => {
 })
 
 // Get dead links (links pointing to non-existent entities)
-router.get('/dead-links', authenticateToken, async (req, res) => {
+router.get('/dead-links', authenticateToken, async (req, res): Promise<Response | void> => {
   try {
     // This is a simplified implementation
     // In a real scenario, you'd check against actual entity existence
@@ -300,7 +298,7 @@ router.get('/dead-links', authenticateToken, async (req, res) => {
 })
 
 // Batch create links
-router.post('/batch', authenticateToken, async (req, res) => {
+router.post('/batch', authenticateToken, async (req, res): Promise<Response | void> => {
   try {
     const { links } = batchCreateLinksSchema.parse(req.body)
     
@@ -314,6 +312,14 @@ router.post('/batch', authenticateToken, async (req, res) => {
     for (let i = 0; i < links.length; i++) {
       try {
         const linkData = links[i]
+        if (!linkData) {
+          results.errors.push({
+            index: i,
+            error: 'Invalid link data'
+          })
+          results.errorCount++
+          continue
+        }
         
         // Check if link already exists
         const existingLink = await prisma.link.findFirst({

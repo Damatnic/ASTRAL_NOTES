@@ -3,6 +3,7 @@
 
 generator client {
   provider = "prisma-client-js"
+  binaryTargets = ["native", "rhel-openssl-1.0.x"]
 }
 
 datasource db {
@@ -18,6 +19,8 @@ model User {
   firstName String?
   lastName  String?
   avatar    String?
+  role      String   @default("user") // user, admin
+  aiEnabled Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -31,6 +34,10 @@ model User {
   // Collaboration
   projectCollaborators ProjectCollaborator[]
   comments             Comment[]
+
+  // AI usage tracking
+  aiUsageRecords AIUsageRecord[]
+  aiAuditLogs    AIAuditLog[]
 
   @@map("users")
 }
@@ -75,6 +82,13 @@ model Project {
 
   // Collaboration
   collaborators ProjectCollaborator[]
+
+  // Codex system relations
+  codexEntities      CodexEntity[]
+  codexTimelineEvents CodexTimelineEvent[]
+  codexTags          CodexTag[]
+  entityCollections  EntityCollection[]
+  consistencyChecks  ConsistencyCheck[]
 
   @@map("projects")
 }
@@ -482,4 +496,456 @@ model Version {
   userId      String   // User who made the change
 
   @@map("versions")
+}
+
+// CODEX SYSTEM - Advanced Entity Management and Relationships
+
+// Universal Codex Entity (polymorphic design for all entity types)
+model CodexEntity {
+  id          String   @id @default(cuid())
+  type        String   // 'character', 'location', 'object', 'lore', 'subplot', 'organization', 'event', 'concept'
+  name        String
+  description String   @default("")
+  data        String   @default("{}") // JSON blob for type-specific fields
+  tags        String   @default("[]") // JSON array of tags
+  category    String?  // Primary category
+  subcategory String?  // Secondary category
+  importance  Int      @default(3) // 1-5 scale (5 = most important)
+  
+  // Metadata
+  avatar      String?  // Image/icon URL
+  color       String?  // Hex color for visual identification
+  notes       String   @default("") // Additional notes
+  isUniversal Boolean  @default(false) // True for cross-project entities
+  
+  // Tracking
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // Relationships
+  projectId   String?  // null for universal entities
+  project     Project? @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  
+  // Entity connections
+  relationshipsFrom EntityRelationship[] @relation("FromEntity")
+  relationshipsTo   EntityRelationship[] @relation("ToEntity")
+  
+  // Text references and mentions
+  textReferences    TextReference[]
+  mentionSuggestions MentionSuggestion[]
+  
+  // Timeline participation
+  timelineEvents    CodexTimelineEvent[]
+  
+  @@index([type, projectId])
+  @@index([name, projectId])
+  @@index([isUniversal])
+  @@map("codex_entities")
+}
+
+// Entity Relationships and Connections
+model EntityRelationship {
+  id          String   @id @default(cuid())
+  fromEntityId String
+  fromEntity   CodexEntity @relation("FromEntity", fields: [fromEntityId], references: [id], onDelete: Cascade)
+  toEntityId   String
+  toEntity     CodexEntity @relation("ToEntity", fields: [toEntityId], references: [id], onDelete: Cascade)
+  
+  type        String   // 'family', 'organization', 'location', 'conflict', 'alliance', 'owns', 'member_of', 'located_in'
+  description String?  // Description of the relationship
+  strength    Int      @default(5) // 1-10 relationship importance/strength
+  
+  // Relationship details
+  isDirectional Boolean @default(true) // False for bidirectional relationships
+  startDate     DateTime? // When relationship began
+  endDate       DateTime? // When relationship ended (if applicable)
+  status        String   @default("active") // active, ended, complicated
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@unique([fromEntityId, toEntityId, type])
+  @@map("entity_relationships")
+}
+
+// Text Reference Detection and Auto-Highlighting
+model TextReference {
+  id          String   @id @default(cuid())
+  entityId    String
+  entity      CodexEntity @relation(fields: [entityId], references: [id], onDelete: Cascade)
+  
+  // Source location
+  sourceType  String   // 'scene', 'note', 'story', etc.
+  sourceId    String   // ID of the source document
+  
+  // Text position and context
+  text        String   // The actual text that references the entity
+  startPos    Int      // Character position where reference starts
+  endPos      Int      // Character position where reference ends
+  contextBefore String @default("") // 50 chars before for context
+  contextAfter  String @default("") // 50 chars after for context
+  
+  // Detection metadata
+  confidence  Float    @default(1.0) // 0.0-1.0 confidence score
+  isConfirmed Boolean  @default(false) // User has confirmed this reference
+  isIgnored   Boolean  @default(false) // User has marked to ignore
+  
+  createdAt   DateTime @default(now())
+  
+  @@index([sourceType, sourceId])
+  @@index([entityId, sourceType])
+  @@map("text_references")
+}
+
+// Auto-Detection Suggestions for New Entities
+model MentionSuggestion {
+  id          String   @id @default(cuid())
+  text        String   // The suggested entity name/text
+  sourceType  String   // Where this was found
+  sourceId    String   // Source document ID
+  
+  // Context
+  context     String   // Surrounding text for context
+  frequency   Int      @default(1) // How many times this appears
+  
+  // Suggestion metadata
+  suggestedType String? // Suggested entity type (character, location, etc.)
+  confidence    Float   @default(0.5) // 0.0-1.0 confidence this should be an entity
+  
+  // State
+  status      String   @default("pending") // pending, accepted, rejected, ignored
+  
+  // If accepted, link to created entity
+  entityId    String?
+  entity      CodexEntity? @relation(fields: [entityId], references: [id], onDelete: SetNull)
+  
+  createdAt   DateTime @default(now())
+  
+  @@index([status, confidence])
+  @@index([text, sourceType])
+  @@map("mention_suggestions")
+}
+
+// Enhanced Timeline for Codex Events
+model CodexTimelineEvent {
+  id          String   @id @default(cuid())
+  title       String
+  description String?
+  date        DateTime
+  endDate     DateTime? // For events with duration
+  
+  // Event classification
+  type        String   @default("event") // event, milestone, meeting, conflict, discovery
+  importance  Int      @default(3) // 1-5 scale
+  
+  // Connections
+  entityId    String?
+  entity      CodexEntity? @relation(fields: [entityId], references: [id], onDelete: Cascade)
+  
+  projectId   String?
+  project     Project? @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  
+  // Timeline grouping
+  timelineGroup String? // Group related events together
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@index([date, projectId])
+  @@index([entityId, type])
+  @@map("codex_timeline_events")
+}
+
+// Codex Search and Organization
+model CodexTag {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  color       String?  // Hex color for visual organization
+  category    String?  // Tag category/grouping
+  
+  projectId   String?  // null for universal tags
+  project     Project? @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  
+  usageCount  Int      @default(0) // How many entities use this tag
+  
+  createdAt   DateTime @default(now())
+  
+  @@unique([name, projectId])
+  @@map("codex_tags")
+}
+
+// Entity Collections and Smart Groups
+model EntityCollection {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  type        String   @default("manual") // manual, smart, auto
+  
+  // Smart collection criteria (JSON)
+  criteria    String   @default("{}") // Query criteria for auto-collections
+  
+  // Collection metadata
+  color       String?
+  icon        String?
+  isPublic    Boolean  @default(false) // Shareable collections
+  
+  projectId   String?
+  project     Project? @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // Collection members
+  members     EntityCollectionMember[]
+  
+  @@map("entity_collections")
+}
+
+model EntityCollectionMember {
+  id           String   @id @default(cuid())
+  collectionId String
+  collection   EntityCollection @relation(fields: [collectionId], references: [id], onDelete: Cascade)
+  entityId     String
+  
+  order        Int      @default(0) // Manual ordering within collection
+  addedAt      DateTime @default(now())
+  
+  @@unique([collectionId, entityId])
+  @@map("entity_collection_members")
+}
+
+// Consistency Tracking and Validation
+model ConsistencyCheck {
+  id          String   @id @default(cuid())
+  entityId    String   // Entity being checked
+  type        String   // Type of consistency check
+  description String   // What inconsistency was found
+  severity    String   @default("medium") // low, medium, high, critical
+  
+  // Check details
+  conflictingData String @default("{}") // JSON data about the conflict
+  suggestions     String @default("[]") // JSON array of suggestions to fix
+  
+  // Resolution
+  status      String   @default("open") // open, resolved, ignored
+  resolvedAt  DateTime?
+  resolution  String?  // How it was resolved
+  
+  projectId   String?
+  project     Project? @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@index([entityId, status])
+  @@index([projectId, severity])
+  @@map("consistency_checks")
+}
+
+// AI SYSTEM - Usage tracking, audit logs, and service management
+
+// AI Usage Tracking
+model AIUsageRecord {
+  id               String   @id @default(cuid())
+  userId           String
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  projectId        String?
+  provider         String   // openai, anthropic, google, local
+  model            String   // gpt-4, claude-3, etc.
+  promptTokens     Int      @default(0)
+  completionTokens Int      @default(0)
+  totalTokens      Int      @default(0)
+  cost             Float    @default(0.0)
+  requestType      String   // generate, analyze, workshop, extract
+  timestamp        DateTime @default(now())
+  success          Boolean
+  errorMessage     String?
+
+  @@index([userId, timestamp])
+  @@index([provider, timestamp])
+  @@map("ai_usage_records")
+}
+
+// AI Audit Logs for Security and Compliance
+model AIAuditLog {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  action      String   // generate, analyze, extract, workshop
+  provider    String
+  model       String
+  promptHash  String   // Hashed prompt for privacy
+  tokensUsed  Int
+  cost        Float
+  success     Boolean
+  timestamp   DateTime @default(now())
+  ipAddress   String
+  userAgent   String
+
+  @@index([userId, timestamp])
+  @@index([action, timestamp])
+  @@map("ai_audit_logs")
+}
+
+// AI Workshop Sessions
+model AIWorkshopSession {
+  id          String   @id @default(cuid())
+  title       String
+  description String?
+  userId      String
+  projectId   String?
+  storyId     String?
+  sceneId     String?
+  settings    String   @default("{}") // JSON settings
+  context     String   @default("{}") // JSON context
+  archived    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  messages AIWorkshopMessage[]
+
+  @@index([userId, archived])
+  @@index([projectId, archived])
+  @@map("ai_workshop_sessions")
+}
+
+// AI Workshop Messages
+model AIWorkshopMessage {
+  id        String   @id @default(cuid())
+  sessionId String
+  session   AIWorkshopSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  role      String   // user, assistant, system
+  content   String
+  metadata  String   @default("{}") // JSON metadata
+  timestamp DateTime @default(now())
+
+  @@index([sessionId, timestamp])
+  @@map("ai_workshop_messages")
+}
+
+// AI Prompt Templates
+model AIPromptTemplate {
+  id          String   @id @default(cuid())
+  title       String
+  description String
+  category    String   // writing_assistance, character_development, etc.
+  tags        String   @default("[]") // JSON array
+  prompt      String
+  systemPrompt String?
+  variables   String   @default("[]") // JSON array of variables
+  aiSettings  String   @default("{}") // JSON AI settings
+  examples    String   @default("[]") // JSON array of examples
+  metadata    String   @default("{}") // JSON metadata
+  createdBy   String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  rating      Float    @default(0.0)
+  usageCount  Int      @default(0)
+  isFavorite  Boolean  @default(false)
+  isPublic    Boolean  @default(false)
+
+  executions AIPromptExecution[]
+
+  @@index([category, isPublic])
+  @@index([createdBy, isPublic])
+  @@map("ai_prompt_templates")
+}
+
+// AI Prompt Executions
+model AIPromptExecution {
+  id         String   @id @default(cuid())
+  templateId String
+  template   AIPromptTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  userId     String
+  variables  String   @default("{}") // JSON variables used
+  output     String
+  usage      String   @default("{}") // JSON usage stats
+  timestamp  DateTime @default(now())
+
+  @@index([templateId, timestamp])
+  @@index([userId, timestamp])
+  @@map("ai_prompt_executions")
+}
+
+// AI Recipe Workflows
+model AIRecipe {
+  id          String   @id @default(cuid())
+  title       String
+  description String
+  category    String   // story_development, character_creation, etc.
+  tags        String   @default("[]") // JSON array
+  steps       String   @default("[]") // JSON array of steps
+  variables   String   @default("[]") // JSON array of variables
+  metadata    String   @default("{}") // JSON metadata
+  createdBy   String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  rating      Float    @default(0.0)
+  usageCount  Int      @default(0)
+  isFavorite  Boolean  @default(false)
+  isPublic    Boolean  @default(false)
+
+  executions AIRecipeExecution[]
+
+  @@index([category, isPublic])
+  @@index([createdBy, isPublic])
+  @@map("ai_recipes")
+}
+
+// AI Recipe Executions
+model AIRecipeExecution {
+  id        String   @id @default(cuid())
+  recipeId  String
+  recipe    AIRecipe @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+  userId    String
+  input     String   @default("{}") // JSON input variables
+  output    String   @default("{}") // JSON output
+  status    String   @default("pending") // pending, running, completed, failed
+  steps     String   @default("[]") // JSON array of step results
+  startTime DateTime @default(now())
+  endTime   DateTime?
+  error     String?
+
+  @@index([recipeId, startTime])
+  @@index([userId, startTime])
+  @@map("ai_recipe_executions")
+}
+
+// AI Content Analysis
+model AIContentAnalysis {
+  id           String   @id @default(cuid())
+  userId       String
+  projectId    String?
+  text         String
+  wordCount    Int
+  characterCount Int
+  qualityScore Float
+  findings     String   @default("[]") // JSON array of findings
+  suggestions  String   @default("[]") // JSON array of suggestions
+  entities     String   @default("[]") // JSON array of detected entities
+  styleMetrics String   @default("{}") // JSON style analysis
+  usage        String   @default("{}") // JSON usage stats
+  timestamp    DateTime @default(now())
+
+  @@index([userId, timestamp])
+  @@index([projectId, timestamp])
+  @@map("ai_content_analysis")
+}
+
+// AI-ism Detection Results
+model AIDetection {
+  id              String   @id @default(cuid())
+  userId          String
+  text            String
+  humanLikelihood Float    // 0-1 score
+  aiScore         Float    // 0-1 score
+  patterns        String   @default("[]") // JSON array of detected patterns
+  suggestions     String   @default("[]") // JSON array of suggestions
+  summary         String
+  usage           String   @default("{}") // JSON usage stats
+  timestamp       DateTime @default(now())
+
+  @@index([userId, timestamp])
+  @@map("ai_detections")
 }

@@ -1,0 +1,563 @@
+# ASTRAL_NOTES Comprehensive Test Suite CI/CD Pipeline
+# Automated testing, quality gates, and deployment workflow
+
+name: 🚀 ASTRAL_NOTES Test Suite
+
+on:
+  push:
+    branches: [ main, develop, 'feature/*', 'hotfix/*' ]
+  pull_request:
+    branches: [ main, develop ]
+    types: [ opened, synchronize, reopened, ready_for_review ]
+  schedule:
+    # Run comprehensive tests daily at 2 AM UTC
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+    inputs:
+      test_suite:
+        description: 'Test suite to run'
+        required: false
+        default: 'all'
+        type: choice
+        options:
+          - all
+          - unit
+          - integration
+          - performance
+          - accessibility
+          - ai-services
+      environment:
+        description: 'Environment to test against'
+        required: false
+        default: 'test'
+        type: choice
+        options:
+          - test
+          - staging
+          - production
+
+env:
+  NODE_VERSION: '18.x'
+  CACHE_VERSION: v1
+  TEST_TIMEOUT: 600000 # 10 minutes
+  COVERAGE_THRESHOLD: 90
+
+jobs:
+  # Pre-flight checks and setup
+  setup:
+    name: 🔧 Setup & Pre-flight
+    runs-on: ubuntu-latest
+    outputs:
+      should-run-tests: ${{ steps.changes.outputs.should-run }}
+      test-matrix: ${{ steps.matrix.outputs.matrix }}
+      cache-key: ${{ steps.cache.outputs.key }}
+    
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Full history for change detection
+      
+      - name: 🔍 Detect changes
+        id: changes
+        uses: dorny/paths-filter@v2
+        with:
+          filters: |
+            src:
+              - 'client/src/**'
+              - 'server/src/**'
+            tests:
+              - 'client/src/__tests__/**'
+              - '**/*.test.*'
+              - '**/*.spec.*'
+            config:
+              - 'client/package.json'
+              - 'client/vitest.config.ts'
+              - 'client/vite.config.ts'
+              - '.github/workflows/**'
+      
+      - name: 📊 Generate test matrix
+        id: matrix
+        run: |
+          if [[ "${{ github.event.inputs.test_suite }}" == "all" || "${{ github.event.inputs.test_suite }}" == "" ]]; then
+            echo "matrix={\"include\":[
+              {\"suite\":\"ui-components\",\"category\":\"unit\",\"timeout\":300000},
+              {\"suite\":\"ai-services\",\"category\":\"unit\",\"timeout\":600000},
+              {\"suite\":\"routing\",\"category\":\"integration\",\"timeout\":300000},
+              {\"suite\":\"quick-notes\",\"category\":\"integration\",\"timeout\":450000},
+              {\"suite\":\"project-management\",\"category\":\"integration\",\"timeout\":450000},
+              {\"suite\":\"enhanced-editor\",\"category\":\"integration\",\"timeout\":900000},
+              {\"suite\":\"performance\",\"category\":\"performance\",\"timeout\":600000},
+              {\"suite\":\"accessibility\",\"category\":\"accessibility\",\"timeout\":300000}
+            ]}" >> $GITHUB_OUTPUT
+          else
+            echo "matrix={\"include\":[{\"suite\":\"${{ github.event.inputs.test_suite }}\",\"category\":\"${{ github.event.inputs.test_suite }}\",\"timeout\":600000}]}" >> $GITHUB_OUTPUT
+          fi
+      
+      - name: 💾 Generate cache key
+        id: cache
+        run: |
+          echo "key=node-modules-${{ env.CACHE_VERSION }}-${{ runner.os }}-${{ hashFiles('client/package-lock.json', 'server/package-lock.json') }}" >> $GITHUB_OUTPUT
+
+  # Install dependencies and setup environment
+  install:
+    name: 📦 Install Dependencies
+    runs-on: ubuntu-latest
+    needs: setup
+    if: needs.setup.outputs.should-run-tests == 'true' || github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+      
+      - name: 🟢 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: |
+            client/package-lock.json
+            server/package-lock.json
+      
+      - name: 💾 Cache node modules
+        uses: actions/cache@v3
+        id: cache-deps
+        with:
+          path: |
+            client/node_modules
+            server/node_modules
+            ~/.npm
+          key: ${{ needs.setup.outputs.cache-key }}
+          restore-keys: |
+            node-modules-${{ env.CACHE_VERSION }}-${{ runner.os }}-
+      
+      - name: 📦 Install client dependencies
+        if: steps.cache-deps.outputs.cache-hit != 'true'
+        working-directory: ./client
+        run: |
+          npm ci --prefer-offline --no-audit
+          npm run typecheck
+      
+      - name: 📦 Install server dependencies
+        if: steps.cache-deps.outputs.cache-hit != 'true'
+        working-directory: ./server
+        run: |
+          npm ci --prefer-offline --no-audit
+
+  # Lint and static analysis
+  lint:
+    name: 🔍 Lint & Static Analysis
+    runs-on: ubuntu-latest
+    needs: [setup, install]
+    if: needs.setup.outputs.should-run-tests == 'true'
+    
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+      
+      - name: 🟢 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      
+      - name: 💾 Restore cache
+        uses: actions/cache@v3
+        with:
+          path: |
+            client/node_modules
+            server/node_modules
+          key: ${{ needs.setup.outputs.cache-key }}
+      
+      - name: 🔍 Lint client code
+        working-directory: ./client
+        run: |
+          npm run lint
+          npm run typecheck
+      
+      - name: 🔍 Lint server code
+        working-directory: ./server
+        run: |
+          npm run lint
+          npm run typecheck
+      
+      - name: 📊 Security audit
+        working-directory: ./client
+        run: npm audit --audit-level=moderate
+
+  # Run comprehensive test suites
+  test-suites:
+    name: 🧪 Test Suite - ${{ matrix.suite }}
+    runs-on: ubuntu-latest
+    needs: [setup, install]
+    if: needs.setup.outputs.should-run-tests == 'true'
+    timeout-minutes: ${{ matrix.timeout }}
+    
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJson(needs.setup.outputs.test-matrix) }}
+    
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+      
+      - name: 🟢 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      
+      - name: 💾 Restore cache
+        uses: actions/cache@v3
+        with:
+          path: |
+            client/node_modules
+            server/node_modules
+          key: ${{ needs.setup.outputs.cache-key }}
+      
+      - name: 🏗️ Build application
+        working-directory: ./client
+        run: npm run build
+      
+      - name: 🧪 Run ${{ matrix.suite }} tests
+        working-directory: ./client
+        timeout-minutes: ${{ matrix.timeout }}
+        env:
+          TEST_SUITE: ${{ matrix.suite }}
+          TEST_CATEGORY: ${{ matrix.category }}
+          CI: true
+          NODE_ENV: test
+        run: |
+          # Run specific test suite
+          npm run test:run -- src/__tests__/suites/${{ matrix.suite }}
+      
+      - name: 📊 Upload test results
+        uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: test-results-${{ matrix.suite }}
+          path: |
+            client/test-results/
+            client/coverage/
+          retention-days: 7
+      
+      - name: 📈 Upload coverage to Codecov
+        uses: codecov/codecov-action@v3
+        if: matrix.category == 'unit' # Only upload coverage for unit tests
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          directory: ./client/coverage
+          flags: ${{ matrix.suite }}
+          name: coverage-${{ matrix.suite }}
+
+  # Master test suite orchestration
+  master-test-suite:
+    name: 🎯 Master Test Suite
+    runs-on: ubuntu-latest
+    needs: [setup, install, test-suites]
+    if: needs.setup.outputs.should-run-tests == 'true'
+    timeout-minutes: 45
+    
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+      
+      - name: 🟢 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      
+      - name: 💾 Restore cache
+        uses: actions/cache@v3
+        with:
+          path: |
+            client/node_modules
+            server/node_modules
+          key: ${{ needs.setup.outputs.cache-key }}
+      
+      - name: 📥 Download all test results
+        uses: actions/download-artifact@v3
+        with:
+          path: ./test-artifacts
+      
+      - name: 🎯 Run master test suite
+        working-directory: ./client
+        env:
+          CI: true
+          NODE_ENV: test
+          MASTER_TEST_SUITE: true
+        run: |
+          npm run test:run -- src/__tests__/astral-notes-test-suite.ts
+      
+      - name: 📊 Generate comprehensive report
+        working-directory: ./client
+        run: |
+          npm run test:coverage
+          # Generate HTML report
+          npx vitest run --reporter=html --outputFile=./test-results/comprehensive-report.html
+      
+      - name: 📈 Validate quality gates
+        working-directory: ./client
+        run: |
+          # Check coverage thresholds
+          npx nyc check-coverage --statements ${{ env.COVERAGE_THRESHOLD }} --branches 85 --functions ${{ env.COVERAGE_THRESHOLD }} --lines ${{ env.COVERAGE_THRESHOLD }}
+      
+      - name: 📊 Upload comprehensive results
+        uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: comprehensive-test-results
+          path: |
+            client/test-results/
+            client/coverage/
+          retention-days: 30
+
+  # Performance benchmarking
+  performance-benchmark:
+    name: ⚡ Performance Benchmark
+    runs-on: ubuntu-latest
+    needs: [setup, install]
+    if: needs.setup.outputs.should-run-tests == 'true'
+    
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+      
+      - name: 🟢 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      
+      - name: 💾 Restore cache
+        uses: actions/cache@v3
+        with:
+          path: |
+            client/node_modules
+            server/node_modules
+          key: ${{ needs.setup.outputs.cache-key }}
+      
+      - name: 🏗️ Build for production
+        working-directory: ./client
+        run: npm run build
+      
+      - name: ⚡ Run performance tests
+        working-directory: ./client
+        run: |
+          npm run test:run -- src/__tests__/suites/performance
+      
+      - name: 📊 Lighthouse audit
+        uses: treosh/lighthouse-ci-action@v9
+        with:
+          configPath: './client/lighthouse.config.js'
+          uploadArtifacts: true
+          temporaryPublicStorage: true
+
+  # Accessibility testing
+  accessibility-audit:
+    name: ♿ Accessibility Audit
+    runs-on: ubuntu-latest
+    needs: [setup, install]
+    if: needs.setup.outputs.should-run-tests == 'true'
+    
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+      
+      - name: 🟢 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      
+      - name: 💾 Restore cache
+        uses: actions/cache@v3
+        with:
+          path: |
+            client/node_modules
+            server/node_modules
+          key: ${{ needs.setup.outputs.cache-key }}
+      
+      - name: ♿ Run accessibility tests
+        working-directory: ./client
+        run: |
+          npm run test:run -- src/__tests__/suites/accessibility
+      
+      - name: 🔍 axe-core audit
+        working-directory: ./client
+        run: |
+          npm run dev & sleep 10
+          npx @axe-core/cli http://localhost:3000 --exit
+
+  # Security scanning
+  security-scan:
+    name: 🔒 Security Scan
+    runs-on: ubuntu-latest
+    needs: [setup, install]
+    if: needs.setup.outputs.should-run-tests == 'true'
+    
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+      
+      - name: 🔒 Run Snyk security scan
+        uses: snyk/actions/node@master
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        with:
+          args: --severity-threshold=high
+      
+      - name: 🔍 CodeQL analysis
+        uses: github/codeql-action/init@v2
+        with:
+          languages: typescript, javascript
+      
+      - name: 🏗️ Autobuild
+        uses: github/codeql-action/autobuild@v2
+      
+      - name: 🔍 Perform CodeQL analysis
+        uses: github/codeql-action/analyze@v2
+
+  # Quality gate validation
+  quality-gates:
+    name: 🛡️ Quality Gates
+    runs-on: ubuntu-latest
+    needs: [lint, test-suites, master-test-suite, performance-benchmark, accessibility-audit, security-scan]
+    if: always() && (needs.setup.outputs.should-run-tests == 'true')
+    
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+      
+      - name: 📥 Download test results
+        uses: actions/download-artifact@v3
+        with:
+          name: comprehensive-test-results
+          path: ./test-results
+      
+      - name: 🛡️ Validate quality gates
+        run: |
+          echo "🔍 Validating quality gates..."
+          
+          # Check if all required jobs passed
+          LINT_STATUS="${{ needs.lint.result }}"
+          TESTS_STATUS="${{ needs.test-suites.result }}"
+          MASTER_STATUS="${{ needs.master-test-suite.result }}"
+          PERF_STATUS="${{ needs.performance-benchmark.result }}"
+          A11Y_STATUS="${{ needs.accessibility-audit.result }}"
+          SEC_STATUS="${{ needs.security-scan.result }}"
+          
+          echo "📊 Job Results:"
+          echo "  Lint: $LINT_STATUS"
+          echo "  Test Suites: $TESTS_STATUS"
+          echo "  Master Suite: $MASTER_STATUS"
+          echo "  Performance: $PERF_STATUS"
+          echo "  Accessibility: $A11Y_STATUS"
+          echo "  Security: $SEC_STATUS"
+          
+          # Fail if any critical job failed
+          if [[ "$LINT_STATUS" == "failure" || "$TESTS_STATUS" == "failure" || "$MASTER_STATUS" == "failure" ]]; then
+            echo "❌ Critical quality gates failed!"
+            exit 1
+          fi
+          
+          # Warn if non-critical jobs failed
+          if [[ "$PERF_STATUS" == "failure" || "$A11Y_STATUS" == "failure" || "$SEC_STATUS" == "failure" ]]; then
+            echo "⚠️ Some quality gates failed but build can continue"
+          fi
+          
+          echo "✅ Quality gates validation complete!"
+      
+      - name: 📊 Create quality report
+        run: |
+          cat > quality-report.md << EOF
+          # 🛡️ ASTRAL_NOTES Quality Report
+          
+          **Build:** ${{ github.run_number }}  
+          **Commit:** ${{ github.sha }}  
+          **Branch:** ${{ github.ref_name }}  
+          **Triggered by:** ${{ github.event_name }}
+          
+          ## 📊 Quality Gate Results
+          
+          | Gate | Status | Details |
+          |------|--------|---------|
+          | 🔍 Lint & Static Analysis | ${{ needs.lint.result == 'success' && '✅ PASSED' || '❌ FAILED' }} | Code quality and type checking |
+          | 🧪 Test Suites | ${{ needs.test-suites.result == 'success' && '✅ PASSED' || '❌ FAILED' }} | Unit and integration tests |
+          | 🎯 Master Test Suite | ${{ needs.master-test-suite.result == 'success' && '✅ PASSED' || '❌ FAILED' }} | Comprehensive test orchestration |
+          | ⚡ Performance | ${{ needs.performance-benchmark.result == 'success' && '✅ PASSED' || '❌ FAILED' }} | Performance benchmarks |
+          | ♿ Accessibility | ${{ needs.accessibility-audit.result == 'success' && '✅ PASSED' || '❌ FAILED' }} | WCAG compliance |
+          | 🔒 Security | ${{ needs.security-scan.result == 'success' && '✅ PASSED' || '❌ FAILED' }} | Vulnerability scanning |
+          
+          Generated on $(date)
+          EOF
+          
+          cat quality-report.md
+      
+      - name: 💬 Comment PR with results
+        uses: actions/github-script@v6
+        if: github.event_name == 'pull_request'
+        with:
+          script: |
+            const fs = require('fs');
+            const report = fs.readFileSync('quality-report.md', 'utf8');
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: report
+            });
+
+  # Deployment (only on main branch)
+  deploy:
+    name: 🚀 Deploy
+    runs-on: ubuntu-latest
+    needs: [quality-gates]
+    if: github.ref == 'refs/heads/main' && needs.quality-gates.result == 'success'
+    environment: production
+    
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+      
+      - name: 🟢 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      
+      - name: 🏗️ Build for production
+        working-directory: ./client
+        run: |
+          npm ci
+          npm run build
+      
+      - name: 🚀 Deploy to production
+        run: |
+          echo "🚀 Deploying to production..."
+          # Add actual deployment commands here
+          echo "✅ Deployment complete!"
+
+  # Notification and cleanup
+  notify:
+    name: 📢 Notify & Cleanup
+    runs-on: ubuntu-latest
+    needs: [quality-gates, deploy]
+    if: always()
+    
+    steps:
+      - name: 📢 Notify on success
+        if: needs.quality-gates.result == 'success'
+        run: |
+          echo "✅ ASTRAL_NOTES test suite completed successfully!"
+          # Add Slack/Discord/Email notifications here
+      
+      - name: 📢 Notify on failure
+        if: needs.quality-gates.result == 'failure'
+        run: |
+          echo "❌ ASTRAL_NOTES test suite failed!"
+          # Add failure notifications here
+      
+      - name: 🧹 Cleanup artifacts
+        uses: geekyeggo/delete-artifact@v2
+        if: always()
+        with:
+          name: |
+            test-results-*
+          failOnError: false

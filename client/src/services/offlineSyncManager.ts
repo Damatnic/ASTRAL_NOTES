@@ -232,7 +232,7 @@ class OfflineSyncManager extends EventEmitter {
     for (const priority of ['high', 'medium', 'low']) {
       const request = index.getAll(priority);
       const result = await new Promise<SyncOperation[]>((resolve, reject) => {
-        request.onsuccess = () => resolve(request.result);
+        request.onsuccess = () => resolve(Array.isArray(request.result) ? request.result : []);
         request.onerror = () => reject(request.error);
       });
       operations.push(...result);

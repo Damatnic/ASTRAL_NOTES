@@ -2,21 +2,32 @@
  * Main Application Component
  */
 
-import React, { Suspense } from 'react';
+import React, { Suspense, useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { Layout } from '@/components/layout/Layout';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { ToastProvider } from '@/components/ui/Toast';
 import { OfflineIndicator } from '@/components/offline/OfflineIndicator';
+import { CreateNoteModal } from '@/components/quick-notes';
+import { OnboardingManager } from '@/components/onboarding/OnboardingManager';
+import { HelpSystem } from '@/components/onboarding/HelpSystem';
+import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
+import { quickNotesService } from '@/services/quickNotesService';
+import { projectService } from '@/services/projectService';
 import { Loader2 } from 'lucide-react';
 
 // Lazy load pages for better performance
 const Dashboard = React.lazy(() => import('@/pages/Dashboard').then(m => ({ default: m.Dashboard })));
 const Projects = React.lazy(() => import('@/pages/Projects').then(m => ({ default: m.Projects })));
 const ProjectDashboard = React.lazy(() => import('@/pages/ProjectDashboard').then(m => ({ default: m.ProjectDashboard })));
+const ProjectEditor = React.lazy(() => import('@/pages/ProjectEditor').then(m => ({ default: m.ProjectEditor })));
 const NoteEditor = React.lazy(() => import('@/pages/NoteEditor').then(m => ({ default: m.NoteEditor })));
+const StandaloneNoteEditor = React.lazy(() => import('@/pages/StandaloneNoteEditor').then(m => ({ default: m.StandaloneNoteEditor })));
+const QuickNotes = React.lazy(() => import('@/pages/QuickNotes').then(m => ({ default: m.QuickNotes })));
+const AIWriting = React.lazy(() => import('@/pages/AIWriting').then(m => ({ default: m.AIWriting })));
 const Search = React.lazy(() => import('@/pages/Search').then(m => ({ default: m.Search })));
 const Settings = React.lazy(() => import('@/pages/Settings').then(m => ({ default: m.Settings })));
+const Professional = React.lazy(() => import('@/pages/Professional').then(m => ({ default: m.Professional })));
 
 // Loading component
 function LoadingSpinner() {
@@ -26,6 +37,90 @@ function LoadingSpinner() {
         <Loader2 className="h-6 w-6 animate-spin" />
         <span>Loading...</span>
       </div>
+    </div>
+  );
+}
+
+export function AppContent() {
+  const [showGlobalQuickNote, setShowGlobalQuickNote] = useState(false);
+  const [showHelpSystem, setShowHelpSystem] = useState(false);
+  
+  // Set up global keyboard shortcuts
+  useKeyboardShortcuts({
+    onQuickNote: () => setShowGlobalQuickNote(true),
+    onHelp: () => setShowHelpSystem(true),
+  });
+
+  const handleCreateGlobalNote = async (data: any) => {
+    try {
+      await quickNotesService.createQuickNote(data);
+      setShowGlobalQuickNote(false);
+      // Could show a success toast here
+    } catch (error) {
+      console.error('Error creating quick note:', error);
+    }
+  };
+
+  const availableProjects = (projectService.getAllProjects?.() || []).map((p: any) => ({ id: p.id, title: p.title }));
+  const availableTags = quickNotesService.getAllTags?.() || [];
+
+  return (
+    <div className="min-h-screen bg-background text-foreground">
+      <OfflineIndicator />
+      <Suspense fallback={<LoadingSpinner />}>
+        <Routes>
+          {/* Direct access routes - no authentication needed */}
+          <Route path="/" element={<Layout />}>
+            <Route index element={<Navigate to="/dashboard" replace />} />
+            <Route path="dashboard" element={<Dashboard />} />
+            <Route path="projects" element={<Projects />} />
+            <Route path="projects/:id" element={<ProjectDashboard />} />
+            <Route path="projects/:id/edit" element={<ProjectEditor />} />
+            <Route path="projects/:projectId/notes/new" element={<NoteEditor />} />
+            <Route path="projects/:projectId/notes/:noteId" element={<NoteEditor />} />
+            <Route path="notes/:id/edit" element={<StandaloneNoteEditor />} />
+            <Route path="quick-notes" element={<QuickNotes />} />
+            <Route path="ai-writing" element={<AIWriting />} />
+            <Route path="search" element={<Search />} />
+            <Route path="settings" element={<Settings />} />
+            <Route path="professional" element={<Professional />} />
+            
+            {/* Catch-all route for 404 */}
+            <Route
+              path="*"
+              element={
+                <div className="flex items-center justify-center min-h-96">
+                  <div className="text-center">
+                    <h1 className="text-4xl font-bold text-muted-foreground mb-2">404</h1>
+                    <p className="text-muted-foreground">Page not found</p>
+                  </div>
+                </div>
+              }
+            />
+          </Route>
+        </Routes>
+      </Suspense>
+
+      {/* Global Quick Note Modal */}
+      <CreateNoteModal
+        isOpen={showGlobalQuickNote}
+        onClose={() => setShowGlobalQuickNote(false)}
+        onSubmit={handleCreateGlobalNote}
+        availableProjects={availableProjects}
+        availableTags={availableTags}
+      />
+
+      {/* Onboarding System */}
+      <OnboardingManager
+        autoStart={true}
+        showLauncher={true}
+      />
+
+      {/* Help System */}
+      <HelpSystem
+        isOpen={showHelpSystem}
+        onClose={() => setShowHelpSystem(false)}
+      />
     </div>
   );
 }
@@ -40,37 +135,7 @@ export function App() {
             v7_relativeSplatPath: true
           }}
         >
-          <div className="min-h-screen bg-background text-foreground">
-            <OfflineIndicator />
-            <Suspense fallback={<LoadingSpinner />}>
-              <Routes>
-                {/* Direct access routes - no authentication needed */}
-                <Route path="/" element={<Layout />}>
-                  <Route index element={<Navigate to="/dashboard" replace />} />
-                  <Route path="dashboard" element={<Dashboard />} />
-                  <Route path="projects" element={<Projects />} />
-                  <Route path="projects/:id" element={<ProjectDashboard />} />
-                  <Route path="projects/:projectId/notes/new" element={<NoteEditor />} />
-                  <Route path="projects/:projectId/notes/:noteId" element={<NoteEditor />} />
-                  <Route path="search" element={<Search />} />
-                  <Route path="settings" element={<Settings />} />
-                  
-                  {/* Catch-all route for 404 */}
-                  <Route
-                    path="*"
-                    element={
-                      <div className="flex items-center justify-center min-h-96">
-                        <div className="text-center">
-                          <h1 className="text-4xl font-bold text-muted-foreground mb-2">404</h1>
-                          <p className="text-muted-foreground">Page not found</p>
-                        </div>
-                      </div>
-                    }
-                  />
-                </Route>
-              </Routes>
-            </Suspense>
-          </div>
+          <AppContent />
         </Router>
       </ToastProvider>
     </ErrorBoundary>

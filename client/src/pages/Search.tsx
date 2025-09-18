@@ -23,10 +23,14 @@ import {
   Clock,
   Filter,
   BarChart3,
-  Activity
+  Activity,
+  Brain,
+  Sparkles
 } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/Tabs';
 import { useProjects } from '@/hooks/useProjects';
 import AdvancedSearch from '@/components/search/AdvancedSearch';
+import { SemanticSearch } from '@/components/search/SemanticSearch';
 import { searchService } from '@/services/searchService';
 import type { SearchResult } from '@/types/story';
 
@@ -37,6 +41,7 @@ export function Search() {
   
   const [recentSearches, setRecentSearches] = useState<string[]>([]);
   const [searchStats, setSearchStats] = useState<any>(null);
+  const [activeTab, setActiveTab] = useState('semantic');
 
   // Get initial query from URL params
   const initialQuery = searchParams.get('q') || '';
@@ -109,7 +114,7 @@ export function Search() {
   ];
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-6xl">
+    <div className="container mx-auto px-4 py-8 max-w-6xl" data-testid="search">
       {/* Header */}
       <div className="mb-8">
         <div className="flex items-center gap-3 mb-4">
@@ -155,13 +160,32 @@ export function Search() {
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
         {/* Main Search Area */}
         <div className="lg:col-span-3">
-          <AdvancedSearch
-            projectId={projectId}
-            onResultSelect={handleResultSelect}
-            onNavigate={handleNavigate}
-            autoFocus={true}
-            placeholder="Search notes, characters, locations, plot threads..."
-          />
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="semantic" className="flex items-center gap-2">
+                <Brain className="h-4 w-4" />
+                AI Semantic Search
+              </TabsTrigger>
+              <TabsTrigger value="traditional" className="flex items-center gap-2">
+                <SearchIcon className="h-4 w-4" />
+                Traditional Search
+              </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="semantic" className="space-y-4">
+              <SemanticSearch />
+            </TabsContent>
+
+            <TabsContent value="traditional" className="space-y-4">
+              <AdvancedSearch
+                projectId={projectId}
+                onResultSelect={handleResultSelect}
+                onNavigate={handleNavigate}
+                autoFocus={activeTab === 'traditional'}
+                placeholder="Search notes, characters, locations, plot threads..."
+              />
+            </TabsContent>
+          </Tabs>
         </div>
 
         {/* Sidebar */}

@@ -28,7 +28,7 @@ const updatePreferencesSchema = z.object({
 });
 
 // Get current user profile
-router.get('/profile', asyncHandler(async (req: AuthRequest, res: Response<ApiResponse<UserProfile>>) => {
+router.get('/profile', asyncHandler(async (req: AuthRequest, res: Response<ApiResponse<UserProfile>>): Promise<Response<ApiResponse<UserProfile>> | void> => {
   const user = await prisma.user.findUnique({
     where: { id: req.user!.id },
     include: {
@@ -71,12 +71,18 @@ router.get('/profile', asyncHandler(async (req: AuthRequest, res: Response<ApiRe
 }));
 
 // Update user profile
-router.patch('/profile', asyncHandler(async (req: AuthRequest, res) => {
+router.patch('/profile', asyncHandler(async (req: AuthRequest, res: Response<ApiResponse<any>>) => {
   const validatedData = updateProfileSchema.parse(req.body);
+
+  // Convert undefined to null for optional fields
+  const updateData: any = {};
+  if (validatedData.firstName !== undefined) updateData.firstName = validatedData.firstName ?? null;
+  if (validatedData.lastName !== undefined) updateData.lastName = validatedData.lastName ?? null;
+  if (validatedData.avatar !== undefined) updateData.avatar = validatedData.avatar ?? null;
 
   const updatedUser = await prisma.user.update({
     where: { id: req.user!.id },
-    data: validatedData,
+    data: updateData,
     include: {
       preferences: true
     }
@@ -92,23 +98,33 @@ router.patch('/profile', asyncHandler(async (req: AuthRequest, res) => {
         firstName: updatedUser.firstName,
         lastName: updatedUser.lastName,
         avatar: updatedUser.avatar,
-        preferences: updatedUser.preferences
+        preferences: updatedUser.preferences,
+        createdAt: updatedUser.createdAt
       }
     }
   });
 }));
 
 // Update user preferences
-router.patch('/preferences', asyncHandler(async (req: AuthRequest, res) => {
+router.patch('/preferences', asyncHandler(async (req: AuthRequest, res: Response<ApiResponse<any>>) => {
   const validatedData = updatePreferencesSchema.parse(req.body);
+
+  // Convert undefined values to be excluded from the update
+  const updateData: any = {};
+  const createData: any = { userId: req.user!.id };
+  
+  Object.keys(validatedData).forEach(key => {
+    const value = (validatedData as any)[key];
+    if (value !== undefined) {
+      updateData[key] = value;
+      createData[key] = value;
+    }
+  });
 
   const updatedPreferences = await prisma.userPreferences.upsert({
     where: { userId: req.user!.id },
-    update: validatedData,
-    create: {
-      userId: req.user!.id,
-      ...validatedData
-    }
+    update: updateData,
+    create: createData
   });
 
   res.json({
@@ -118,7 +134,7 @@ router.patch('/preferences', asyncHandler(async (req: AuthRequest, res) => {
 }));
 
 // Get user statistics
-router.get('/stats', asyncHandler(async (req: AuthRequest, res) => {
+router.get('/stats', asyncHandler(async (req: AuthRequest, res: Response<ApiResponse<{ stats: UserStats }>>): Promise<Response<ApiResponse<{ stats: UserStats }>> | void> => {
   const stats = await prisma.user.findUnique({
     where: { id: req.user!.id },
     select: {

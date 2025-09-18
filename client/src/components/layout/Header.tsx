@@ -2,13 +2,16 @@
  * Header Component
  */
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Search, Sun, Moon, User } from 'lucide-react';
+import { Search, Sun, Moon, User, Plus, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { MobileMenuButton } from './Sidebar';
 import { useTheme } from '@/contexts/ThemeContext';
+import { CreateNoteModal } from '@/components/quick-notes';
+import { quickNotesService } from '@/services/quickNotesService';
+import { projectService } from '@/services/projectService';
 import { cn } from '@/utils/cn';
 
 interface HeaderProps {
@@ -17,10 +20,21 @@ interface HeaderProps {
 
 export function Header({ className }: HeaderProps) {
   const { effectiveTheme, toggleTheme } = useTheme();
+  const [showCreateNote, setShowCreateNote] = useState(false);
 
   const handleSearch = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     // Search functionality can be implemented later if needed
+  };
+
+  const handleCreateNote = async (data: any) => {
+    try {
+      await quickNotesService.createQuickNote(data);
+      setShowCreateNote(false);
+      // Could show a success toast here
+    } catch (error) {
+      console.error('Error creating quick note:', error);
+    }
   };
 
   return (
@@ -51,6 +65,29 @@ export function Header({ className }: HeaderProps) {
 
         {/* Right side */}
         <div className="flex items-center gap-2">
+          {/* Quick Note button */}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setShowCreateNote(true)}
+            className="hidden sm:flex items-center gap-2"
+            aria-label="Create quick note"
+          >
+            <Plus className="h-4 w-4" />
+            <span className="hidden md:inline">Quick Note</span>
+          </Button>
+
+          {/* Quick Note button for mobile */}
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setShowCreateNote(true)}
+            className="sm:hidden"
+            aria-label="Create quick note"
+          >
+            <Plus className="h-5 w-5" />
+          </Button>
+
           {/* Search button for mobile */}
           <Button
             variant="ghost"
@@ -90,6 +127,15 @@ export function Header({ className }: HeaderProps) {
           </Button>
         </div>
       </div>
+
+      {/* Quick Note Creation Modal */}
+      <CreateNoteModal
+        isOpen={showCreateNote}
+        onClose={() => setShowCreateNote(false)}
+        onSubmit={handleCreateNote}
+        availableProjects={projectService.getAllProjects().map(p => ({ id: p.id, title: p.title }))}
+        availableTags={quickNotesService.getAllTags()}
+      />
     </header>
   );
 }

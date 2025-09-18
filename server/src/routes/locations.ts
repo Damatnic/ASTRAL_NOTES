@@ -1,8 +1,9 @@
-import express from 'express';
+import express, { Response } from 'express';
 import { z } from 'zod';
 import { PrismaClient } from '@prisma/client';
 import { asyncHandler } from '../middleware/errorHandler.js';
 import { AuthRequest } from '../middleware/auth.js';
+import { ApiResponse } from '../types/api.js';
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -53,8 +54,16 @@ async function checkProjectAccess(projectId: string, userId: string, requireEdit
 }
 
 // Get locations for a project
-router.get('/project/:projectId', asyncHandler(async (req: AuthRequest, res) => {
-  const project = await checkProjectAccess(req.params.projectId, req.user!.id);
+router.get('/project/:projectId', asyncHandler(async (req: AuthRequest, res: Response<ApiResponse<any>>): Promise<Response<ApiResponse<any>> | void> => {
+  const projectId = req.params.projectId;
+  if (!projectId) {
+    return res.status(400).json({
+      success: false,
+      error: { message: 'Project ID is required' }
+    });
+  }
+  
+  const project = await checkProjectAccess(projectId, req.user!.id);
   
   if (!project) {
     return res.status(404).json({
@@ -65,7 +74,7 @@ router.get('/project/:projectId', asyncHandler(async (req: AuthRequest, res) => 
 
   const { search, type, tag, parent, limit = '50', offset = '0' } = req.query;
 
-  const where: any = { projectId: req.params.projectId };
+  const where: any = { projectId: projectId };
   
   if (type) where.type = type;
   if (tag) where.tags = { has: tag };
@@ -121,8 +130,16 @@ router.get('/project/:projectId', asyncHandler(async (req: AuthRequest, res) => 
 }));
 
 // Get location hierarchy for a project
-router.get('/project/:projectId/hierarchy', asyncHandler(async (req: AuthRequest, res) => {
-  const project = await checkProjectAccess(req.params.projectId, req.user!.id);
+router.get('/project/:projectId/hierarchy', asyncHandler(async (req: AuthRequest, res: Response<ApiResponse<any>>): Promise<Response<ApiResponse<any>> | void> => {
+  const projectId = req.params.projectId;
+  if (!projectId) {
+    return res.status(400).json({
+      success: false,
+      error: { message: 'Project ID is required' }
+    });
+  }
+  
+  const project = await checkProjectAccess(projectId, req.user!.id);
   
   if (!project) {
     return res.status(404).json({
@@ -133,7 +150,7 @@ router.get('/project/:projectId/hierarchy', asyncHandler(async (req: AuthRequest
 
   // Get all locations for the project
   const locations = await prisma.location.findMany({
-    where: { projectId: req.params.projectId },
+    where: { projectId: projectId },
     orderBy: { name: 'asc' }
   });
 
@@ -156,7 +173,7 @@ router.get('/project/:projectId/hierarchy', asyncHandler(async (req: AuthRequest
 }));
 
 // Get single location
-router.get('/:id', asyncHandler(async (req: AuthRequest, res) => {
+router.get('/:id', asyncHandler(async (req: AuthRequest, res: Response<ApiResponse<any>>): Promise<Response<ApiResponse<any>> | void> => {
   const location = await prisma.location.findUnique({
     where: { id: req.params.id },
     include: {
@@ -253,7 +270,7 @@ router.get('/:id', asyncHandler(async (req: AuthRequest, res) => {
 }));
 
 // Create new location
-router.post('/', asyncHandler(async (req: AuthRequest, res) => {
+router.post('/', asyncHandler(async (req: AuthRequest, res: Response<ApiResponse<any>>): Promise<Response<ApiResponse<any>> | void> => {
   const validatedData = createLocationSchema.parse(req.body);
 
   const project = await checkProjectAccess(validatedData.projectId, req.user!.id, true);
@@ -283,7 +300,17 @@ router.post('/', asyncHandler(async (req: AuthRequest, res) => {
   }
 
   const location = await prisma.location.create({
-    data: validatedData,
+    data: {
+      name: validatedData.name,
+      description: validatedData.description,
+      type: validatedData.type,
+      parent: validatedData.parent,
+      coordinates: validatedData.coordinates ? JSON.stringify(validatedData.coordinates) : null,
+      significance: validatedData.significance,
+      atmosphere: validatedData.atmosphere,
+      tags: JSON.stringify(validatedData.tags),
+      projectId: validatedData.projectId,
+    },
     include: {
       _count: {
         select: {
@@ -300,7 +327,7 @@ router.post('/', asyncHandler(async (req: AuthRequest, res) => {
 }));
 
 // Update location
-router.patch('/:id', asyncHandler(async (req: AuthRequest, res) => {
+router.patch('/:id', asyncHandler(async (req: AuthRequest, res: Response<ApiResponse<any>>): Promise<Response<ApiResponse<any>> | void> => {
   const validatedData = updateLocationSchema.parse(req.body);
 
   const existingLocation = await prisma.location.findUnique({
@@ -378,9 +405,20 @@ router.patch('/:id', asyncHandler(async (req: AuthRequest, res) => {
     }
   }
 
+  // Process the update data for Prisma compatibility
+  const updateData: any = {};
+  if (validatedData.name !== undefined) updateData.name = validatedData.name;
+  if (validatedData.description !== undefined) updateData.description = validatedData.description;
+  if (validatedData.type !== undefined) updateData.type = validatedData.type;
+  if (validatedData.parent !== undefined) updateData.parent = validatedData.parent;
+  if (validatedData.coordinates !== undefined) updateData.coordinates = JSON.stringify(validatedData.coordinates);
+  if (validatedData.significance !== undefined) updateData.significance = validatedData.significance;
+  if (validatedData.atmosphere !== undefined) updateData.atmosphere = validatedData.atmosphere;
+  if (validatedData.tags !== undefined) updateData.tags = JSON.stringify(validatedData.tags);
+
   const location = await prisma.location.update({
     where: { id: req.params.id },
-    data: validatedData,
+    data: updateData,
     include: {
       _count: {
         select: {
@@ -397,7 +435,7 @@ router.patch('/:id', asyncHandler(async (req: AuthRequest, res) => {
 }));
 
 // Delete location
-router.delete('/:id', asyncHandler(async (req: AuthRequest, res) => {
+router.delete('/:id', asyncHandler(async (req: AuthRequest, res: Response<ApiResponse<any>>): Promise<Response<ApiResponse<any>> | void> => {
   const location = await prisma.location.findUnique({
     where: { id: req.params.id },
     include: {

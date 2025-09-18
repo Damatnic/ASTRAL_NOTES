@@ -1,8 +1,9 @@
-import express from 'express';
+import express, { Response } from 'express';
 import { z } from 'zod';
 import { PrismaClient } from '@prisma/client';
 import { asyncHandler } from '../middleware/errorHandler.js';
 import { AuthRequest } from '../middleware/auth.js';
+import { ApiResponse } from '../types/api.js';
 import { GeneralNoteWhereClause, validateQueryParams } from '../types/database.js';
 
 const router = express.Router();
@@ -91,18 +92,18 @@ async function checkStoryAccess(storyId: string, userId: string, requireEdit = f
 }
 
 // Get general notes for current user
-router.get('/general', asyncHandler(async (req: AuthRequest, res) => {
+router.get('/general', asyncHandler(async (req: AuthRequest, res: Response<ApiResponse<any>>): Promise<Response<ApiResponse<any>> | void> => {
   const { type, tag, search } = req.query;
   const { limit, offset } = validateQueryParams(req.query);
 
-  const where: GeneralNoteWhereClause = { userId: req.user!.id };
+  const where: any = { userId: req.user!.id };
   
   if (type && typeof type === 'string') {
     where.type = type;
   }
   
   if (tag && typeof tag === 'string') {
-    where.tags = { has: tag };
+    where.tags = { contains: tag, mode: 'insensitive' };
   }
   
   if (search && typeof search === 'string') {
@@ -136,8 +137,16 @@ router.get('/general', asyncHandler(async (req: AuthRequest, res) => {
 }));
 
 // Get project notes
-router.get('/project/:projectId', asyncHandler(async (req: AuthRequest, res) => {
-  const project = await checkProjectAccess(req.params.projectId, req.user!.id);
+router.get('/project/:projectId', asyncHandler(async (req: AuthRequest, res: Response<ApiResponse<any>>): Promise<Response<ApiResponse<any>> | void> => {
+  const projectId = req.params.projectId;
+  if (!projectId) {
+    return res.status(400).json({
+      success: false,
+      error: { message: 'Project ID is required' }
+    });
+  }
+  
+  const project = await checkProjectAccess(projectId, req.user!.id);
   
   if (!project) {
     return res.status(404).json({
@@ -148,7 +157,7 @@ router.get('/project/:projectId', asyncHandler(async (req: AuthRequest, res) => 
 
   const { type, tag, search, limit = '50', offset = '0' } = req.query;
 
-  const where: any = { projectId: req.params.projectId };
+  const where: any = { projectId: projectId };
   
   if (type) where.type = type;
   if (tag) where.tags = { has: tag };
@@ -183,8 +192,16 @@ router.get('/project/:projectId', asyncHandler(async (req: AuthRequest, res) => 
 }));
 
 // Get story notes
-router.get('/story/:storyId', asyncHandler(async (req: AuthRequest, res) => {
-  const story = await checkStoryAccess(req.params.storyId, req.user!.id);
+router.get('/story/:storyId', asyncHandler(async (req: AuthRequest, res: Response<ApiResponse<any>>): Promise<Response<ApiResponse<any>> | void> => {
+  const storyId = req.params.storyId;
+  if (!storyId) {
+    return res.status(400).json({
+      success: false,
+      error: { message: 'Story ID is required' }
+    });
+  }
+  
+  const story = await checkStoryAccess(storyId, req.user!.id);
   
   if (!story) {
     return res.status(404).json({
@@ -195,7 +212,7 @@ router.get('/story/:storyId', asyncHandler(async (req: AuthRequest, res) => {
 
   const { type, tag, search, limit = '50', offset = '0' } = req.query;
 
-  const where: any = { storyId: req.params.storyId };
+  const where: any = { storyId: storyId };
   
   if (type) where.type = type;
   if (tag) where.tags = { has: tag };
@@ -230,8 +247,15 @@ router.get('/story/:storyId', asyncHandler(async (req: AuthRequest, res) => {
 }));
 
 // Get single note (any type)
-router.get('/:type/:id', asyncHandler(async (req: AuthRequest, res) => {
+router.get('/:type/:id', asyncHandler(async (req: AuthRequest, res: Response<ApiResponse<any>>): Promise<Response<ApiResponse<any>> | void> => {
   const { type, id } = req.params;
+  
+  if (!type || !id) {
+    return res.status(400).json({
+      success: false,
+      error: { message: 'Type and ID are required' }
+    });
+  }
 
   let note;
   let hasAccess = false;
@@ -334,12 +358,13 @@ router.get('/:type/:id', asyncHandler(async (req: AuthRequest, res) => {
 }));
 
 // Create general note
-router.post('/general', asyncHandler(async (req: AuthRequest, res) => {
+router.post('/general', asyncHandler(async (req: AuthRequest, res: Response<ApiResponse<any>>): Promise<Response<ApiResponse<any>> | void> => {
   const validatedData = createGeneralNoteSchema.parse(req.body);
 
   const note = await prisma.generalNote.create({
     data: {
       ...validatedData,
+      tags: JSON.stringify(validatedData.tags || []),
       userId: req.user!.id,
     }
   });
@@ -351,7 +376,7 @@ router.post('/general', asyncHandler(async (req: AuthRequest, res) => {
 }));
 
 // Create project note
-router.post('/project', asyncHandler(async (req: AuthRequest, res) => {
+router.post('/project', asyncHandler(async (req: AuthRequest, res: Response<ApiResponse<any>>): Promise<Response<ApiResponse<any>> | void> => {
   const validatedData = createProjectNoteSchema.parse(req.body);
 
   const project = await checkProjectAccess(validatedData.projectId, req.user!.id, true);
@@ -364,7 +389,10 @@ router.post('/project', asyncHandler(async (req: AuthRequest, res) => {
   }
 
   const note = await prisma.projectNote.create({
-    data: validatedData
+    data: {
+      ...validatedData,
+      tags: JSON.stringify(validatedData.tags || [])
+    }
   });
 
   res.status(201).json({
@@ -374,7 +402,7 @@ router.post('/project', asyncHandler(async (req: AuthRequest, res) => {
 }));
 
 // Create story note
-router.post('/story', asyncHandler(async (req: AuthRequest, res) => {
+router.post('/story', asyncHandler(async (req: AuthRequest, res: Response<ApiResponse<any>>): Promise<Response<ApiResponse<any>> | void> => {
   const validatedData = createStoryNoteSchema.parse(req.body);
 
   const story = await checkStoryAccess(validatedData.storyId, req.user!.id, true);
@@ -387,7 +415,10 @@ router.post('/story', asyncHandler(async (req: AuthRequest, res) => {
   }
 
   const note = await prisma.storyNote.create({
-    data: validatedData
+    data: {
+      ...validatedData,
+      tags: JSON.stringify(validatedData.tags || [])
+    }
   });
 
   res.status(201).json({
@@ -397,8 +428,15 @@ router.post('/story', asyncHandler(async (req: AuthRequest, res) => {
 }));
 
 // Update note (any type)
-router.patch('/:type/:id', asyncHandler(async (req: AuthRequest, res) => {
+router.patch('/:type/:id', asyncHandler(async (req: AuthRequest, res: Response<ApiResponse<any>>): Promise<Response<ApiResponse<any>> | void> => {
   const { type, id } = req.params;
+  
+  if (!type || !id) {
+    return res.status(400).json({
+      success: false,
+      error: { message: 'Type and ID are required' }
+    });
+  }
   const validatedData = updateNoteSchema.parse(req.body);
 
   let updatedNote;
@@ -412,9 +450,13 @@ router.patch('/:type/:id', asyncHandler(async (req: AuthRequest, res) => {
       hasEditAccess = generalNote?.userId === req.user!.id;
       
       if (hasEditAccess) {
+        const updateData: any = { ...validatedData };
+        if (validatedData.tags) {
+          updateData.tags = JSON.stringify(validatedData.tags);
+        }
         updatedNote = await prisma.generalNote.update({
           where: { id },
-          data: validatedData
+          data: updateData
         });
       }
       break;
@@ -437,9 +479,13 @@ router.patch('/:type/:id', asyncHandler(async (req: AuthRequest, res) => {
                      projectNote?.project.collaborators.some(c => c.role === 'editor') || false;
       
       if (hasEditAccess) {
+        const updateData: any = { ...validatedData };
+        if (validatedData.tags) {
+          updateData.tags = JSON.stringify(validatedData.tags);
+        }
         updatedNote = await prisma.projectNote.update({
           where: { id },
-          data: validatedData
+          data: updateData
         });
       }
       break;
@@ -466,9 +512,13 @@ router.patch('/:type/:id', asyncHandler(async (req: AuthRequest, res) => {
                      storyNote?.story.project.collaborators.some(c => c.role === 'editor') || false;
       
       if (hasEditAccess) {
+        const updateData: any = { ...validatedData };
+        if (validatedData.tags) {
+          updateData.tags = JSON.stringify(validatedData.tags);
+        }
         updatedNote = await prisma.storyNote.update({
           where: { id },
-          data: validatedData
+          data: updateData
         });
       }
       break;
@@ -494,8 +544,15 @@ router.patch('/:type/:id', asyncHandler(async (req: AuthRequest, res) => {
 }));
 
 // Delete note (any type)
-router.delete('/:type/:id', asyncHandler(async (req: AuthRequest, res) => {
+router.delete('/:type/:id', asyncHandler(async (req: AuthRequest, res: Response<ApiResponse<any>>): Promise<Response<ApiResponse<any>> | void> => {
   const { type, id } = req.params;
+  
+  if (!type || !id) {
+    return res.status(400).json({
+      success: false,
+      error: { message: 'Type and ID are required' }
+    });
+  }
 
   let hasDeleteAccess = false;
 

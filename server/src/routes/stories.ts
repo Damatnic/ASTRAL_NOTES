@@ -1,8 +1,9 @@
-import express from 'express';
+import express, { Response } from 'express';
 import { z } from 'zod';
 import { PrismaClient } from '@prisma/client';
 import { asyncHandler } from '../middleware/errorHandler.js';
 import { AuthRequest } from '../middleware/auth.js';
+import { ApiResponse } from '../types/api.js';
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -53,8 +54,16 @@ async function checkProjectAccess(projectId: string, userId: string, requireEdit
 }
 
 // Get stories for a project
-router.get('/project/:projectId', asyncHandler(async (req: AuthRequest, res) => {
-  const project = await checkProjectAccess(req.params.projectId, req.user!.id);
+router.get('/project/:projectId', asyncHandler(async (req: AuthRequest, res: Response<ApiResponse<any>>): Promise<Response<ApiResponse<any>> | void> => {
+  const projectId = req.params.projectId;
+  if (!projectId) {
+    return res.status(400).json({
+      success: false,
+      error: { message: 'Project ID is required' }
+    });
+  }
+  
+  const project = await checkProjectAccess(projectId, req.user!.id);
   
   if (!project) {
     return res.status(404).json({
@@ -64,7 +73,7 @@ router.get('/project/:projectId', asyncHandler(async (req: AuthRequest, res) => 
   }
 
   const stories = await prisma.story.findMany({
-    where: { projectId: req.params.projectId },
+    where: { projectId: projectId },
     include: {
       _count: {
         select: {
@@ -84,9 +93,17 @@ router.get('/project/:projectId', asyncHandler(async (req: AuthRequest, res) => 
 }));
 
 // Get single story
-router.get('/:id', asyncHandler(async (req: AuthRequest, res) => {
+router.get('/:id', asyncHandler(async (req: AuthRequest, res: Response<ApiResponse<any>>): Promise<Response<ApiResponse<any>> | void> => {
+  const id = req.params.id;
+  if (!id) {
+    return res.status(400).json({
+      success: false,
+      error: { message: 'Story ID is required' }
+    });
+  }
+  
   const story = await prisma.story.findUnique({
-    where: { id: req.params.id },
+    where: { id: id },
     include: {
       project: {
         select: {
@@ -165,7 +182,7 @@ router.get('/:id', asyncHandler(async (req: AuthRequest, res) => {
 }));
 
 // Create new story
-router.post('/', asyncHandler(async (req: AuthRequest, res) => {
+router.post('/', asyncHandler(async (req: AuthRequest, res: Response<ApiResponse<any>>): Promise<Response<ApiResponse<any>> | void> => {
   const validatedData = createStorySchema.parse(req.body);
 
   const project = await checkProjectAccess(validatedData.projectId, req.user!.id, true);
@@ -205,11 +222,19 @@ router.post('/', asyncHandler(async (req: AuthRequest, res) => {
 }));
 
 // Update story
-router.patch('/:id', asyncHandler(async (req: AuthRequest, res) => {
+router.patch('/:id', asyncHandler(async (req: AuthRequest, res: Response<ApiResponse<any>>): Promise<Response<ApiResponse<any>> | void> => {
+  const id = req.params.id;
+  if (!id) {
+    return res.status(400).json({
+      success: false,
+      error: { message: 'Story ID is required' }
+    });
+  }
+  
   const validatedData = updateStorySchema.parse(req.body);
 
   const existingStory = await prisma.story.findUnique({
-    where: { id: req.params.id },
+    where: { id: id },
     include: {
       project: {
         select: {
@@ -262,10 +287,18 @@ router.patch('/:id', asyncHandler(async (req: AuthRequest, res) => {
 }));
 
 // Reorder stories
-router.patch('/project/:projectId/reorder', asyncHandler(async (req: AuthRequest, res) => {
+router.patch('/project/:projectId/reorder', asyncHandler(async (req: AuthRequest, res: Response<ApiResponse<any>>): Promise<Response<ApiResponse<any>> | void> => {
+  const projectId = req.params.projectId;
+  if (!projectId) {
+    return res.status(400).json({
+      success: false,
+      error: { message: 'Project ID is required' }
+    });
+  }
+  
   const validatedData = reorderStoriesSchema.parse(req.body);
 
-  const project = await checkProjectAccess(req.params.projectId, req.user!.id, true);
+  const project = await checkProjectAccess(projectId, req.user!.id, true);
   
   if (!project) {
     return res.status(404).json({
@@ -285,7 +318,7 @@ router.patch('/project/:projectId/reorder', asyncHandler(async (req: AuthRequest
   );
 
   const stories = await prisma.story.findMany({
-    where: { projectId: req.params.projectId },
+    where: { projectId: projectId },
     include: {
       _count: {
         select: {
@@ -304,9 +337,17 @@ router.patch('/project/:projectId/reorder', asyncHandler(async (req: AuthRequest
 }));
 
 // Delete story
-router.delete('/:id', asyncHandler(async (req: AuthRequest, res) => {
+router.delete('/:id', asyncHandler(async (req: AuthRequest, res: Response<ApiResponse<any>>): Promise<Response<ApiResponse<any>> | void> => {
+  const id = req.params.id;
+  if (!id) {
+    return res.status(400).json({
+      success: false,
+      error: { message: 'Story ID is required' }
+    });
+  }
+  
   const story = await prisma.story.findUnique({
-    where: { id: req.params.id },
+    where: { id: id },
     include: {
       project: {
         select: {
@@ -350,9 +391,17 @@ router.delete('/:id', asyncHandler(async (req: AuthRequest, res) => {
 }));
 
 // Get story statistics
-router.get('/:id/stats', asyncHandler(async (req: AuthRequest, res) => {
+router.get('/:id/stats', asyncHandler(async (req: AuthRequest, res: Response<ApiResponse<any>>): Promise<Response<ApiResponse<any>> | void> => {
+  const id = req.params.id;
+  if (!id) {
+    return res.status(400).json({
+      success: false,
+      error: { message: 'Story ID is required' }
+    });
+  }
+  
   const story = await prisma.story.findUnique({
-    where: { id: req.params.id },
+    where: { id: id },
     include: {
       project: {
         select: {

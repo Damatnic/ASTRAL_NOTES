@@ -4,7 +4,7 @@
 
 import React, { useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { PlusCircle, FolderOpen, FileText, Clock, BookOpen, Users } from 'lucide-react';
+import { PlusCircle, FolderOpen, FileText, Settings, BookOpen, Users, Brain, Zap } from 'lucide-react';
 import { useSelector, useDispatch } from 'react-redux';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/Card';
@@ -69,16 +69,16 @@ export function Dashboard() {
   ];
 
   return (
-    <div className="p-6 space-y-8">
+    <div className="p-6 space-y-8" data-testid="dashboard">
       {/* Welcome section */}
       <div className="space-y-2">
         <h1 className="text-3xl font-bold">
-          Welcome to Astral Notes
+          Your Personal Writing Assistant
         </h1>
         <p className="text-muted-foreground">
           {stats.totalProjects > 0 
-            ? "Continue your creative writing journey" 
-            : "Start your creative writing journey today"
+            ? "Welcome back! Ready to continue writing?" 
+            : "Let's begin your creative writing journey together"
           }
         </p>
       </div>
@@ -86,14 +86,26 @@ export function Dashboard() {
       {/* Quick actions */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <Button
+          variant="default"
+          size="lg"
+          className="h-24 flex-col gap-2"
+          asChild
+        >
+          <Link to="/quick-notes">
+            <PlusCircle className="h-6 w-6" />
+            Quick Note
+          </Link>
+        </Button>
+        
+        <Button
           variant="outline"
           size="lg"
           className="h-24 flex-col gap-2"
           asChild
         >
-          <Link to="/projects/new">
-            <PlusCircle className="h-6 w-6" />
-            New Project
+          <Link to="/ai-writing">
+            <Brain className="h-6 w-6" />
+            AI Writing Help
           </Link>
         </Button>
         
@@ -105,7 +117,7 @@ export function Dashboard() {
         >
           <Link to="/projects">
             <FolderOpen className="h-6 w-6" />
-            View Projects
+            My Projects
           </Link>
         </Button>
         
@@ -117,19 +129,7 @@ export function Dashboard() {
         >
           <Link to="/search">
             <FileText className="h-6 w-6" />
-            Search Notes
-          </Link>
-        </Button>
-        
-        <Button
-          variant="outline"
-          size="lg"
-          className="h-24 flex-col gap-2"
-          asChild
-        >
-          <Link to="/settings">
-            <Clock className="h-6 w-6" />
-            Settings
+            Search Writing
           </Link>
         </Button>
       </div>

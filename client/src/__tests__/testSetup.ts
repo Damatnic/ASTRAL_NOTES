@@ -2,6 +2,7 @@
 // Vitest global configuration and test utilities
 
 import '@testing-library/jest-dom';
+import 'fake-indexeddb/auto';
 import { vi } from 'vitest';
 
 // Mock window.matchMedia (used by many UI components)
@@ -136,16 +137,19 @@ Object.defineProperty(global, 'crypto', {
   },
 });
 
-// Mock clipboard API
-Object.defineProperty(navigator, 'clipboard', {
-  value: {
-    writeText: vi.fn(),
-    readText: vi.fn(),
-    write: vi.fn(),
-    read: vi.fn(),
-  },
-  writable: true,
-});
+// Mock clipboard API (configurable to avoid redefine errors)
+if (!Object.getOwnPropertyDescriptor(navigator, 'clipboard')) {
+  Object.defineProperty(navigator, 'clipboard', {
+    configurable: true,
+    writable: true,
+    value: {
+      writeText: vi.fn(),
+      readText: vi.fn(),
+      write: vi.fn(),
+      read: vi.fn(),
+    },
+  });
+}
 
 // Mock performance API
 global.performance = {

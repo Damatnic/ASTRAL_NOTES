@@ -109,3 +109,10 @@ With API keys configured:
 - Responsive design
 - Hot module replacement in development
 - Optimized build with code splitting
+## Security Notes and Environment
+
+- In production, set JWT_SECRET to a strong random string to sign JWTs. Without it, authentication fails.
+- For local and preview deployments, the server uses a development fallback for JWT_SECRET if unset. Do not rely on this behavior in production.
+- Express rate limiting is enabled. It uses the authenticated user ID (when present) as the key, falling back to IP, and skips /health.
+- Ensure CORS_ORIGIN matches your deployed frontend URL.
+

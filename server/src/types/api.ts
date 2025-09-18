@@ -31,26 +31,31 @@ export interface AuthResponse {
     id: string;
     email: string;
     username: string;
-    firstName?: string;
-    lastName?: string;
-    avatar?: string;
+    firstName?: string | null;
+    lastName?: string | null;
+    avatar?: string | null;
+    preferences?: any;
   };
   token: string;
+  refreshToken?: string;
 }
 
 // User types
 export interface UserProfile {
-  id: string;
-  email: string;
-  username: string;
-  firstName?: string;
-  lastName?: string;
-  avatar?: string;
-  createdAt: Date;
-  updatedAt: Date;
-  preferences?: any;
-  projectCount: number;
-  generalNotesCount: number;
+  user: {
+    id: string;
+    email: string;
+    username: string;
+    firstName: string | null;
+    lastName: string | null;
+    avatar: string | null;
+    createdAt: Date;
+    preferences: any;
+    stats: {
+      projectCount: number;
+      generalNotesCount: number;
+    };
+  };
 }
 
 export interface UserStats {
@@ -138,5 +143,6 @@ export interface ApiError {
   details?: any;
   validation?: ValidationError[];
 }
+
 
 

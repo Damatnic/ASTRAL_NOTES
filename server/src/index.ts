@@ -6,6 +6,7 @@ import { createServer } from 'http';
 import { Server } from 'socket.io';
 import { PrismaClient } from '@prisma/client';
 import jwt from 'jsonwebtoken';
+import { getJwtSecret } from './utils/jwt.js';
 import { logger } from './utils/logger.js';
 import { errorHandler } from './middleware/errorHandler.js';
 import { authMiddleware } from './middleware/auth.js';
@@ -21,8 +22,12 @@ import characterRoutes from './routes/characters.js';
 import locationRoutes from './routes/locations.js';
 import timelineRoutes from './routes/timelines.js';
 import linkRoutes from './routes/links.js';
+// import codexRoutes from './routes/codex.js';
+// import collaborationRoutes from './routes/collaboration.js';
 
 const app = express();
+// Trust proxy for correct client IPs behind reverse proxies (e.g., Vercel)
+app.set('trust proxy', 1);
 const server = createServer(app);
 const io = new Server(server, {
   cors: {
@@ -45,9 +50,26 @@ app.use(cors({
 const limiter = rateLimit({
   windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS || '900000'),
   max: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS || '100'),
-  message: 'Too many requests from this IP, please try again later.',
+  message: 'Too many requests, please try again later.',
   standardHeaders: true,
   legacyHeaders: false,
+  // Use user ID when available to avoid easy IP-based bypass and be fair per user
+  keyGenerator: (req: any) => {
+    try {
+      const auth = req.headers['authorization'];
+      if (auth && typeof auth === 'string' && auth.startsWith('Bearer ')) {
+        const token = auth.replace('Bearer ', '');
+        const jwtSecret = process.env.JWT_SECRET;
+        if (jwtSecret) {
+          const decoded: any = jwt.verify(token, jwtSecret);
+          if (decoded?.userId) return `user:${decoded.userId}`;
+        }
+      }
+    } catch (_) { /* ignore and fall back to IP */ }
+    // Fallback to IP when no token or invalid
+    return req.ip;
+  },
+  skip: (req) => req.path === '/health'
 });
 app.use(limiter);
 
@@ -71,6 +93,8 @@ app.use('/api/characters', authMiddleware, characterRoutes);
 app.use('/api/locations', authMiddleware, locationRoutes);
 app.use('/api/timelines', authMiddleware, timelineRoutes);
 app.use('/api/links', authMiddleware, linkRoutes);
+// app.use('/api/codex', authMiddleware, codexRoutes);
+// app.use('/api/collaboration', authMiddleware, collaborationRoutes);
 
 // WebSocket handling for real-time collaboration
 io.use(async (socket, next) => {
@@ -81,7 +105,7 @@ io.use(async (socket, next) => {
       return next(new Error('Authentication token required'));
     }
 
-    const jwtSecret = process.env.JWT_SECRET;
+    const jwtSecret = getJwtSecret();
     if (!jwtSecret) {
       logger.error('JWT_SECRET not configured for WebSocket auth');
       return next(new Error('Server configuration error'));

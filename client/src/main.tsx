@@ -11,6 +11,11 @@ import { store } from '@/store/store';
 import { App } from './App';
 import 'react-toastify/dist/ReactToastify.css';
 import './globals.css';
+// Ensure analytics service initializes early
+import { analyticsService } from '@/services/analyticsService';
+
+// Touch the service to trigger constructor side-effects (load + autosave)
+void analyticsService;
 
 // Get the root element
 const rootElement = document.getElementById('root');

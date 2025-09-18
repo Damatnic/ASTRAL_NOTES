@@ -1,5 +1,6 @@
 /**
  * Advanced Note Editor with Sophisticated Writing Tools
+ * Enhanced with professional-grade features and AI assistance
  */
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
@@ -22,23 +23,54 @@ import {
   Minimize2,
   PenTool,
   Type,
-  Palette
+  Palette,
+  MessageSquare,
+  History,
+  Download,
+  Users,
+  Sliders,
+  Brain,
+  Zap,
+  ChevronLeft,
+  ChevronRight,
+  MoreHorizontal
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
-import { TextEditor } from '@/components/ui/TextEditor';
 import { Tabs, TabItem } from '@/components/ui/Tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Dropdown, type DropdownOption } from '@/components/ui/Dropdown';
 import { useToast } from '@/components/ui/Toast';
 import { noteService } from '@/services/noteService';
 import { projectService } from '@/services/projectService';
-import { useAutoSave } from '@/hooks/useAutoSave';
 import { AIWritingAssistant } from '@/components/ai/AIWritingAssistant';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
+import { cn } from '@/utils/cn';
+
+// Enhanced Editor Components
+import { useEditor, type EditorPreferences } from '@/hooks/useEditor';
+import { AdvancedEditor } from '@/components/editor/AdvancedEditor';
+import { ImportExportPanel } from '@/components/editor/ImportExportPanel';
+import { WritingAssistance } from '@/components/editor/WritingAssistance';
+import { CollaborationPanel } from '@/components/editor/CollaborationPanel';
+import { VersionHistory } from '@/components/editor/VersionHistory';
+import { AutoSaveIndicator } from '@/components/editor/AutoSaveIndicator';
+import { EditorCustomization } from '@/components/editor/EditorCustomization';
 import type { Note, Project } from '@/types/global';
 
 type WritingMode = 'focused' | 'distraction-free' | 'split' | 'preview';
 type EditorTheme = 'default' | 'minimal' | 'dark-focus' | 'warm';
+type PanelType = 'none' | 'writing' | 'collaboration' | 'versions' | 'import-export' | 'customization';
+
+interface User {
+  id: string;
+  name: string;
+  email: string;
+  avatar?: string;
+  role: 'owner' | 'editor' | 'viewer';
+  isOnline: boolean;
+  lastSeen?: Date;
+}
 
 export function NoteEditor() {
   const { projectId, noteId } = useParams<{ projectId: string; noteId?: string }>();
@@ -60,13 +92,79 @@ export function NoteEditor() {
   const [targetWordCount, setTargetWordCount] = useState<number>(0);
   const [isFullscreen, setIsFullscreen] = useState(false);
   
+  // Advanced Features
+  const [activePanel, setActivePanel] = useState<PanelType>('none');
+  const [showAIAssistant, setShowAIAssistant] = useState(false);
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error' | 'offline'>('idle');
+  const [lastSaved, setLastSaved] = useState<Date | null>(null);
+  
   // Writing analytics
   const [sessionStartTime] = useState(new Date());
   const [sessionWordCount, setSessionWordCount] = useState(0);
   const [initialWordCount, setInitialWordCount] = useState(0);
   
-  // AI Writing Assistant
-  const [showAIAssistant, setShowAIAssistant] = useState(false);
+  // Current user (in a real app, this would come from auth context)
+  const currentUser: User = {
+    id: 'current-user',
+    name: 'Current User',
+    email: 'user@example.com',
+    role: 'owner',
+    isOnline: true,
+  };
+  
+  // Editor preferences
+  const [editorPreferences, setEditorPreferences] = useState<EditorPreferences>({
+    theme: 'light',
+    colorScheme: 'default',
+    fontSize: 16,
+    fontFamily: 'Inter, system-ui, sans-serif',
+    lineHeight: 1.6,
+    letterSpacing: 0,
+    wordSpacing: 0,
+    maxWidth: 800,
+    padding: 24,
+    showLineNumbers: false,
+    showRuler: false,
+    wrapText: true,
+    isDistractionFree: false,
+    isFullscreen: false,
+    isZenMode: false,
+    showMinimap: false,
+    highContrast: false,
+    largeText: false,
+    reduceMotion: false,
+    screenReaderMode: false,
+    keyboardNavigation: true,
+    enableSounds: true,
+    typingSounds: false,
+    saveSound: true,
+    cursorBlinking: true,
+    smoothScrolling: true,
+    autoIndent: true,
+    tabSize: 4,
+  });
+  
+  // Enhanced editor hook
+  const {
+    editor,
+    stats,
+    preferences,
+    isTyping,
+    isDirty,
+    updatePreferences,
+    saveContent,
+    exportContent,
+    importContent,
+    createVersion,
+    getVersionHistory,
+    restoreVersion,
+  } = useEditor({
+    content: note?.content || '',
+    onChange: handleContentChange,
+    onSave: handleSave,
+    preferences: editorPreferences,
+  });
 
   // Load note and project data
   useEffect(() => {
@@ -121,50 +219,162 @@ export function NoteEditor() {
     loadData();
   }, [projectId, noteId, navigate, toast]);
 
+  // Online status detection
+  useEffect(() => {
+    const handleOnline = () => {
+      setIsOnline(true);
+      setSaveStatus('idle');
+    };
+    const handleOffline = () => {
+      setIsOnline(false);
+      setSaveStatus('offline');
+    };
+    
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
+
   // Auto-save functionality
   const saveNote = useCallback(async (noteData: Note) => {
-    if (!noteData.id) return;
+    if (!noteData?.id) return false;
     
     try {
+      setSaveStatus('saving');
       setIsSaving(true);
       await noteService.updateNote(noteData.id, noteData);
       setHasUnsavedChanges(false);
-      toast.success('Note saved', { duration: 1000 });
+      setSaveStatus('saved');
+      setLastSaved(new Date());
+      return true;
     } catch (error) {
+      console.error('Save error:', error);
+      setSaveStatus('error');
       toast.error('Failed to save note');
+      return false;
     } finally {
       setIsSaving(false);
     }
   }, [toast]);
 
-  useAutoSave(note, saveNote, 3000);
-
   // Update note content
   const handleContentChange = useCallback((content: string) => {
     if (!note) return;
     
-    const wordCount = content.trim().split(/\s+/).filter(word => word.length > 0).length;
-    const updatedNote = { ...note, content, wordCount };
-    
-    setNote(updatedNote);
-    setSessionWordCount(wordCount);
-    setHasUnsavedChanges(true);
-  }, [note]);
+    try {
+      const wordCount = content.trim().split(/\s+/).filter(word => word.length > 0).length;
+      const updatedNote = { ...note, content, wordCount };
+      
+      setNote(updatedNote);
+      setSessionWordCount(wordCount);
+      setHasUnsavedChanges(true);
+      setSaveStatus('idle');
+    } catch (error) {
+      console.error('Content change error:', error);
+      toast.error('Failed to update content');
+    }
+  }, [note, toast]);
 
   // Update note title
   const handleTitleChange = useCallback((title: string) => {
     if (!note) return;
     
-    const updatedNote = { ...note, title };
-    setNote(updatedNote);
-    setHasUnsavedChanges(true);
-  }, [note]);
+    try {
+      const updatedNote = { ...note, title };
+      setNote(updatedNote);
+      setHasUnsavedChanges(true);
+    } catch (error) {
+      console.error('Title change error:', error);
+      toast.error('Failed to update title');
+    }
+  }, [note, toast]);
 
   // Manual save
   const handleSave = useCallback(async () => {
     if (!note) return;
-    await saveNote(note);
-  }, [note, saveNote]);
+    
+    try {
+      const success = await saveNote(note);
+      if (success && editorPreferences.saveSound && editorPreferences.enableSounds) {
+        // Play save sound (would be implemented with actual audio)
+        console.log('🔊 Save sound');
+      }
+    } catch (error) {
+      console.error('Manual save error:', error);
+      toast.error('Failed to save note manually');
+    }
+  }, [note, saveNote, toast, editorPreferences]);
+  
+  // Handle import
+  const handleImport = useCallback((content: string, format: 'html' | 'md' | 'txt') => {
+    if (!note) return;
+    
+    // Process content based on format
+    let processedContent = content;
+    if (format === 'md') {
+      // Convert markdown to HTML (basic implementation)
+      processedContent = content
+        .replace(/^(#{1,6})\s+(.*$)/gm, (_, hashes, text) => `<h${hashes.length}>${text}</h${hashes.length}>`)
+        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+        .replace(/\*(.*?)\*/g, '<em>$1</em>')
+        .replace(/`(.*?)`/g, '<code>$1</code>')
+        .replace(/\n\n/g, '</p><p>')
+        .replace(/^/, '<p>')
+        .replace(/$/, '</p>');
+    } else if (format === 'txt') {
+      processedContent = `<p>${content.replace(/\n\n/g, '</p><p>').replace(/\n/g, '<br>')}</p>`;
+    }
+    
+    const updatedNote = { ...note, content: processedContent };
+    setNote(updatedNote);
+    setHasUnsavedChanges(true);
+    toast.success('Content imported successfully');
+  }, [note, toast]);
+  
+  // Handle version operations
+  const handleVersionCreate = useCallback((label?: string) => {
+    createVersion(label);
+  }, [createVersion]);
+  
+  const handleVersionRestore = useCallback((version: any) => {
+    if (!note) return;
+    
+    const updatedNote = { ...note, content: version.content };
+    setNote(updatedNote);
+    setHasUnsavedChanges(true);
+  }, [note]);
+  
+  // Handle collaboration
+  const handleShare = useCallback((shareSettings: any) => {
+    // Implement sharing logic
+    console.log('Share settings:', shareSettings);
+    toast.success('Share settings updated');
+  }, [toast]);
+  
+  const handleCommentAdd = useCallback((comment: any) => {
+    // Implement comment logic
+    console.log('Comment added:', comment);
+  }, []);
+  
+  const handleAnnotationAdd = useCallback((annotation: any) => {
+    // Implement annotation logic
+    console.log('Annotation added:', annotation);
+  }, []);
+  
+  // Toggle panel
+  const togglePanel = useCallback((panelType: PanelType) => {
+    setActivePanel(current => current === panelType ? 'none' : panelType);
+  }, []);
+  
+  // Update editor preferences
+  const handlePreferencesChange = useCallback((newPreferences: Partial<EditorPreferences>) => {
+    setEditorPreferences(prev => ({ ...prev, ...newPreferences }));
+    updatePreferences(newPreferences);
+  }, [updatePreferences]);
 
   // Writing session analytics
   const sessionStats = useMemo(() => {
@@ -240,19 +450,45 @@ export function NoteEditor() {
             />
           </div>
 
-          {/* Text Editor */}
-          <TextEditor
-            content={note.content}
-            onChange={handleContentChange}
-            placeholder="Start writing your thoughts..."
-            autoSave={true}
-            autoSaveDelay={3000}
-            showWordCount={showWordCount}
-            showToolbar={writingMode !== 'distraction-free'}
-            variant={editorTheme === 'default' ? 'default' : editorTheme === 'minimal' ? 'cosmic' : 'astral'}
-            maxHeight="calc(100vh - 300px)"
-            onAutoSave={() => {}}
-          />
+          {/* Advanced Editor */}
+          <ErrorBoundary fallback={
+            <div className="p-8 text-center border border-destructive/20 rounded-lg bg-destructive/5">
+              <p className="text-destructive font-medium mb-2">Editor Error</p>
+              <p className="text-sm text-muted-foreground">
+                The text editor encountered an error. Please refresh the page to continue.
+              </p>
+            </div>
+          }>
+            <div className="relative">
+              <AdvancedEditor
+                content={note.content}
+                onChange={handleContentChange}
+                onSave={handleSave}
+                placeholder="Start writing your thoughts..."
+                isDistracted={writingMode === 'distraction-free'}
+                showStats={showWordCount}
+                showToolbar={writingMode !== 'distraction-free'}
+                className={cn(
+                  "transition-all duration-300",
+                  isFullscreen && "min-h-screen"
+                )}
+              />
+              
+              {/* Auto-save indicator */}
+              <div className="absolute top-4 right-4 z-10">
+                <AutoSaveIndicator
+                  saveStatus={saveStatus}
+                  lastSaved={lastSaved}
+                  hasUnsavedChanges={hasUnsavedChanges}
+                  isOnline={isOnline}
+                  autoSaveEnabled={true}
+                  onManualSave={handleSave}
+                  onRecoverDraft={() => toast.info('Draft recovery not implemented yet')}
+                  onResolveConflict={() => toast.info('Conflict resolution not implemented yet')}
+                />
+              </div>
+            </div>
+          </ErrorBoundary>
         </div>
       ),
     },
@@ -417,6 +653,52 @@ export function NoteEditor() {
                 placeholder="Theme"
               />
 
+              {/* Panel Toggle Buttons */}
+              <Button
+                variant={activePanel === 'writing' ? 'default' : 'outline'}
+                size="icon"
+                onClick={() => togglePanel('writing')}
+                title="Writing Assistant"
+              >
+                <Brain className="h-4 w-4" />
+              </Button>
+              
+              <Button
+                variant={activePanel === 'collaboration' ? 'default' : 'outline'}
+                size="icon"
+                onClick={() => togglePanel('collaboration')}
+                title="Collaboration"
+              >
+                <Users className="h-4 w-4" />
+              </Button>
+              
+              <Button
+                variant={activePanel === 'versions' ? 'default' : 'outline'}
+                size="icon"
+                onClick={() => togglePanel('versions')}
+                title="Version History"
+              >
+                <History className="h-4 w-4" />
+              </Button>
+              
+              <Button
+                variant={activePanel === 'import-export' ? 'default' : 'outline'}
+                size="icon"
+                onClick={() => togglePanel('import-export')}
+                title="Import/Export"
+              >
+                <Download className="h-4 w-4" />
+              </Button>
+              
+              <Button
+                variant={activePanel === 'customization' ? 'default' : 'outline'}
+                size="icon"
+                onClick={() => togglePanel('customization')}
+                title="Customization"
+              >
+                <Sliders className="h-4 w-4" />
+              </Button>
+
               <Button
                 variant="outline"
                 size="icon"
@@ -449,29 +731,113 @@ export function NoteEditor() {
       )}
 
       {/* Main Content */}
-      <div className={`${writingMode !== 'distraction-free' ? 'p-6' : 'p-8'} max-w-none`}>
-        {writingMode === 'distraction-free' ? (
-          <div className="max-w-4xl mx-auto">
-            <Input
-              value={note.title}
-              onChange={(e) => handleTitleChange(e.target.value)}
-              placeholder="Note title..."
-              className="text-3xl font-bold border-none shadow-none p-0 focus:ring-0 mb-8 bg-transparent"
-            />
-            <TextEditor
+      <div className={cn(
+        "flex transition-all duration-300",
+        writingMode !== 'distraction-free' ? 'p-6' : 'p-8'
+      )}>
+        {/* Main Editor Area */}
+        <div className={cn(
+          "flex-1 transition-all duration-300",
+          activePanel !== 'none' && "mr-6"
+        )}>
+          {writingMode === 'distraction-free' ? (
+            <div className="max-w-4xl mx-auto">
+              <Input
+                value={note.title}
+                onChange={(e) => handleTitleChange(e.target.value)}
+                placeholder="Note title..."
+                className="text-3xl font-bold border-none shadow-none p-0 focus:ring-0 mb-8 bg-transparent"
+              />
+              <ErrorBoundary fallback={
+                <div className="p-8 text-center border border-destructive/20 rounded-lg bg-destructive/5">
+                  <p className="text-destructive font-medium mb-2">Editor Error</p>
+                  <p className="text-sm text-muted-foreground">
+                    The text editor encountered an error. Please refresh the page to continue.
+                  </p>
+                </div>
+              }>
+                <AdvancedEditor
+                  content={note.content}
+                  onChange={handleContentChange}
+                  onSave={handleSave}
+                  placeholder="Write without distractions..."
+                  isDistracted={true}
+                  showStats={false}
+                  showToolbar={false}
+                />
+              </ErrorBoundary>
+            </div>
+          ) : (
+            <Tabs tabs={tabs} variant="cosmic" />
+          )}
+        </div>
+        
+        {/* Side Panels */}
+        <div className={cn(
+          "transition-all duration-300 ease-in-out",
+          activePanel === 'none' ? 'w-0 overflow-hidden' : 'w-80 min-w-80'
+        )}>
+          {activePanel === 'writing' && (
+            <WritingAssistance
+              editor={editor}
               content={note.content}
-              onChange={handleContentChange}
-              placeholder="Write without distractions..."
-              autoSave={true}
-              showWordCount={false}
-              showToolbar={false}
-              variant="default"
-              maxHeight="calc(100vh - 200px)"
+              onContentChange={handleContentChange}
+              isVisible={true}
+              onToggle={() => setActivePanel('none')}
             />
-          </div>
-        ) : (
-          <Tabs tabs={tabs} variant="cosmic" />
-        )}
+          )}
+          
+          {activePanel === 'collaboration' && note && (
+            <CollaborationPanel
+              editor={editor}
+              content={note.content}
+              noteId={note.id}
+              currentUser={currentUser}
+              onShare={handleShare}
+              onCommentAdd={handleCommentAdd}
+              onAnnotationAdd={handleAnnotationAdd}
+            />
+          )}
+          
+          {activePanel === 'versions' && note && (
+            <VersionHistory
+              editor={editor}
+              content={note.content}
+              noteId={note.id}
+              onVersionRestore={handleVersionRestore}
+              onVersionCreate={handleVersionCreate}
+            />
+          )}
+          
+          {activePanel === 'import-export' && note && (
+            <ImportExportPanel
+              content={note.content}
+              title={note.title}
+              onImport={handleImport}
+              onExport={(format) => {
+                const exported = exportContent(format as any);
+                console.log(`Exported as ${format}:`, exported);
+              }}
+            />
+          )}
+          
+          {activePanel === 'customization' && (
+            <EditorCustomization
+              preferences={editorPreferences}
+              onPreferencesChange={handlePreferencesChange}
+              onExportPreferences={() => {
+                const dataStr = JSON.stringify(editorPreferences, null, 2);
+                const dataBlob = new Blob([dataStr], { type: 'application/json' });
+                const url = URL.createObjectURL(dataBlob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = 'editor-preferences.json';
+                link.click();
+                URL.revokeObjectURL(url);
+              }}
+            />
+          )}
+        </div>
       </div>
 
       {/* Floating Controls for Distraction-Free Mode */}
@@ -498,12 +864,30 @@ export function NoteEditor() {
       )}
 
       {/* AI Writing Assistant */}
-      <AIWritingAssistant
-        content={note?.content || ''}
-        onContentChange={handleContentChange}
-        isVisible={showAIAssistant}
-        onToggle={() => setShowAIAssistant(!showAIAssistant)}
-      />
+      <ErrorBoundary fallback={
+        <div className="fixed bottom-4 right-4 p-4 bg-destructive/10 border border-destructive/20 rounded-lg">
+          <p className="text-sm text-destructive">AI Assistant Error</p>
+        </div>
+      }>
+        <AIWritingAssistant
+          content={note?.content || ''}
+          onContentChange={handleContentChange}
+          isVisible={showAIAssistant && activePanel === 'none'}
+          onToggle={() => setShowAIAssistant(!showAIAssistant)}
+        />
+      </ErrorBoundary>
+      
+      {/* Keyboard Shortcuts Help */}
+      {editorPreferences.keyboardNavigation && (
+        <div className="fixed bottom-4 left-4 text-xs text-muted-foreground bg-background/80 backdrop-blur p-2 rounded border opacity-50 hover:opacity-100 transition-opacity">
+          <div className="space-y-1">
+            <div><kbd className="px-1 py-0.5 bg-muted rounded">Ctrl+S</kbd> Save</div>
+            <div><kbd className="px-1 py-0.5 bg-muted rounded">Ctrl+Shift+D</kbd> Focus Mode</div>
+            <div><kbd className="px-1 py-0.5 bg-muted rounded">F11</kbd> Fullscreen</div>
+            <div><kbd className="px-1 py-0.5 bg-muted rounded">Ctrl+F</kbd> Find</div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

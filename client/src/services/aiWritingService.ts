@@ -435,6 +435,14 @@ class AIWritingService {
 
     return synonyms[word.toLowerCase()] || [];
   }
+
+  /**
+   * Generate content - wrapper for compatibility with tests
+   */
+  async generateContent(prompt: string, options?: { type?: 'continuation' | 'expansion' | 'alternative' }): Promise<string> {
+    const suggestions = await this.generateContentSuggestions(prompt, options?.type || 'expansion');
+    return suggestions[0] || '';
+  }
 }
 
 export const aiWritingService = new AIWritingService();

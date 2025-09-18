@@ -1,0 +1,31 @@
+{
+  "autoSave": true,
+  "checkpoints": [],
+  "logs": {
+    "actions": [
+      {
+        "ts": "2025-09-18T13:21:07.617Z",
+        "action": "test-start",
+        "feature": "session-timeout"
+      },
+      {
+        "ts": "2025-09-18T13:21:07.652Z",
+        "action": "test-start",
+        "feature": "api-rate-limiting"
+      }
+    ],
+    "errors": [],
+    "warnings": [],
+    "info": []
+  },
+  "metrics": {
+    "startTime": null,
+    "featuresTotal": 1,
+    "featuresTested": 2,
+    "bugsFound": 0,
+    "bugsFixed": 0,
+    "testsPassed": 2,
+    "testsFailed": 0,
+    "coverage": 0
+  }
+}

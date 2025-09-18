@@ -1,8 +1,9 @@
-import express from 'express';
+import express, { Response } from 'express';
 import { z } from 'zod';
 import { PrismaClient } from '@prisma/client';
 import { asyncHandler } from '../middleware/errorHandler.js';
 import { AuthRequest } from '../middleware/auth.js';
+import { ApiResponse } from '../types/api.js';
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -94,8 +95,16 @@ async function checkStoryAccess(storyId: string, userId: string, requireEdit = f
 }
 
 // Get scenes for a story
-router.get('/story/:storyId', asyncHandler(async (req: AuthRequest, res) => {
-  const story = await checkStoryAccess(req.params.storyId, req.user!.id);
+router.get('/story/:storyId', asyncHandler(async (req: AuthRequest, res: Response<ApiResponse<any>>): Promise<Response<ApiResponse<any>> | void> => {
+  const storyId = req.params.storyId;
+  if (!storyId) {
+    return res.status(400).json({
+      success: false,
+      error: { message: 'Story ID is required' }
+    });
+  }
+  
+  const story = await checkStoryAccess(storyId, req.user!.id);
   
   if (!story) {
     return res.status(404).json({
@@ -105,7 +114,7 @@ router.get('/story/:storyId', asyncHandler(async (req: AuthRequest, res) => {
   }
 
   const scenes = await prisma.scene.findMany({
-    where: { storyId: req.params.storyId },
+    where: { storyId: storyId },
     include: {
       characters: {
         include: {
@@ -145,9 +154,17 @@ router.get('/story/:storyId', asyncHandler(async (req: AuthRequest, res) => {
 }));
 
 // Get single scene
-router.get('/:id', asyncHandler(async (req: AuthRequest, res) => {
+router.get('/:id', asyncHandler(async (req: AuthRequest, res: Response<ApiResponse<any>>): Promise<Response<ApiResponse<any>> | void> => {
+  const id = req.params.id;
+  if (!id) {
+    return res.status(400).json({
+      success: false,
+      error: { message: 'Scene ID is required' }
+    });
+  }
+  
   const scene = await prisma.scene.findUnique({
-    where: { id: req.params.id },
+    where: { id: id },
     include: {
       story: {
         include: {
@@ -231,7 +248,7 @@ router.get('/:id', asyncHandler(async (req: AuthRequest, res) => {
 }));
 
 // Create new scene
-router.post('/', asyncHandler(async (req: AuthRequest, res) => {
+router.post('/', asyncHandler(async (req: AuthRequest, res: Response<ApiResponse<any>>): Promise<Response<ApiResponse<any>> | void> => {
   const validatedData = createSceneSchema.parse(req.body);
 
   const story = await checkStoryAccess(validatedData.storyId, req.user!.id, true);
@@ -254,6 +271,7 @@ router.post('/', asyncHandler(async (req: AuthRequest, res) => {
   const scene = await prisma.scene.create({
     data: {
       ...validatedData,
+      tags: JSON.stringify(validatedData.tags || []),
       date: validatedData.date ? new Date(validatedData.date) : undefined,
       wordCount,
       order: (lastScene?.order ?? -1) + 1,
@@ -292,11 +310,19 @@ router.post('/', asyncHandler(async (req: AuthRequest, res) => {
 }));
 
 // Update scene
-router.patch('/:id', asyncHandler(async (req: AuthRequest, res) => {
+router.patch('/:id', asyncHandler(async (req: AuthRequest, res: Response<ApiResponse<any>>): Promise<Response<ApiResponse<any>> | void> => {
+  const id = req.params.id;
+  if (!id) {
+    return res.status(400).json({
+      success: false,
+      error: { message: 'Scene ID is required' }
+    });
+  }
+  
   const validatedData = updateSceneSchema.parse(req.body);
 
   const existingScene = await prisma.scene.findUnique({
-    where: { id: req.params.id },
+    where: { id: id },
     include: {
       story: {
         include: {
@@ -331,7 +357,11 @@ router.patch('/:id', asyncHandler(async (req: AuthRequest, res) => {
     });
   }
 
-  const updateData = { ...validatedData };
+  const updateData: any = { ...validatedData };
+  
+  if (validatedData.tags) {
+    updateData.tags = JSON.stringify(validatedData.tags);
+  }
   
   // Calculate new word count if content is being updated
   if (validatedData.content !== undefined) {
@@ -356,7 +386,7 @@ router.patch('/:id', asyncHandler(async (req: AuthRequest, res) => {
   }
 
   const scene = await prisma.scene.update({
-    where: { id: req.params.id },
+    where: { id: id },
     data: updateData,
     include: {
       characters: {
@@ -382,10 +412,18 @@ router.patch('/:id', asyncHandler(async (req: AuthRequest, res) => {
 }));
 
 // Reorder scenes
-router.patch('/story/:storyId/reorder', asyncHandler(async (req: AuthRequest, res) => {
+router.patch('/story/:storyId/reorder', asyncHandler(async (req: AuthRequest, res: Response<ApiResponse<any>>): Promise<Response<ApiResponse<any>> | void> => {
+  const storyId = req.params.storyId;
+  if (!storyId) {
+    return res.status(400).json({
+      success: false,
+      error: { message: 'Story ID is required' }
+    });
+  }
+  
   const validatedData = reorderScenesSchema.parse(req.body);
 
-  const story = await checkStoryAccess(req.params.storyId, req.user!.id, true);
+  const story = await checkStoryAccess(storyId, req.user!.id, true);
   
   if (!story) {
     return res.status(404).json({
@@ -405,7 +443,7 @@ router.patch('/story/:storyId/reorder', asyncHandler(async (req: AuthRequest, re
   );
 
   const scenes = await prisma.scene.findMany({
-    where: { storyId: req.params.storyId },
+    where: { storyId: storyId },
     include: {
       characters: {
         include: {
@@ -425,11 +463,19 @@ router.patch('/story/:storyId/reorder', asyncHandler(async (req: AuthRequest, re
 }));
 
 // Add character to scene
-router.post('/:id/characters', asyncHandler(async (req: AuthRequest, res) => {
+router.post('/:id/characters', asyncHandler(async (req: AuthRequest, res: Response<ApiResponse<any>>): Promise<Response<ApiResponse<any>> | void> => {
+  const id = req.params.id;
+  if (!id) {
+    return res.status(400).json({
+      success: false,
+      error: { message: 'Scene ID is required' }
+    });
+  }
+  
   const validatedData = addCharacterSchema.parse(req.body);
 
   const scene = await prisma.scene.findUnique({
-    where: { id: req.params.id },
+    where: { id: id },
     include: {
       story: {
         include: {
@@ -466,7 +512,7 @@ router.post('/:id/characters', asyncHandler(async (req: AuthRequest, res) => {
 
   const sceneCharacter = await prisma.sceneCharacter.create({
     data: {
-      sceneId: req.params.id,
+      sceneId: id,
       characterId: validatedData.characterId,
       role: validatedData.role,
     },
@@ -484,9 +530,18 @@ router.post('/:id/characters', asyncHandler(async (req: AuthRequest, res) => {
 }));
 
 // Remove character from scene
-router.delete('/:id/characters/:characterId', asyncHandler(async (req: AuthRequest, res) => {
+router.delete('/:id/characters/:characterId', asyncHandler(async (req: AuthRequest, res: Response<ApiResponse<any>>): Promise<Response<ApiResponse<any>> | void> => {
+  const id = req.params.id;
+  const characterId = req.params.characterId;
+  if (!id || !characterId) {
+    return res.status(400).json({
+      success: false,
+      error: { message: 'Scene ID and Character ID are required' }
+    });
+  }
+  
   const scene = await prisma.scene.findUnique({
-    where: { id: req.params.id },
+    where: { id: id },
     include: {
       story: {
         include: {
@@ -524,8 +579,8 @@ router.delete('/:id/characters/:characterId', asyncHandler(async (req: AuthReque
   await prisma.sceneCharacter.delete({
     where: {
       sceneId_characterId: {
-        sceneId: req.params.id,
-        characterId: req.params.characterId
+        sceneId: id,
+        characterId: characterId
       }
     }
   });
@@ -537,11 +592,19 @@ router.delete('/:id/characters/:characterId', asyncHandler(async (req: AuthReque
 }));
 
 // Add scene dependency
-router.post('/:id/dependencies', asyncHandler(async (req: AuthRequest, res) => {
+router.post('/:id/dependencies', asyncHandler(async (req: AuthRequest, res: Response<ApiResponse<any>>): Promise<Response<ApiResponse<any>> | void> => {
+  const id = req.params.id;
+  if (!id) {
+    return res.status(400).json({
+      success: false,
+      error: { message: 'Scene ID is required' }
+    });
+  }
+  
   const validatedData = addDependencySchema.parse(req.body);
 
   const scene = await prisma.scene.findUnique({
-    where: { id: req.params.id },
+    where: { id: id },
     include: {
       story: {
         include: {
@@ -578,7 +641,7 @@ router.post('/:id/dependencies', asyncHandler(async (req: AuthRequest, res) => {
 
   const dependency = await prisma.sceneDependency.create({
     data: {
-      sceneId: req.params.id,
+      sceneId: id,
       dependentSceneId: validatedData.dependentSceneId,
       type: validatedData.type,
       description: validatedData.description,
@@ -597,9 +660,17 @@ router.post('/:id/dependencies', asyncHandler(async (req: AuthRequest, res) => {
 }));
 
 // Delete scene
-router.delete('/:id', asyncHandler(async (req: AuthRequest, res) => {
+router.delete('/:id', asyncHandler(async (req: AuthRequest, res: Response<ApiResponse<any>>): Promise<Response<ApiResponse<any>> | void> => {
+  const id = req.params.id;
+  if (!id) {
+    return res.status(400).json({
+      success: false,
+      error: { message: 'Scene ID is required' }
+    });
+  }
+  
   const scene = await prisma.scene.findUnique({
-    where: { id: req.params.id },
+    where: { id: id },
     include: {
       story: {
         include: {
@@ -645,7 +716,7 @@ router.delete('/:id', asyncHandler(async (req: AuthRequest, res) => {
   });
 
   await prisma.scene.delete({
-    where: { id: req.params.id }
+    where: { id: id }
   });
 
   res.json({

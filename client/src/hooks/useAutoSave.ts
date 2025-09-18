@@ -30,7 +30,7 @@ export function useAutoSave({
   const autoSaveEnabled = enabled && preferences.autoSave;
 
   const save = useCallback(async () => {
-    if (isSavingRef.current || !autoSaveEnabled) return;
+    if (isSavingRef.current || !autoSaveEnabled || !data) return;
 
     try {
       isSavingRef.current = true;
@@ -50,7 +50,7 @@ export function useAutoSave({
   }, [data, saveFunction, autoSaveEnabled]);
 
   const scheduleAutoSave = useCallback(() => {
-    if (!autoSaveEnabled) return;
+    if (!autoSaveEnabled || !data) return;
 
     // Clear existing timeout
     if (timeoutRef.current) {
@@ -83,11 +83,13 @@ export function useAutoSave({
 
   // Manual save function
   const forceSave = useCallback(() => {
+    if (!data) return;
+    
     if (timeoutRef.current) {
       clearTimeout(timeoutRef.current);
     }
     save();
-  }, [save]);
+  }, [save, data]);
 
   return {
     forceSave,
