@@ -55,7 +55,7 @@ export class OfflineService {
   private static instance: OfflineService;
   private db: IDBDatabase | null = null;
   private syncQueue: SyncQueueItem[] = [];
-  private isOnline: boolean = navigator.onLine;
+  private onlineStatus: boolean = navigator.onLine;
   private syncInProgress: boolean = false;
   private serviceWorker: ServiceWorker | null = null;
   private backupConfig: BackupConfig | null = null;
@@ -73,25 +73,44 @@ export class OfflineService {
     return OfflineService.instance;
   }
 
-  private async initialize(): Promise<void> {
-    // Initialize IndexedDB
-    await this.initializeDB();
+  public async initialize(): Promise<void> {
+    try {
+      // Initialize IndexedDB
+      await this.initializeDB();
+    } catch (error) {
+      console.warn('IndexedDB initialization failed, falling back to localStorage:', error);
+    }
 
-    // Register service worker
-    await this.registerServiceWorker();
+    try {
+      // Register service worker
+      await this.registerServiceWorker();
+    } catch (error) {
+      console.warn('Service worker registration failed:', error);
+    }
 
     // Set up online/offline listeners
-    window.addEventListener('online', this.handleOnline.bind(this));
-    window.addEventListener('offline', this.handleOffline.bind(this));
+    if (typeof window !== 'undefined') {
+      window.addEventListener('online', this.handleOnline.bind(this));
+      window.addEventListener('offline', this.handleOffline.bind(this));
+    }
 
-    // Load sync queue from IndexedDB
-    await this.loadSyncQueue();
+    try {
+      // Load sync queue from IndexedDB
+      await this.loadSyncQueue();
+    } catch (error) {
+      console.warn('Failed to load sync queue:', error);
+      this.syncQueue = [];
+    }
 
     // Start periodic sync
     this.startPeriodicSync();
 
-    // Load backup configuration
-    await this.loadBackupConfig();
+    try {
+      // Load backup configuration
+      await this.loadBackupConfig();
+    } catch (error) {
+      console.warn('Failed to load backup config:', error);
+    }
 
     // Start auto-backup if enabled
     if (this.backupConfig?.enabled) {
@@ -239,13 +258,13 @@ export class OfflineService {
   }
 
   private handleOnline(): void {
-    this.isOnline = true;
+    this.onlineStatus = true;
     this.emit('connection-changed', { online: true });
     this.syncPendingChanges();
   }
 
   private handleOffline(): void {
-    this.isOnline = false;
+    this.onlineStatus = false;
     this.emit('connection-changed', { online: false });
   }
 
@@ -258,7 +277,7 @@ export class OfflineService {
     
     await store.put(project);
 
-    if (!skipSync && this.isOnline) {
+    if (!skipSync && this.onlineStatus) {
       await this.syncProject(project);
     } else if (!skipSync) {
       await this.queueChange('update', 'project', project.id, project);
@@ -273,7 +292,7 @@ export class OfflineService {
     
     await store.put(story);
 
-    if (!skipSync && this.isOnline) {
+    if (!skipSync && this.onlineStatus) {
       await this.syncStory(story);
     } else if (!skipSync) {
       await this.queueChange('update', 'story', story.id, story);
@@ -288,7 +307,7 @@ export class OfflineService {
     
     await store.put(scene);
 
-    if (!skipSync && this.isOnline) {
+    if (!skipSync && this.onlineStatus) {
       await this.syncScene(scene);
     } else if (!skipSync) {
       await this.queueChange('update', 'scene', scene.id, scene);
@@ -332,7 +351,7 @@ export class OfflineService {
   }
 
   private async syncPendingChanges(): Promise<void> {
-    if (this.syncInProgress || !this.isOnline || this.syncQueue.length === 0) {
+    if (this.syncInProgress || !this.onlineStatus || this.syncQueue.length === 0) {
       return;
     }
 
@@ -425,7 +444,7 @@ export class OfflineService {
 
   private startPeriodicSync(): void {
     setInterval(() => {
-      if (this.isOnline && !this.syncInProgress) {
+      if (this.onlineStatus && !this.syncInProgress) {
         this.syncPendingChanges();
       }
     }, 30000); // Every 30 seconds
@@ -704,7 +723,7 @@ export class OfflineService {
   }
 
   public getConnectionStatus(): boolean {
-    return this.isOnline;
+    return this.onlineStatus;
   }
 
   public getSyncQueueSize(): number {
@@ -828,6 +847,60 @@ export class OfflineService {
     
     return backup.id;
   }
+
+  // API methods expected by tests
+  public getOnlineStatus(): boolean {
+    return this.onlineStatus;
+  }
+
+  public isOnline(): boolean {
+    return this.onlineStatus;
+  }
+
+  public async saveOfflineData(type: string, data: any): Promise<void> {
+    if (this.db) {
+      try {
+        const tx = this.db.transaction([type], 'readwrite');
+        const store = tx.objectStore(type);
+        await store.put(data);
+      } catch (error) {
+        console.warn(`Failed to save offline data to IndexedDB, falling back to localStorage:`, error);
+        localStorage.setItem(`offline_${type}_${data.id}`, JSON.stringify(data));
+      }
+    } else {
+      localStorage.setItem(`offline_${type}_${data.id}`, JSON.stringify(data));
+    }
+  }
+
+  public queueSyncOperation(operation: SyncQueueItem): void {
+    this.syncQueue.push(operation);
+    this.saveSyncQueue();
+  }
+
+  private async saveSyncQueue(): Promise<void> {
+    if (this.db) {
+      try {
+        const tx = this.db.transaction(['sync_queue'], 'readwrite');
+        const store = tx.objectStore('sync_queue');
+        
+        // Clear existing queue and save new one
+        await store.clear();
+        for (const item of this.syncQueue) {
+          await store.add(item);
+        }
+      } catch (error) {
+        console.warn('Failed to save sync queue to IndexedDB, using localStorage fallback:', error);
+        localStorage.setItem('astral_sync_queue', JSON.stringify(this.syncQueue));
+      }
+    } else {
+      localStorage.setItem('astral_sync_queue', JSON.stringify(this.syncQueue));
+    }
+  }
+
+  public getSyncQueue(): SyncQueueItem[] {
+    return [...this.syncQueue];
+  }
 }
 
-export default OfflineService.getInstance();
+export const offlineService = OfflineService.getInstance();
+export default offlineService;

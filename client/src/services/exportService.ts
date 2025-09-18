@@ -6,6 +6,7 @@
 import { storageService } from './storageService';
 import { projectService } from './projectService';
 import { noteService } from './noteService';
+import { quickNotesService } from './quickNotesService';
 import type { Project, Note } from '@/types/global';
 
 export interface ExportData {
@@ -16,7 +17,10 @@ export interface ExportData {
   };
   projects: Project[];
   notes: Record<string, Note[]>;
+  quickNotes: any[];
   preferences: any;
+  exportedAt: string;
+  version: string;
 }
 
 export interface ExportOptions {
@@ -65,15 +69,21 @@ class ExportService {
       notes[project.id] = noteService.getProjectNotes(project.id);
     });
 
+    const exportedAt = new Date().toISOString();
+    const version = '1.0.0';
+
     return {
       metadata: {
-        exportedAt: new Date().toISOString(),
-        version: '1.0.0',
+        exportedAt,
+        version,
         appName: 'Astral Notes',
       },
       projects,
       notes,
+      quickNotes: quickNotesService.getAllQuickNotes(),
       preferences: storageService.getPreferences(),
+      exportedAt,
+      version,
     };
   }
 
@@ -96,6 +106,82 @@ class ExportService {
     document.body.removeChild(link);
     
     URL.revokeObjectURL(url);
+  }
+
+  /**
+   * Export a single note as Markdown
+   */
+  public exportNoteAsMarkdown(noteId: string): string {
+    const note = noteService.getNoteById(noteId);
+    if (!note) {
+      throw new Error(`Note with ID ${noteId} not found`);
+    }
+
+    let markdown = `# ${note.title}\n\n`;
+    
+    if (note.tags && note.tags.length > 0) {
+      markdown += `**Tags:** ${note.tags.join(', ')}\n\n`;
+    }
+    
+    markdown += `**Created:** ${new Date(note.createdAt).toLocaleDateString()}\n`;
+    markdown += `**Last Updated:** ${new Date(note.updatedAt).toLocaleDateString()}\n\n`;
+    markdown += `---\n\n`;
+    markdown += note.content || '';
+    
+    return markdown;
+  }
+
+  /**
+   * Export projects as CSV
+   */
+  public exportProjectsAsCSV(projects: Project[]): string {
+    const headers = ['Title', 'Description', 'Status', 'Word Count', 'Note Count', 'Created At', 'Last Edited At'];
+    const rows = projects.map(project => {
+      // Get note count from project stats or default to 0
+      const stats = projectService.getProjectStats(project.id);
+      const noteCount = stats ? stats.noteCount || 0 : 0;
+      
+      return [
+        `"${project.title.replace(/"/g, '""')}"`,
+        `"${(project.description || '').replace(/"/g, '""')}"`,
+        project.status,
+        project.wordCount.toString(),
+        noteCount.toString(),
+        new Date(project.createdAt).toLocaleDateString(),
+        new Date(project.lastEditedAt).toLocaleDateString()
+      ];
+    });
+
+    return [headers.join(','), ...rows.map(row => row.join(','))].join('\n');
+  }
+
+  /**
+   * Get supported export formats
+   */
+  public getSupportedFormats(): string[] {
+    return ['json', 'markdown', 'csv', 'txt', 'pdf'];
+  }
+
+  /**
+   * Export a single project with all its data
+   */
+  public exportProject(projectId: string): { project: any; notes: any[]; exportedAt: string } {
+    const project = projectService.getProjectById(projectId);
+    if (!project) {
+      return {
+        project: { id: projectId, title: 'Project Not Found', description: '', status: 'unknown', wordCount: 0, noteCount: 0, createdAt: new Date().toISOString(), lastEditedAt: new Date().toISOString() },
+        notes: [],
+        exportedAt: new Date().toISOString()
+      };
+    }
+
+    const notes = noteService.getNotesByProject(projectId);
+    
+    return {
+      project,
+      notes,
+      exportedAt: new Date().toISOString()
+    };
   }
 
   /**

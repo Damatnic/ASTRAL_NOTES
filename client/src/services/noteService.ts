@@ -56,11 +56,18 @@ class NoteService {
   }
 
   /**
-   * Get note by ID
+   * Get note by ID - supports both (projectId, noteId) and (noteId) signatures
    */
-  public getNoteById(projectId: string, noteId: string): Note | null {
-    const notes = storageService.getProjectNotes(projectId);
-    return notes.find(n => n.id === noteId) || null;
+  public getNoteById(projectIdOrNoteId: string, noteId?: string): Note | null {
+    if (noteId) {
+      // Two parameter call: getNoteById(projectId, noteId)
+      const notes = storageService.getProjectNotes(projectIdOrNoteId);
+      return notes.find(n => n.id === noteId) || null;
+    } else {
+      // Single parameter call: getNoteById(noteId) - search across all notes
+      const allNotes = storageService.getAllNotes();
+      return allNotes.find(n => n.id === projectIdOrNoteId) || null;
+    }
   }
 
   /**
