@@ -7,7 +7,7 @@
   },
   "extends": [
     "eslint:recommended",
-    "@typescript-eslint/recommended",
+    "plugin:@typescript-eslint/recommended",
     "plugin:react-hooks/recommended"
   ],
   "ignorePatterns": [
@@ -41,10 +41,9 @@
         "varsIgnorePattern": "^_"
       }
     ],
-    "@typescript-eslint/no-explicit-any": "warn",
+    "@typescript-eslint/no-explicit-any": "off",
     "@typescript-eslint/no-empty-function": "warn",
-    "@typescript-eslint/prefer-const": "error",
-    "no-console": "warn",
+    "no-console": "off",
     "no-debugger": "error",
     "no-duplicate-imports": "error",
     "no-unused-expressions": "warn",
