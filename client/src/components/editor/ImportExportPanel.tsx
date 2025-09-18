@@ -962,12 +962,12 @@ export function ImportExportPanel({
           metadata
         }]}
         onImportComplete={(result) => {
-          console.log('Batch import completed:', result);
+          // Batch import completed successfully
           setShowBatchDialog(false);
           toast.success('Batch import completed successfully');
         }}
         onExportComplete={(result) => {
-          console.log('Batch export completed:', result);
+          // Batch export completed successfully
           setShowBatchDialog(false);
           toast.success('Batch export completed successfully');
         }}
@@ -987,7 +987,7 @@ export function ImportExportPanel({
                     cloudExportBlob.type.includes('text') ? 'txt' : 'file'}`}
           title="Export to Cloud Storage"
           onExportComplete={(result) => {
-            console.log('Cloud export completed:', result);
+            // Cloud export completed successfully
             setShowCloudDialog(false);
             setCloudExportBlob(null);
             if (result.success) {

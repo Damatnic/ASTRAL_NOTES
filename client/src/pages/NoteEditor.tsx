@@ -300,7 +300,7 @@ export function NoteEditor() {
       const success = await saveNote(note);
       if (success && editorPreferences.saveSound && editorPreferences.enableSounds) {
         // Play save sound (would be implemented with actual audio)
-        console.log('🔊 Save sound');
+        // Save sound played
       }
     } catch (error) {
       console.error('Manual save error:', error);
@@ -350,18 +350,18 @@ export function NoteEditor() {
   // Handle collaboration
   const handleShare = useCallback((shareSettings: any) => {
     // Implement sharing logic
-    console.log('Share settings:', shareSettings);
+    // Share settings configured
     toast.success('Share settings updated');
   }, [toast]);
   
   const handleCommentAdd = useCallback((comment: any) => {
     // Implement comment logic
-    console.log('Comment added:', comment);
+    // Comment added to note
   }, []);
   
   const handleAnnotationAdd = useCallback((annotation: any) => {
     // Implement annotation logic
-    console.log('Annotation added:', annotation);
+    // Annotation added to note
   }, []);
   
   // Toggle panel
@@ -815,7 +815,7 @@ export function NoteEditor() {
               onImport={handleImport}
               onExport={(format) => {
                 const exported = exportContent(format as any);
-                console.log(`Exported as ${format}:`, exported);
+                // Note exported successfully
               }}
             />
           )}
