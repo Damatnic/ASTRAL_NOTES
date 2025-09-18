@@ -2,6 +2,38 @@
 
 > *Where stories are born among the stars*
 
+## What's New
+
+New Features:
+- Comprehensive Story Editor for novels and long-form writing
+- Chapter management with drag-and-drop organization
+- Character tracking and development tools
+- Plot structure and story outline management
+- Timeline and world-building tools
+- Story creation modal with guided setup
+
+Enhanced Project Dashboard:
+- Added 'Create New' dropdown with Story/Novel option
+- Fixed note creation functionality
+- Improved project content management options
+
+Story Editor Features:
+- Multi-chapter organization and navigation
+- Character profiles with relationships and backstory
+- Plot point tracking (inciting incident, climax, etc.)
+- Word count tracking and writing goals
+- Chapter status management (draft, review, complete)
+- Rich text editing with story-specific toolbar
+- Story metadata management (genre, synopsis, theme)
+
+Technical Improvements:
+- New StoryEditor page component
+- CreateStoryModal with 3-step wizard
+- Enhanced routing for story management
+- Improved component architecture for long-form content
+
+This update transforms ASTRAL_NOTES into a professional novel-writing platform with advanced story development tools.
+
 A flagship-quality creative writing platform that transforms the writing experience with cosmic intelligence, stellar organization, and nebula-powered creativity. Astral Notes provides everything writers need to craft compelling narratives across the universe of imagination.
 
 [![Build Status](https://img.shields.io/badge/build-stellar-blue)](#)
