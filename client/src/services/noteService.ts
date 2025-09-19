@@ -82,18 +82,23 @@ class NoteService {
       const note: Note = {
         id: this.generateId(),
         projectId: data.projectId || 'default',
-        title: (data.title || '').trim() || 'Untitled',
-        content: (data.content || '').trim(),
+        title: (typeof data.title === 'string' ? data.title : '').trim() || 'Untitled',
+        content: (typeof data.content === 'string' ? data.content : '').trim(),
         type: data.type || 'note',
         tags: data.tags || [],
-        wordCount: this.calculateWordCount(data.content || ''),
+        wordCount: this.calculateWordCount(typeof data.content === 'string' ? data.content : ''),
         position: maxPosition + 1,
         createdAt: now,
         updatedAt: now,
       };
 
       const notes = [...existingNotes, note];
-      storageService.saveProjectNotes(note.projectId, notes);
+      
+      // Try to save, but continue even if storage fails
+      const saveResult = storageService.saveProjectNotes(note.projectId, notes);
+      if (!saveResult) {
+        console.error('Error creating note: Storage failed');
+      }
 
       // Update project word count and last edited time
       try {

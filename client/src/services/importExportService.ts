@@ -193,6 +193,84 @@ class ImportExportService {
   }
 
   /**
+   * Export simple content in specified format (for ImportExportPanel)
+   */
+  public async exportContent(
+    content: string,
+    format: 'md' | 'txt' | 'html' | 'docx' | 'pdf' | 'json' | 'epub' | 'mobi' | 'latex' | 'fdx' | 'fountain' | 'rtf',
+    options: {
+      title?: string;
+      author?: string;
+      metadata?: Record<string, any>;
+    } = {}
+  ): Promise<{ success: boolean; blob?: Blob; error?: string }> {
+    try {
+      let blob: Blob;
+      const filename = options.title || 'document';
+      
+      switch (format) {
+        case 'md':
+          const markdown = this.convertHtmlToMarkdown(content);
+          blob = new Blob([markdown], { type: 'text/markdown' });
+          break;
+          
+        case 'txt':
+          const text = this.stripHtmlTags(content);
+          blob = new Blob([text], { type: 'text/plain' });
+          break;
+          
+        case 'html':
+          const html = this.generateStandaloneHtml(content, options.title, options.author);
+          blob = new Blob([html], { type: 'text/html' });
+          break;
+          
+        case 'json':
+          const jsonData = {
+            title: options.title || 'Document',
+            content,
+            author: options.author,
+            exportedAt: new Date().toISOString(),
+            format: 'astral-notes',
+            metadata: options.metadata || {}
+          };
+          blob = new Blob([JSON.stringify(jsonData, null, 2)], { type: 'application/json' });
+          break;
+          
+        case 'latex':
+          const latex = this.convertToLatex(content, options.title, options.author);
+          blob = new Blob([latex], { type: 'application/x-tex' });
+          break;
+          
+        case 'fountain':
+          const fountain = this.convertToFountain(content, options.title, options.author);
+          blob = new Blob([fountain], { type: 'text/plain' });
+          break;
+          
+        case 'fdx':
+          const fdx = this.convertToFinalDraft(content, options.title, options.author);
+          blob = new Blob([fdx], { type: 'application/xml' });
+          break;
+          
+        case 'rtf':
+          const rtf = this.convertToRtf(content, options.title, options.author);
+          blob = new Blob([rtf], { type: 'application/rtf' });
+          break;
+          
+        default:
+          throw new Error(`Unsupported format: ${format}`);
+      }
+      
+      return { success: true, blob };
+    } catch (error) {
+      console.error('Export failed:', error);
+      return { 
+        success: false, 
+        error: error instanceof Error ? error.message : 'Unknown error' 
+      };
+    }
+  }
+
+  /**
    * Import a project from a file with advanced parsing
    */
   public async importProject(
@@ -2494,6 +2572,158 @@ ${this.escapeLatex(project.description)}\n\\end{abstract}
       .replace(/\\/g, '\\\\')
       .replace(/\{/g, '\\{')
       .replace(/\}/g, '\\}');
+  }
+
+  /**
+   * Helper methods for content export
+   */
+  private convertHtmlToMarkdown(html: string): string {
+    return html
+      .replace(/<h([1-6])>(.*?)<\/h[1-6]>/g, (_, level, text) => '#'.repeat(parseInt(level)) + ' ' + text + '\n\n')
+      .replace(/<strong>(.*?)<\/strong>/g, '**$1**')
+      .replace(/<em>(.*?)<\/em>/g, '*$1*')
+      .replace(/<code>(.*?)<\/code>/g, '`$1`')
+      .replace(/<blockquote>(.*?)<\/blockquote>/gs, (_, text) => '> ' + this.stripHtmlTags(text) + '\n\n')
+      .replace(/<ul>(.*?)<\/ul>/gs, (_, items) => {
+        return items.replace(/<li>(.*?)<\/li>/g, '- $1\n') + '\n';
+      })
+      .replace(/<ol>(.*?)<\/ol>/gs, (_, items) => {
+        let counter = 1;
+        return items.replace(/<li>(.*?)<\/li>/g, () => `${counter++}. $1\n`) + '\n';
+      })
+      .replace(/<a href="([^"]*)">(.*?)<\/a>/g, '[$2]($1)')
+      .replace(/<img src="([^"]*)"[^>]*alt="([^"]*)"[^>]*>/g, '![$2]($1)')
+      .replace(/<p>(.*?)<\/p>/g, '$1\n\n')
+      .replace(/<br\s*\/?>/g, '\n')
+      .replace(/<[^>]*>/g, '')
+      .replace(/\n{3,}/g, '\n\n')
+      .trim();
+  }
+
+  private stripHtmlTags(html: string): string {
+    return html
+      .replace(/<br\s*\/?>/g, '\n')
+      .replace(/<\/p>/g, '\n\n')
+      .replace(/<[^>]*>/g, '')
+      .replace(/\n{3,}/g, '\n\n')
+      .trim();
+  }
+
+  private generateStandaloneHtml(content: string, title?: string, author?: string): string {
+    return `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>${title || 'Document'}</title>
+    <style>
+        body {
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            line-height: 1.6;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem;
+            color: #333;
+        }
+        h1, h2, h3, h4, h5, h6 {
+            margin-top: 2rem;
+            margin-bottom: 1rem;
+            font-weight: 600;
+        }
+        p {
+            margin-bottom: 1rem;
+        }
+        blockquote {
+            border-left: 4px solid #e2e8f0;
+            padding-left: 1rem;
+            margin: 1rem 0;
+            font-style: italic;
+        }
+        code {
+            background: #f8fafc;
+            padding: 0.2rem 0.4rem;
+            border-radius: 0.25rem;
+            font-family: 'Fira Code', monospace;
+        }
+        pre {
+            background: #1e293b;
+            color: #e2e8f0;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            overflow-x: auto;
+        }
+        @media (max-width: 768px) {
+            body {
+                padding: 1rem;
+                font-size: 0.9rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    ${title ? `<h1>${title}</h1>` : ''}
+    ${author ? `<p class="author">By ${author}</p>` : ''}
+    ${content}
+</body>
+</html>`;
+  }
+
+  private convertToLatex(content: string, title?: string, author?: string): string {
+    const cleanContent = this.stripHtmlTags(content);
+    const escapedContent = this.escapeLatex(cleanContent);
+    
+    return `\\documentclass{article}
+\\usepackage[utf8]{inputenc}
+\\usepackage[T1]{fontenc}
+\\usepackage{geometry}
+\\geometry{margin=1in}
+
+${title ? `\\title{${this.escapeLatex(title)}}` : ''}
+${author ? `\\author{${this.escapeLatex(author)}}` : ''}
+\\date{\\today}
+
+\\begin{document}
+
+${title ? '\\maketitle' : ''}
+
+${escapedContent}
+
+\\end{document}`;
+  }
+
+  private convertToFountain(content: string, title?: string, author?: string): string {
+    const cleanContent = this.stripHtmlTags(content);
+    
+    let fountain = '';
+    if (title) fountain += `Title: ${title}\n`;
+    if (author) fountain += `Author: ${author}\n`;
+    fountain += `\n${cleanContent}`;
+    
+    return fountain;
+  }
+
+  private convertToFinalDraft(content: string, title?: string, author?: string): string {
+    const cleanContent = this.stripHtmlTags(content);
+    const escapedContent = this.escapeXml(cleanContent);
+    
+    return `<?xml version="1.0" encoding="UTF-8"?>
+<FinalDraft DocumentType="Script" Template="Standard Screenplay" Version="1">
+    <Content>
+        <Paragraph Type="Scene Heading">
+            <Text>${escapedContent}</Text>
+        </Paragraph>
+    </Content>
+</FinalDraft>`;
+  }
+
+  private convertToRtf(content: string, title?: string, author?: string): string {
+    const cleanContent = this.stripHtmlTags(content);
+    const escapedContent = this.escapeRtf(cleanContent);
+    
+    return `{\\rtf1\\ansi\\deff0 {\\fonttbl {\\f0 Times New Roman;}}
+${title ? `\\f0\\fs24\\b ${this.escapeRtf(title)}\\b0\\par` : ''}
+${author ? `\\f0\\fs20 By ${this.escapeRtf(author)}\\par\\par` : ''}
+\\f0\\fs20 ${escapedContent}}`;
   }
 
   /**

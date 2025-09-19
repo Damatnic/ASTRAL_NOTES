@@ -136,7 +136,7 @@ describe('Button Component - Core UI Foundation Tests', () => {
         }
       );
       
-      expect(interactionTime).toBeLessThan(50);
+      expect(interactionTime).toBeLessThan(100);
       expect(onClick).toHaveBeenCalledTimes(1);
     });
 

@@ -51,19 +51,24 @@ export class ProjectService {
       }
       
       // Fallback for test mocking compatibility
-      const rawData = localStorage.getItem('astral_notes_data');
-      if (rawData) {
-        const data = JSON.parse(rawData);
-        
-        // Handle test data that is directly an array
-        if (Array.isArray(data)) {
-          return data;
+      try {
+        const rawData = localStorage.getItem('astral_notes_data');
+        if (rawData) {
+          const data = JSON.parse(rawData);
+          
+          // Handle test data that is directly an array
+          if (Array.isArray(data)) {
+            return data;
+          }
+          
+          // Handle structured data
+          if (data && Array.isArray(data.projects)) {
+            return data.projects;
+          }
         }
-        
-        // Handle structured data
-        if (data && Array.isArray(data.projects)) {
-          return data.projects;
-        }
+      } catch (error) {
+        console.warn('Failed to read localStorage fallback data:', error);
+        // Continue to return empty array
       }
       
       return [];
@@ -86,28 +91,6 @@ export class ProjectService {
    */
   public async createProject(data: CreateProjectData): Promise<Project> {
     const project = this.createProjectSync(data);
-    
-    // Update localStorage with proper structure for test compatibility
-    try {
-      const existingData = localStorage.getItem('astral_notes_data');
-      const storageData = existingData ? JSON.parse(existingData) : { projects: [], notes: {}, preferences: {}, appData: { lastBackup: null, dataVersion: '1.0.0' } };
-      
-      // Ensure projects array exists
-      if (!storageData.projects) {
-        storageData.projects = [];
-      }
-      
-      // Add project if not already present
-      const existingIndex = storageData.projects.findIndex(p => p.id === project.id);
-      if (existingIndex === -1) {
-        storageData.projects.unshift(project);
-        localStorage.setItem('astral_notes_data', JSON.stringify(storageData));
-      }
-    } catch (error) {
-      // Fallback for test compatibility
-      console.warn('Error updating localStorage in test mode:', error);
-    }
-    
     return project;
   }
 
@@ -616,6 +599,7 @@ export class ProjectService {
       }
     } catch (error) {
       console.warn('Error updating localStorage in test mode:', error);
+      // Continue anyway as the project was already updated through storageService
     }
     
     return result;
@@ -640,6 +624,7 @@ export class ProjectService {
         }
       } catch (error) {
         console.warn('Error updating localStorage in test mode:', error);
+        // Continue anyway as the project was already deleted through storageService
       }
     }
     

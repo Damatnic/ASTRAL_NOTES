@@ -590,6 +590,9 @@ class AIProviderService {
 
   private estimateTokens(text: string): number {
     // Rough estimation: ~4 characters per token
+    if (!text || typeof text !== 'string') {
+      return 0;
+    }
     return Math.ceil(text.length / 4);
   }
 

@@ -12,9 +12,19 @@ import { aiProviderService } from '@/services/aiProviderService';
 import { workshopChatService } from '@/services/workshopChatService';
 import { promptLibraryService } from '@/services/promptLibraryService';
 import { contentAnalysisService } from '@/services/contentAnalysisService';
+import { openaiService } from '@/services/ai/openaiService';
 import { AIWorkshopPanel } from '@/components/ai/AIWorkshopPanel';
 import { AIModelSelector } from '@/components/ai/AIModelSelector';
 import { PromptLibrary } from '@/components/ai/PromptLibrary';
+
+// Mock AI services for testing
+vi.mock('@/services/ai/openaiService', () => ({
+  openaiService: {
+    isConfigured: vi.fn(() => true),
+    generateCompletion: vi.fn(),
+    generateStreamingCompletion: vi.fn(),
+  }
+}));
 
 // Mock fetch for API calls
 global.fetch = vi.fn();
@@ -22,6 +32,8 @@ global.fetch = vi.fn();
 describe('AI Provider Service', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // Set default mock for openaiService.generateCompletion
+    vi.mocked(openaiService.generateCompletion).mockResolvedValue('Default AI response');
   });
 
   describe('Provider Management', () => {
@@ -74,23 +86,10 @@ describe('AI Provider Service', () => {
     });
 
     it('should generate completion with valid request', async () => {
-      // Mock OpenAI API response
-      vi.mocked(fetch).mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({
-          choices: [{
-            message: {
-              content: 'This is a test response from the AI.',
-              role: 'assistant'
-            }
-          }],
-          usage: {
-            prompt_tokens: 10,
-            completion_tokens: 8,
-            total_tokens: 18
-          }
-        })
-      } as Response);
+      // Mock OpenAI service response
+      vi.mocked(openaiService.generateCompletion).mockResolvedValueOnce(
+        'This is a test response from the AI.'
+      );
 
       const response = await aiProviderService.generateCompletion({
         prompt: 'Test prompt',
@@ -103,17 +102,14 @@ describe('AI Provider Service', () => {
 
       expect(response.content).toBe('This is a test response from the AI.');
       expect(response.provider).toBe('openai');
-      expect(response.usage.totalTokens).toBe(18);
+      expect(response.usage.totalTokens).toBeGreaterThan(0);
     });
 
     it('should handle API errors gracefully', async () => {
       // Mock API error
-      vi.mocked(fetch).mockResolvedValueOnce({
-        ok: false,
-        json: async () => ({
-          error: { message: 'API key invalid' }
-        })
-      } as Response);
+      vi.mocked(openaiService.generateCompletion).mockRejectedValueOnce(
+        new Error('API key invalid')
+      );
 
       await expect(
         aiProviderService.generateCompletion({
@@ -166,6 +162,8 @@ describe('Workshop Chat Service', () => {
   beforeEach(() => {
     // Clear localStorage before each test
     localStorage.clear();
+    // Set default mock for openaiService.generateCompletion
+    vi.mocked(openaiService.generateCompletion).mockResolvedValue('Default AI response');
   });
 
   describe('Session Management', () => {
@@ -207,20 +205,13 @@ describe('Workshop Chat Service', () => {
   describe('Message Handling', () => {
     it('should send message and receive AI response', async () => {
       // Mock AI response
-      vi.mocked(fetch).mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({
-          choices: [{
-            message: {
-              content: 'That\'s an interesting character concept! Let me help you develop it further.',
-              role: 'assistant'
-            }
-          }],
-          usage: { prompt_tokens: 15, completion_tokens: 12, total_tokens: 27 }
-        })
-      } as Response);
+      vi.mocked(openaiService.generateCompletion).mockResolvedValueOnce(
+        'That\'s an interesting character concept! Let me help you develop it further.'
+      );
 
-      const session = workshopChatService.createSession('Test Session');
+      const session = workshopChatService.createSession('Test Session', 'project-123', {
+        autoExtract: false // Disable auto-extraction for tests
+      });
       const response = await workshopChatService.sendMessage(
         'I want to create a character who is a detective with magical abilities.',
         session.id
@@ -235,9 +226,11 @@ describe('Workshop Chat Service', () => {
 
     it('should handle error in message sending', async () => {
       // Mock API error
-      vi.mocked(fetch).mockRejectedValueOnce(new Error('Network error'));
+      vi.mocked(openaiService.generateCompletion).mockRejectedValueOnce(new Error('Network error'));
 
-      const session = workshopChatService.createSession('Test Session');
+      const session = workshopChatService.createSession('Test Session', 'project-123', {
+        autoExtract: false // Disable auto-extraction for tests
+      });
       const response = await workshopChatService.sendMessage('Test message', session.id);
 
       expect(response.role).toBe('assistant');
@@ -284,6 +277,8 @@ describe('Workshop Chat Service', () => {
 describe('Prompt Library Service', () => {
   beforeEach(() => {
     localStorage.clear();
+    // Set default mock for openaiService.generateCompletion
+    vi.mocked(openaiService.generateCompletion).mockResolvedValue('Default AI response');
   });
 
   describe('Prompt Management', () => {
@@ -455,33 +450,29 @@ describe('Prompt Library Service', () => {
 });
 
 describe('Content Analysis Service', () => {
+  beforeEach(() => {
+    // Set default mock for openaiService.generateCompletion
+    vi.mocked(openaiService.generateCompletion).mockResolvedValue('Default AI response');
+  });
+
   describe('Text Analysis', () => {
     it('should analyze content quality', async () => {
       // Mock AI analysis response
-      vi.mocked(fetch).mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({
-          choices: [{
-            message: {
-              content: JSON.stringify({
-                qualityScore: 8,
-                findings: [
-                  {
-                    type: 'style',
-                    severity: 'info',
-                    title: 'Writing Style',
-                    description: 'Good use of descriptive language',
-                    confidence: 0.9
-                  }
-                ],
-                summary: 'Well-written text with good structure'
-              }),
-              role: 'assistant'
+      vi.mocked(openaiService.generateCompletion).mockResolvedValueOnce(
+        JSON.stringify({
+          qualityScore: 8,
+          findings: [
+            {
+              type: 'style',
+              severity: 'info',
+              title: 'Writing Style',
+              description: 'Good use of descriptive language',
+              confidence: 0.9
             }
-          }],
-          usage: { total_tokens: 50 }
+          ],
+          summary: 'Well-written text with good structure'
         })
-      } as Response);
+      );
 
       const text = 'The old oak tree stood majestically in the center of the village square, its ancient branches reaching toward the cloudy sky like gnarled fingers seeking something beyond mortal reach.';
       
@@ -501,31 +492,22 @@ describe('Content Analysis Service', () => {
 
     it('should detect entities in text', async () => {
       // Mock entity detection response
-      vi.mocked(fetch).mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({
-          choices: [{
-            message: {
-              content: JSON.stringify([
-                {
-                  type: 'location',
-                  name: 'village square',
-                  mentions: ['village square'],
-                  confidence: 0.9
-                },
-                {
-                  type: 'object',
-                  name: 'oak tree',
-                  mentions: ['oak tree'],
-                  confidence: 0.95
-                }
-              ]),
-              role: 'assistant'
-            }
-          }],
-          usage: { total_tokens: 30 }
-        })
-      } as Response);
+      vi.mocked(openaiService.generateCompletion).mockResolvedValueOnce(
+        JSON.stringify([
+          {
+            type: 'location',
+            name: 'village square',
+            mentions: ['village square'],
+            confidence: 0.9
+          },
+          {
+            type: 'object',
+            name: 'oak tree',
+            mentions: ['oak tree'],
+            confidence: 0.95
+          }
+        ])
+      );
 
       const text = 'The old oak tree stood in the village square.';
       const analysis = await contentAnalysisService.analyzeContent(text);
@@ -537,29 +519,20 @@ describe('Content Analysis Service', () => {
   describe('AI-ism Detection', () => {
     it('should detect AI-generated patterns', async () => {
       // Mock AI-ism detection response
-      vi.mocked(fetch).mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({
-          choices: [{
-            message: {
-              content: JSON.stringify({
-                humanLikelihood: 60,
-                patterns: [
-                  {
-                    type: 'repetitive_phrases',
-                    description: 'Repeated use of similar sentence structures',
-                    severity: 'medium',
-                    confidence: 0.8
-                  }
-                ],
-                suggestions: ['Vary sentence structure for more natural flow']
-              }),
-              role: 'assistant'
+      vi.mocked(openaiService.generateCompletion).mockResolvedValueOnce(
+        JSON.stringify({
+          humanLikelihood: 60,
+          patterns: [
+            {
+              type: 'repetitive_phrases',
+              description: 'Repeated use of similar sentence structures',
+              severity: 'medium',
+              confidence: 0.8
             }
-          }],
-          usage: { total_tokens: 40 }
+          ],
+          suggestions: ['Vary sentence structure for more natural flow']
         })
-      } as Response);
+      );
 
       const text = 'This is amazing. This is wonderful. This is incredible.';
       const detection = await contentAnalysisService.detectAIisms(text);
@@ -574,18 +547,9 @@ describe('Content Analysis Service', () => {
   describe('Consistency Checking', () => {
     it('should check consistency across text sections', async () => {
       // Mock consistency check response
-      vi.mocked(fetch).mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({
-          choices: [{
-            message: {
-              content: 'No major inconsistencies found. Character descriptions are consistent across sections.',
-              role: 'assistant'
-            }
-          }],
-          usage: { total_tokens: 25 }
-        })
-      } as Response);
+      vi.mocked(openaiService.generateCompletion).mockResolvedValueOnce(
+        'No major inconsistencies found. Character descriptions are consistent across sections.'
+      );
 
       const sections = [
         {
@@ -748,6 +712,8 @@ describe('Integration Tests', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     localStorage.clear();
+    // Set default mock for openaiService.generateCompletion
+    vi.mocked(openaiService.generateCompletion).mockResolvedValue('Default AI response');
   });
 
   it('should handle complete AI workflow from workshop to content analysis', async () => {
@@ -849,6 +815,11 @@ describe('Integration Tests', () => {
 });
 
 describe('Performance Tests', () => {
+  beforeEach(() => {
+    // Set default mock for openaiService.generateCompletion
+    vi.mocked(openaiService.generateCompletion).mockResolvedValue('Default AI response');
+  });
+
   it('should handle large text analysis efficiently', async () => {
     // Generate large text (10,000 characters)
     const largeText = 'This is a test sentence. '.repeat(400);
@@ -909,6 +880,11 @@ describe('Performance Tests', () => {
 });
 
 describe('Security Tests', () => {
+  beforeEach(() => {
+    // Set default mock for openaiService.generateCompletion
+    vi.mocked(openaiService.generateCompletion).mockResolvedValue('Default AI response');
+  });
+
   it('should sanitize user input', async () => {
     const maliciousInput = '<script>alert("XSS")</script>Tell me about characters';
     

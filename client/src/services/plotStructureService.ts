@@ -739,44 +739,63 @@ export class PlotStructureService extends BrowserEventEmitter {
       settings: this.settings
     };
 
-    localStorage.setItem(`plotStructure_${this.activeProjectId}`, JSON.stringify(data));
+    try {
+      localStorage.setItem(`plotStructure_${this.activeProjectId}`, JSON.stringify(data));
+    } catch (error) {
+      console.warn('Failed to save plot structure data to localStorage:', error);
+      // Service continues to function without persistent storage
+    }
   }
 
   private loadUserData(): void {
     if (!this.activeProjectId) return;
 
-    const saved = localStorage.getItem(`plotStructure_${this.activeProjectId}`);
-    if (!saved) return;
-
     try {
-      const data = JSON.parse(saved);
-      
-      this.plotPoints.clear();
-      if (data.plotPoints) {
-        data.plotPoints.forEach(([id, plotPoint]: [string, PlotPoint]) => {
-          this.plotPoints.set(id, plotPoint);
-        });
-      }
+      const saved = localStorage.getItem(`plotStructure_${this.activeProjectId}`);
+      if (!saved) return;
 
-      this.storyArcs.clear();
-      if (data.storyArcs) {
-        data.storyArcs.forEach(([id, arc]: [string, StoryArc]) => {
-          this.storyArcs.set(id, arc);
-        });
-      }
+      try {
+        const data = JSON.parse(saved);
+        
+        this.plotPoints.clear();
+        if (data.plotPoints) {
+          data.plotPoints.forEach(([id, plotPoint]: [string, PlotPoint]) => {
+            this.plotPoints.set(id, plotPoint);
+          });
+        }
 
-      this.characterDevelopments.clear();
-      if (data.characterDevelopments) {
-        data.characterDevelopments.forEach(([id, dev]: [string, CharacterDevelopment]) => {
-          this.characterDevelopments.set(id, dev);
-        });
-      }
+        this.storyArcs.clear();
+        if (data.storyArcs) {
+          data.storyArcs.forEach(([id, arc]: [string, StoryArc]) => {
+            this.storyArcs.set(id, arc);
+          });
+        }
 
-      if (data.settings) {
-        this.settings = { ...this.getDefaultSettings(), ...data.settings };
+        this.characterDevelopments.clear();
+        if (data.characterDevelopments) {
+          data.characterDevelopments.forEach(([id, dev]: [string, CharacterDevelopment]) => {
+            this.characterDevelopments.set(id, dev);
+          });
+        }
+
+        if (data.settings) {
+          this.settings = { ...this.getDefaultSettings(), ...data.settings };
+        }
+      } catch (parseError) {
+        console.warn('Failed to parse plot structure data, using defaults:', parseError);
+        // Initialize with defaults instead of failing
+        this.plotPoints.clear();
+        this.storyArcs.clear();
+        this.characterDevelopments.clear();
+        this.settings = this.getDefaultSettings();
       }
     } catch (error) {
-      console.error('Failed to load plot structure data:', error);
+      console.warn('Failed to access localStorage for plot structure data:', error);
+      // Initialize with defaults
+      this.plotPoints.clear();
+      this.storyArcs.clear();
+      this.characterDevelopments.clear();
+      this.settings = this.getDefaultSettings();
     }
   }
 

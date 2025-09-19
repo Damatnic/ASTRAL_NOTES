@@ -127,24 +127,35 @@ export class AIWritingCompanionService {
   }
 
   private loadDataFromStorage(): void {
-    const storedGoals = localStorage.getItem('aiWritingCompanion_goals');
-    const storedPersonality = localStorage.getItem('aiWritingCompanion_personality');
-    
-    if (storedGoals) {
-      try {
-        this.writingGoals = JSON.parse(storedGoals);
-      } catch {
-        this.writingGoals = [];
+    try {
+      const storedGoals = localStorage.getItem('aiWritingCompanion_goals');
+      if (storedGoals) {
+        try {
+          this.writingGoals = JSON.parse(storedGoals);
+        } catch {
+          console.warn('Failed to parse stored goals, using defaults');
+          this.writingGoals = [];
+        }
       }
+    } catch (error) {
+      console.warn('Failed to access localStorage for goals:', error);
+      this.writingGoals = [];
     }
 
-    if (storedPersonality) {
-      try {
-        const personalityId = JSON.parse(storedPersonality);
-        this.currentPersonality = this.personalities.find(p => p.id === personalityId) || null;
-      } catch {
-        // Fall back to default
+    try {
+      const storedPersonality = localStorage.getItem('aiWritingCompanion_personality');
+      if (storedPersonality) {
+        try {
+          const personalityId = JSON.parse(storedPersonality);
+          this.currentPersonality = this.personalities.find(p => p.id === personalityId) || null;
+        } catch {
+          console.warn('Failed to parse stored personality, using default');
+          // Fall back to default
+        }
       }
+    } catch (error) {
+      console.warn('Failed to access localStorage for personality:', error);
+      // Fall back to default
     }
   }
 
@@ -221,7 +232,12 @@ export class AIWritingCompanionService {
     const personality = this.personalities.find(p => p.id === personalityId);
     if (personality) {
       this.currentPersonality = personality;
-      localStorage.setItem('aiWritingCompanion_personality', JSON.stringify(personalityId));
+      try {
+        localStorage.setItem('aiWritingCompanion_personality', JSON.stringify(personalityId));
+      } catch (error) {
+        console.warn('Failed to save personality preference:', error);
+        // Continue anyway as the personality is still switched in memory
+      }
       return true;
     }
     return false;
@@ -707,11 +723,16 @@ export class AIWritingCompanionService {
   private saveDataToStorage(): void {
     try {
       localStorage.setItem('aiWritingCompanion_goals', JSON.stringify(this.writingGoals));
+    } catch (error) {
+      console.warn('Failed to save goals to localStorage:', error);
+    }
+
+    try {
       if (this.currentPersonality) {
         localStorage.setItem('aiWritingCompanion_personality', JSON.stringify(this.currentPersonality.id));
       }
     } catch (error) {
-      console.warn('Failed to save AI Writing Companion data:', error);
+      console.warn('Failed to save personality to localStorage:', error);
     }
   }
 }

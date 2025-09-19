@@ -5,14 +5,8 @@ import { vi } from 'vitest';
 import { ProjectService } from '../../services/projectService';
 import { resetAllMocks, createMockProject, createMockStory, createMockCharacter } from '../testSetup';
 
-// Mock localStorage
-const mockLocalStorage = {
-  getItem: vi.fn(),
-  setItem: vi.fn(),
-  removeItem: vi.fn(),
-  clear: vi.fn(),
-};
-Object.defineProperty(window, 'localStorage', { value: mockLocalStorage });
+// Use the global localStorage mock from testSetup.ts
+const mockLocalStorage = localStorage as any;
 
 // Mock UUID generation
 vi.mock('uuid', () => ({
@@ -27,8 +21,7 @@ describe('ProjectService', () => {
     projectService = ProjectService.getInstance();
     
     // Reset service state
-    (projectService as any).projects = new Map();
-    (projectService as any).currentProject = null;
+    (projectService as any).eventListeners = {};
   });
 
   describe('Project Management', () => {
@@ -543,29 +536,47 @@ describe('ProjectService', () => {
     });
 
     it('emits events on project update', async () => {
-      const mockProject = createMockProject();
-      mockLocalStorage.getItem.mockReturnValue(JSON.stringify([mockProject]));
+      // Ensure clean localStorage state
+      localStorage.clear();
+      
+      // First create a project
+      const createdProject = await projectService.createProject({
+        title: 'Test Project',
+        userId: 'test-user-1',
+      });
+
+      // Verify the project was created and can be retrieved
+      const retrievedProject = await projectService.getProject(createdProject.id);
+      expect(retrievedProject).not.toBeNull();
+      expect(retrievedProject!.title).toBe('Test Project');
 
       const onProjectUpdated = vi.fn();
       projectService.on('project-updated', onProjectUpdated);
 
-      const updatedProject = await projectService.updateProject(mockProject.id, {
+      const updatedProject = await projectService.updateProject(createdProject.id, {
         title: 'Updated Title',
       });
 
       expect(onProjectUpdated).toHaveBeenCalledWith(updatedProject);
+      expect(updatedProject.title).toBe('Updated Title');
     });
 
     it('emits events on project deletion', async () => {
-      const mockProject = createMockProject();
-      mockLocalStorage.getItem.mockReturnValue(JSON.stringify([mockProject]));
+      // Ensure clean localStorage state
+      localStorage.clear();
+      
+      // First create a project
+      const createdProject = await projectService.createProject({
+        title: 'Test Project',
+        userId: 'test-user-1',
+      });
 
       const onProjectDeleted = vi.fn();
       projectService.on('project-deleted', onProjectDeleted);
 
-      await projectService.deleteProject(mockProject.id);
+      await projectService.deleteProject(createdProject.id);
 
-      expect(onProjectDeleted).toHaveBeenCalledWith(mockProject.id);
+      expect(onProjectDeleted).toHaveBeenCalledWith(createdProject.id);
     });
   });
 });

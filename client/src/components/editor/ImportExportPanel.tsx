@@ -793,6 +793,7 @@ export function ImportExportPanel({
                               onClick={() => handleExport(option.format)}
                               disabled={isExporting}
                               className="flex-1"
+                              data-testid={`export-${option.format}`}
                             >
                               <Download className="h-4 w-4 mr-1" />
                               Download
@@ -839,6 +840,7 @@ export function ImportExportPanel({
                 onClick={() => copyToClipboard('md')}
                 disabled={!content.trim()}
                 className="flex items-center gap-2"
+                data-testid="copy-markdown"
               >
                 {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
                 Copy as Markdown
@@ -849,6 +851,7 @@ export function ImportExportPanel({
                 onClick={() => copyToClipboard('txt')}
                 disabled={!content.trim()}
                 className="flex items-center gap-2"
+                data-testid="copy-text"
               >
                 <Copy className="h-4 w-4" />
                 Copy as Text
@@ -872,6 +875,7 @@ export function ImportExportPanel({
               onChange={handleFileImport}
               className="hidden"
               disabled={isImporting}
+              data-testid="file-input"
             />
             <Button
               variant="outline"

@@ -145,6 +145,40 @@ export class PersonalKnowledgeAIService {
   }
 
   /**
+   * Synthesize content from multiple knowledge entries
+   */
+  public synthesizeContent(topic: string, entryIds: string[]): string {
+    const entries = entryIds
+      .map(id => this.knowledgeBase.get(id))
+      .filter(Boolean) as KnowledgeEntry[];
+
+    if (entries.length === 0) {
+      return `No knowledge entries found for synthesizing content about "${topic}".`;
+    }
+
+    // Extract key information from entries
+    const allContent = entries.map(entry => entry.content).join(' ');
+    const allTags = [...new Set(entries.flatMap(entry => entry.tags))];
+    const categories = [...new Set(entries.map(entry => entry.category))];
+
+    // Create a synthesized summary
+    const synthesis = [
+      `Synthesis on "${topic}":`,
+      '',
+      `Based on ${entries.length} knowledge entries covering ${categories.join(', ')} categories.`,
+      '',
+      `Key themes: ${allTags.slice(0, 5).join(', ')}`,
+      '',
+      'Summary:',
+      this.extractKeySentences(allContent, 3).join(' '),
+      '',
+      `Related entries: ${entries.map(e => e.title).join(', ')}`
+    ].join('\n');
+
+    return synthesis;
+  }
+
+  /**
    * Get knowledge statistics
    */
   public getStatistics(): {
@@ -346,6 +380,23 @@ export class PersonalKnowledgeAIService {
       .split(/\W+/)
       .filter(word => word.length > 3)
       .slice(0, 10);
+  }
+
+  private extractKeySentences(text: string, count: number): string[] {
+    const sentences = text.split(/[.!?]+/).filter(s => s.trim().length > 10);
+    
+    if (sentences.length <= count) {
+      return sentences.map(s => s.trim());
+    }
+
+    // Simple extraction: take first, middle, and last sentences
+    const indices = [
+      0,
+      Math.floor(sentences.length / 2),
+      sentences.length - 1
+    ].slice(0, count);
+
+    return indices.map(i => sentences[i].trim()).filter(Boolean);
   }
 }
 

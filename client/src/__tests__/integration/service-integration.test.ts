@@ -30,7 +30,10 @@ vi.mock('../../services/aiWritingCompanion', () => ({
 
 vi.mock('../../services/offlineService', () => ({
   OfflineService: {
-    saveDocument: vi.fn(() => Promise.resolve({ id: '123', savedAt: new Date() })),
+    saveDocument: vi.fn((doc) => Promise.resolve({ 
+      id: doc?.id || '123', 
+      savedAt: new Date() 
+    })),
     getDocument: vi.fn(() => Promise.resolve({ id: '123', content: 'test' })),
     syncChanges: vi.fn(() => Promise.resolve({ synced: true, conflicts: [] })),
     isOnline: vi.fn(() => true),
@@ -49,9 +52,19 @@ vi.mock('../../services/api', () => ({
 
 vi.mock('../../services/advancedSearchService', () => ({
   AdvancedSearchService: {
-    search: vi.fn(() => Promise.resolve({ results: [], total: 0 })),
-    indexDocument: vi.fn(() => Promise.resolve()),
-    updateIndex: vi.fn(() => Promise.resolve()),
+    search: vi.fn((query, options = {}) => Promise.resolve({ 
+      results: [
+        { id: '123', title: 'Test Document', content: 'Document content', score: 0.95, type: 'document' },
+        { id: 'char-1', name: 'Hero', description: 'Main character', score: 0.90, type: 'character' },
+        { id: 'loc-1', name: 'Castle', description: 'Medieval fortress', score: 0.85, type: 'location' },
+      ], 
+      total: 3,
+      searchTime: 0.1,
+      query,
+      options
+    })),
+    indexDocument: vi.fn(() => Promise.resolve(true)),
+    updateIndex: vi.fn(() => Promise.resolve(true)),
   }
 }));
 
@@ -60,6 +73,16 @@ vi.mock('../../services/importExportService', () => ({
     exportProject: vi.fn(() => Promise.resolve({ success: true, data: 'exported' })),
     importProject: vi.fn(() => Promise.resolve({ success: true, projectId: '123' })),
     validateFile: vi.fn(() => Promise.resolve({ valid: true })),
+  }
+}));
+
+vi.mock('../../services/codexService', () => ({
+  CodexService: {
+    search: vi.fn((query) => Promise.resolve([
+      { id: 'codex-1', title: 'Medieval Castle', content: 'A fortified structure', type: 'reference' }
+    ])),
+    addEntry: vi.fn(() => Promise.resolve({ id: 'codex-123' })),
+    getEntry: vi.fn(() => Promise.resolve({ id: 'codex-123', title: 'Test Entry' })),
   }
 }));
 
@@ -97,6 +120,189 @@ const mockUser = {
   email: 'test@example.com',
   name: 'Test User',
   preferences: { theme: 'light', autoSave: true },
+};
+
+// Shared test functions for cross-scenario usage
+const testAIServiceIntegration = async (): Promise<ServiceTestResult> => {
+  const startTime = performance.now();
+  const errors: Error[] = [];
+
+  try {
+    // Import AI services
+    const { AIWritingCompanion } = await import('../../services/aiWritingCompanion');
+    
+    // Test AI service chain: Text Analysis → Suggestions → Improvements
+    const text = 'The quick brown fox jumps over the lazy dog.';
+    
+    // Step 1: Analyze text
+    const analysis = await AIWritingCompanion.analyzeText(text);
+    expect(analysis.score).toBeGreaterThan(0);
+    expect(analysis.issues).toBeInstanceOf(Array);
+    
+    // Step 2: Get suggestions
+    const suggestions = await AIWritingCompanion.getSuggestions(text);
+    expect(suggestions).toBeInstanceOf(Array);
+    expect(suggestions.length).toBeGreaterThan(0);
+    
+    // Step 3: Improve text
+    const improvedText = await AIWritingCompanion.improveText(text);
+    expect(improvedText).toBeTruthy();
+    expect(typeof improvedText).toBe('string');
+
+    const executionTime = performance.now() - startTime;
+    
+    return {
+      serviceName: 'AI_Service_Integration',
+      passed: true,
+      executionTime,
+      errors,
+      metrics: {
+        responseTime: executionTime,
+        memoryUsage: (process.memoryUsage().heapUsed / 1024 / 1024),
+        throughput: 3 / (executionTime / 1000), // 3 operations
+      },
+    };
+  } catch (error) {
+    errors.push(error as Error);
+    return {
+      serviceName: 'AI_Service_Integration',
+      passed: false,
+      executionTime: performance.now() - startTime,
+      errors,
+    };
+  }
+};
+
+const testContentManagementFlow = async (): Promise<ServiceTestResult> => {
+  const startTime = performance.now();
+  const errors: Error[] = [];
+
+  try {
+    // Import required services
+    const { apiClient } = await import('../../services/api');
+    const { OfflineService } = await import('../../services/offlineService');
+    const { AdvancedSearchService } = await import('../../services/advancedSearchService');
+    
+    const mockDocument = {
+      id: 'doc-123',
+      title: 'Test Document',
+      content: 'Document content for testing',
+      projectId: 'project-123',
+    };
+    
+    // Workflow: Create → Save → Index → Search → Update → Sync
+    
+    // Step 1: Create content via API
+    const createResponse = await apiClient.post('/documents', mockDocument);
+    expect(createResponse.data).toBeDefined();
+    
+    // Step 2: Save to offline storage
+    const savedDoc = await OfflineService.saveDocument(mockDocument);
+    expect(savedDoc.id).toBe(mockDocument.id);
+    expect(savedDoc.savedAt).toBeInstanceOf(Date);
+    
+    // Step 3: Index for search
+    await AdvancedSearchService.indexDocument(mockDocument);
+    
+    // Step 4: Search for content
+    const searchResults = await AdvancedSearchService.search('Document content');
+    expect(searchResults.results).toBeInstanceOf(Array);
+    
+    // Step 5: Update content
+    const updatedDoc = { ...mockDocument, content: 'Updated content' };
+    const updateResponse = await apiClient.put(`/documents/${mockDocument.id}`, updatedDoc);
+    expect(updateResponse.data).toBeDefined();
+    
+    // Step 6: Sync changes
+    const syncResult = await OfflineService.syncChanges();
+    expect(syncResult.synced).toBe(true);
+
+    const executionTime = performance.now() - startTime;
+    
+    return {
+      serviceName: 'Content_Management_Flow',
+      passed: true,
+      executionTime,
+      errors,
+      metrics: {
+        responseTime: executionTime,
+        memoryUsage: (process.memoryUsage().heapUsed / 1024 / 1024),
+        throughput: 6 / (executionTime / 1000), // 6 operations
+      },
+    };
+  } catch (error) {
+    errors.push(error as Error);
+    return {
+      serviceName: 'Content_Management_Flow',
+      passed: false,
+      executionTime: performance.now() - startTime,
+      errors,
+    };
+  }
+};
+
+const testOfflineSyncIntegration = async (): Promise<ServiceTestResult> => {
+  const startTime = performance.now();
+  const errors: Error[] = [];
+
+  try {
+    const { OfflineService } = await import('../../services/offlineService');
+    const { apiClient } = await import('../../services/api');
+    
+    const mockDocument = {
+      id: 'doc-offline-123',
+      title: 'Offline Test Document',
+      content: 'Content created offline',
+      projectId: 'project-123',
+    };
+
+    // Offline sync workflow
+    
+    // Step 1: Simulate going offline
+    OfflineService.isOnline = vi.fn(() => false);
+    
+    // Step 2: Save document offline
+    const offlineDoc = await OfflineService.saveDocument(mockDocument);
+    expect(offlineDoc.id).toBe(mockDocument.id);
+    
+    // Step 3: Make changes while offline
+    const updatedDoc = { ...mockDocument, content: 'Updated while offline' };
+    await OfflineService.saveDocument(updatedDoc);
+    
+    // Step 4: Get queued changes
+    const queuedChanges = OfflineService.getQueuedChanges();
+    expect(queuedChanges).toBeInstanceOf(Array);
+    
+    // Step 5: Simulate going online
+    OfflineService.isOnline = vi.fn(() => true);
+    
+    // Step 6: Sync all changes
+    const syncResult = await OfflineService.syncChanges();
+    expect(syncResult.synced).toBe(true);
+    expect(syncResult.conflicts).toBeInstanceOf(Array);
+
+    const executionTime = performance.now() - startTime;
+    
+    return {
+      serviceName: 'Offline_Sync_Integration',
+      passed: true,
+      executionTime,
+      errors,
+      metrics: {
+        responseTime: executionTime,
+        memoryUsage: (process.memoryUsage().heapUsed / 1024 / 1024),
+        throughput: 6 / (executionTime / 1000), // 6 operations
+      },
+    };
+  } catch (error) {
+    errors.push(error as Error);
+    return {
+      serviceName: 'Offline_Sync_Integration',
+      passed: false,
+      executionTime: performance.now() - startTime,
+      errors,
+    };
+  }
 };
 
 const mockProject = {

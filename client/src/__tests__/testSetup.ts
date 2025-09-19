@@ -188,16 +188,28 @@ global.Blob = class MockBlob {
     return this.options.type || '';
   }
   
-  text = vi.fn().mockResolvedValue('mock-text-content');
-  arrayBuffer = vi.fn().mockResolvedValue(new ArrayBuffer(0));
+  text = vi.fn().mockImplementation(() => {
+    // Return the actual content from parts
+    const content = this.parts.join('');
+    return Promise.resolve(content);
+  });
+  
+  arrayBuffer = vi.fn().mockImplementation(() => {
+    const content = this.parts.join('');
+    const buffer = new ArrayBuffer(content.length);
+    const view = new Uint8Array(buffer);
+    for (let i = 0; i < content.length; i++) {
+      view[i] = content.charCodeAt(i);
+    }
+    return Promise.resolve(buffer);
+  });
+  
   stream = vi.fn();
-  slice = vi.fn().mockReturnValue({
-    size: 0,
-    type: '',
-    text: vi.fn().mockResolvedValue('mock-text-content'),
-    arrayBuffer: vi.fn().mockResolvedValue(new ArrayBuffer(0)),
-    stream: vi.fn(),
-    slice: vi.fn(),
+  
+  slice = vi.fn().mockImplementation((start = 0, end = this.size, contentType = '') => {
+    const content = this.parts.join('');
+    const slicedContent = content.slice(start, end);
+    return new (global.Blob as any)([slicedContent], { type: contentType });
   });
 } as any;
 
@@ -340,11 +352,38 @@ export const createMockProject = (overrides: any = {}) => ({
   id: 'test-project-1',
   title: 'Test Project',
   description: 'A test project for unit tests',
-  createdAt: '2024-01-01T00:00:00.000Z',
-  updatedAt: '2024-01-01T00:00:00.000Z',
+  userId: 'test-user-1',
+  status: 'writing' as const,
   isPublic: false,
   tags: ['test'],
+  genre: 'fantasy',
+  stories: [],
+  projectNotes: [],
+  plotboard: {
+    id: 'test-plotboard-1',
+    projectId: 'test-project-1',
+    scenes: [],
+    connections: [],
+    layout: 'grid',
+    settings: {
+      showConnections: true,
+      autoLayout: false,
+      gridSize: 20,
+      snapToGrid: true
+    }
+  },
+  wordCount: 0,
+  targetWordCount: 50000,
+  lastEditedAt: '2024-01-01T00:00:00.000Z',
+  createdAt: '2024-01-01T00:00:00.000Z',
+  updatedAt: '2024-01-01T00:00:00.000Z',
   settings: {
+    defaultPOV: 'first',
+    defaultLocation: 'test-location',
+    timeFormat: '12h' as const,
+    dateFormat: 'MDY' as const,
+    autoSave: true,
+    versionHistory: true,
     theme: 'cosmic',
     plotboard: {
       showConnections: true,
@@ -352,6 +391,8 @@ export const createMockProject = (overrides: any = {}) => ({
       zoomLevel: 1
     }
   },
+  collaborators: [],
+  isCollaborative: false,
   ...overrides
 });
 
@@ -397,3 +438,326 @@ export const createMockCharacter = (overrides: any = {}) => ({
   goals: '',
   ...overrides
 });
+
+// ============================================================================
+// TipTap Editor Mocks
+// ============================================================================
+
+// Mock TipTap Editor Core
+vi.mock('@tiptap/react', async () => {
+  const React = await import('react');
+  
+  // Create chainable command object
+  const createChainableCommands = () => {
+    const commands = {
+      setContent: vi.fn(),
+      insertContent: vi.fn(),
+      setTextSelection: vi.fn(),
+      focus: vi.fn(),
+      blur: vi.fn(),
+      undo: vi.fn(),
+      redo: vi.fn(),
+      setBold: vi.fn(),
+      setItalic: vi.fn(),
+      setUnderline: vi.fn(),
+      setStrike: vi.fn(),
+      setCode: vi.fn(),
+      toggleBold: vi.fn(),
+      toggleItalic: vi.fn(),
+      toggleUnderline: vi.fn(),
+      toggleStrike: vi.fn(),
+      toggleCode: vi.fn(),
+      toggleHeading: vi.fn(),
+      toggleBulletList: vi.fn(),
+      toggleOrderedList: vi.fn(),
+      toggleTaskList: vi.fn(),
+      toggleCodeBlock: vi.fn(),
+      toggleBlockquote: vi.fn(),
+      toggleHighlight: vi.fn(),
+      setHorizontalRule: vi.fn(),
+      setHardBreak: vi.fn(),
+      setLink: vi.fn(),
+      unsetLink: vi.fn(),
+      setImage: vi.fn(),
+      setTable: vi.fn(),
+      deleteTable: vi.fn(),
+      addRowBefore: vi.fn(),
+      addRowAfter: vi.fn(),
+      deleteRow: vi.fn(),
+      addColumnBefore: vi.fn(),
+      addColumnAfter: vi.fn(),
+      deleteColumn: vi.fn(),
+      setTextAlign: vi.fn(),
+      setColor: vi.fn(),
+      setHighlight: vi.fn(),
+      setFontFamily: vi.fn(),
+      selectAll: vi.fn(),
+      clearContent: vi.fn(),
+      run: vi.fn().mockReturnValue(true),
+    };
+    
+    // Make all methods return the commands object for chaining
+    Object.keys(commands).forEach(key => {
+      if (key !== 'run') {
+        commands[key] = vi.fn().mockReturnValue(commands);
+      }
+    });
+    
+    return commands;
+  };
+
+  const mockEditor = {
+    commands: createChainableCommands(),
+    state: {
+      doc: {
+        content: [],
+        textContent: 'Mock content',
+      },
+      selection: {
+        from: 0,
+        to: 0,
+        empty: true,
+      },
+    },
+    view: {
+      dom: typeof document !== 'undefined' ? document.createElement('div') : {},
+      dispatch: vi.fn(),
+    },
+    schema: {},
+    isActive: vi.fn().mockReturnValue(false),
+    isEditable: true,
+    isFocused: false,
+    isEmpty: false,
+    can: () => ({
+      setBold: vi.fn().mockReturnValue(true),
+      setItalic: vi.fn().mockReturnValue(true),
+      undo: vi.fn().mockReturnValue(true),
+      redo: vi.fn().mockReturnValue(true),
+      chain: () => createChainableCommands(),
+    }),
+    chain: () => createChainableCommands(),
+    getHTML: vi.fn().mockReturnValue('<p>Mock HTML content</p>'),
+    getText: vi.fn().mockReturnValue('Mock text content'),
+    getJSON: vi.fn().mockReturnValue({ type: 'doc', content: [] }),
+    getCharacterCount: vi.fn().mockReturnValue(100),
+    storage: {
+      characterCount: {
+        characters: vi.fn().mockReturnValue(100),
+        words: vi.fn().mockReturnValue(20),
+      },
+    },
+    destroy: vi.fn(),
+    on: vi.fn(),
+    off: vi.fn(),
+    emit: vi.fn(),
+  };
+
+  return {
+    Editor: vi.fn().mockImplementation(() => mockEditor),
+    useEditor: vi.fn().mockImplementation((options = {}) => {
+      const editor = { ...mockEditor };
+      
+      // Apply any content from options
+      if (options.content) {
+        editor.getHTML = vi.fn().mockReturnValue(options.content);
+        editor.getText = vi.fn().mockReturnValue(
+          options.content.replace(/<[^>]*>/g, '')
+        );
+      }
+
+      // Mock onChange handler
+      if (options.onChange) {
+        editor.on = vi.fn().mockImplementation((event, callback) => {
+          if (event === 'update') {
+            // Simulate onChange calls
+            setTimeout(() => {
+              callback({ editor });
+            }, 0);
+          }
+        });
+      }
+
+      return editor;
+    }),
+    EditorContent: vi.fn().mockImplementation(({ editor, ...props }) => {
+      return React.createElement('div', {
+        'data-testid': 'editor-content',
+        contentEditable: true,
+        suppressContentEditableWarning: true,
+        ...props,
+      }, editor?.getHTML?.() || 'Mock editor content');
+    }),
+    FloatingMenu: vi.fn().mockImplementation(({ children, ...props }) => {
+      return React.createElement('div', {
+        'data-testid': 'floating-menu',
+        ...props,
+      }, children);
+    }),
+    BubbleMenu: vi.fn().mockImplementation(({ children, ...props }) => {
+      return React.createElement('div', {
+        'data-testid': 'bubble-menu',
+        ...props,
+      }, children);
+    }),
+    NodeViewWrapper: vi.fn().mockImplementation(({ children, ...props }) => {
+      return React.createElement('div', {
+        'data-testid': 'node-view-wrapper',
+        ...props,
+      }, children);
+    }),
+    NodeViewContent: vi.fn().mockImplementation((props) => {
+      return React.createElement('div', {
+        'data-testid': 'node-view-content',
+        ...props,
+      });
+    }),
+  };
+});
+
+// Mock TipTap Extensions
+const createMockExtension = (name: string) => ({
+  name,
+  type: 'extension',
+  configure: vi.fn().mockReturnThis(),
+  extend: vi.fn().mockReturnThis(),
+});
+
+vi.mock('@tiptap/starter-kit', () => ({
+  default: {
+    configure: vi.fn().mockReturnValue(createMockExtension('StarterKit')),
+  },
+}));
+
+vi.mock('@tiptap/extension-placeholder', () => ({
+  default: {
+    configure: vi.fn().mockReturnValue(createMockExtension('Placeholder')),
+  },
+}));
+
+vi.mock('@tiptap/extension-character-count', () => ({
+  default: createMockExtension('CharacterCount'),
+}));
+
+vi.mock('@tiptap/extension-focus', () => ({
+  default: createMockExtension('Focus'),
+}));
+
+vi.mock('@tiptap/extension-typography', () => ({
+  default: createMockExtension('Typography'),
+}));
+
+vi.mock('@tiptap/extension-link', () => ({
+  default: {
+    configure: vi.fn().mockReturnValue(createMockExtension('Link')),
+  },
+}));
+
+vi.mock('@tiptap/extension-image', () => ({
+  default: createMockExtension('Image'),
+}));
+
+vi.mock('@tiptap/extension-table', () => ({
+  default: createMockExtension('Table'),
+}));
+
+vi.mock('@tiptap/extension-table-row', () => ({
+  default: createMockExtension('TableRow'),
+}));
+
+vi.mock('@tiptap/extension-table-header', () => ({
+  default: createMockExtension('TableHeader'),
+}));
+
+vi.mock('@tiptap/extension-table-cell', () => ({
+  default: createMockExtension('TableCell'),
+}));
+
+vi.mock('@tiptap/extension-highlight', () => ({
+  default: createMockExtension('Highlight'),
+}));
+
+vi.mock('@tiptap/extension-code-block-lowlight', () => ({
+  default: createMockExtension('CodeBlockLowlight'),
+}));
+
+vi.mock('@tiptap/extension-text-style', () => ({
+  default: createMockExtension('TextStyle'),
+}));
+
+vi.mock('@tiptap/extension-color', () => ({
+  default: createMockExtension('Color'),
+}));
+
+vi.mock('@tiptap/extension-text-align', () => ({
+  default: {
+    configure: vi.fn().mockReturnValue(createMockExtension('TextAlign')),
+  },
+}));
+
+vi.mock('@tiptap/extension-list-item', () => ({
+  default: createMockExtension('ListItem'),
+}));
+
+vi.mock('@tiptap/extension-task-list', () => ({
+  default: createMockExtension('TaskList'),
+}));
+
+vi.mock('@tiptap/extension-task-item', () => ({
+  default: createMockExtension('TaskItem'),
+}));
+
+vi.mock('@tiptap/extension-underline', () => ({
+  default: createMockExtension('Underline'),
+}));
+
+vi.mock('@tiptap/extension-subscript', () => ({
+  default: createMockExtension('Subscript'),
+}));
+
+vi.mock('@tiptap/extension-superscript', () => ({
+  default: createMockExtension('Superscript'),
+}));
+
+vi.mock('@tiptap/extension-font-family', () => ({
+  default: createMockExtension('FontFamily'),
+}));
+
+// Mock lowlight for code highlighting
+vi.mock('lowlight', () => ({
+  createLowlight: vi.fn(() => ({
+    register: vi.fn(),
+    registerLanguage: vi.fn(),
+    highlight: vi.fn(() => ({ value: 'mock-highlighted-code' })),
+  })),
+}));
+
+// Export mock editor for use in tests
+export const createMockEditor = (options: any = {}) => {
+  return {
+    commands: {
+      setContent: vi.fn(),
+      insertContent: vi.fn(),
+      focus: vi.fn(),
+      blur: vi.fn(),
+    },
+    getHTML: vi.fn().mockReturnValue(options.content || '<p>Mock content</p>'),
+    getText: vi.fn().mockReturnValue(options.content?.replace(/<[^>]*>/g, '') || 'Mock content'),
+    getJSON: vi.fn().mockReturnValue({ type: 'doc', content: [] }),
+    getCharacterCount: vi.fn().mockReturnValue(100),
+    storage: {
+      characterCount: {
+        characters: vi.fn().mockReturnValue(100),
+        words: vi.fn().mockReturnValue(20),
+      },
+    },
+    isActive: vi.fn().mockReturnValue(false),
+    isEditable: true,
+    isFocused: false,
+    isEmpty: false,
+    destroy: vi.fn(),
+    on: vi.fn(),
+    off: vi.fn(),
+    emit: vi.fn(),
+    ...options.overrides,
+  };
+};

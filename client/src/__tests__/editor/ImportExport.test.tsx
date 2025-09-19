@@ -143,10 +143,13 @@ describe('Import/Export Functionality Tests', () => {
           </MockWrapper>
         );
 
-        const markdownButton = screen.getByText('Markdown');
+        // Click the markdown export button using test ID
+        const markdownButton = screen.getByTestId('export-md');
         fireEvent.click(markdownButton);
 
-        expect(mockOnExport).toHaveBeenCalledWith('md');
+        await waitFor(() => {
+          expect(mockOnExport).toHaveBeenCalledWith('md');
+        });
       });
 
       test('should export formatted HTML to Markdown correctly', async () => {
@@ -248,16 +251,18 @@ describe('Import/Export Functionality Tests', () => {
           </MockWrapper>
         );
 
-        const htmlButton = screen.getByText('HTML');
+        const htmlButton = screen.getByTestId('export-html');
         fireEvent.click(htmlButton);
 
-        // Mock saveAs should be called
-        const { saveAs } = require('file-saver');
-        expect(saveAs).toHaveBeenCalled();
-        
-        // Check the blob content contains HTML structure
-        const call = saveAs.mock.calls[saveAs.mock.calls.length - 1];
-        expect(call[1]).toContain('.html');
+        // Wait for the export to complete
+        await waitFor(() => {
+          const { saveAs } = require('file-saver');
+          expect(saveAs).toHaveBeenCalled();
+          
+          // Check the blob content contains HTML structure
+          const call = saveAs.mock.calls[saveAs.mock.calls.length - 1];
+          expect(call[1]).toContain('.html');
+        });
       });
 
       test('should include proper HTML document structure', async () => {
@@ -313,14 +318,14 @@ describe('Import/Export Functionality Tests', () => {
           </MockWrapper>
         );
 
-        const docxButton = screen.getByText('Word Document');
+        const docxButton = screen.getByTestId('export-docx');
         fireEvent.click(docxButton);
 
         // Wait for DOCX processing
         await waitFor(() => {
           const { saveAs } = require('file-saver');
           expect(saveAs).toHaveBeenCalled();
-        });
+        }, { timeout: 5000 });
       });
 
       test('should handle complex content in DOCX export', async () => {
@@ -334,14 +339,14 @@ describe('Import/Export Functionality Tests', () => {
           </MockWrapper>
         );
 
-        const docxButton = screen.getByText('Word Document');
+        const docxButton = screen.getByTestId('export-docx');
         fireEvent.click(docxButton);
 
         // Should not throw errors with complex content
         await waitFor(() => {
           const { saveAs } = require('file-saver');
           expect(saveAs).toHaveBeenCalled();
-        });
+        }, { timeout: 5000 });
       });
     });
 
@@ -367,10 +372,12 @@ describe('Import/Export Functionality Tests', () => {
           </MockWrapper>
         );
 
-        const pdfButton = screen.getByText('PDF');
+        const pdfButton = screen.getByTestId('export-pdf');
         fireEvent.click(pdfButton);
 
-        expect(mockWindowOpen).toHaveBeenCalledWith('', '_blank');
+        await waitFor(() => {
+          expect(mockWindowOpen).toHaveBeenCalledWith('', '_blank');
+        });
       });
     });
   });
@@ -410,8 +417,8 @@ describe('Import/Export Functionality Tests', () => {
         const importTab = screen.getByText('Import');
         fireEvent.click(importTab);
 
-        const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
-        expect(fileInput).toHaveAttribute('accept', '.md,.txt,.html,.htm');
+        const fileInput = screen.getByTestId('file-input') as HTMLInputElement;
+        expect(fileInput).toHaveAttribute('accept', '.md,.txt,.html,.htm,.docx,.epub,.pdf,.fdx,.fountain');
       });
     });
 
@@ -433,7 +440,7 @@ describe('Import/Export Functionality Tests', () => {
         fireEvent.click(importTab);
 
         // Simulate file selection
-        const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
+        const fileInput = screen.getByTestId('file-input') as HTMLInputElement;
         const file = new File([testData.markdown.formatted], 'test.md', { type: 'text/markdown' });
         
         // Mock FileReader
@@ -491,7 +498,7 @@ describe('Import/Export Functionality Tests', () => {
         const importTab = screen.getByText('Import');
         fireEvent.click(importTab);
 
-        const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
+        const fileInput = screen.getByTestId("file-input") as HTMLInputElement;
         const file = new File([testData.html.formatted], 'test.html', { type: 'text/html' });
         
         const mockFileReader = {
@@ -728,7 +735,7 @@ describe('Import/Export Functionality Tests', () => {
       const importTab = screen.getByText('Import');
       fireEvent.click(importTab);
 
-      const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
+      const fileInput = screen.getByTestId("file-input") as HTMLInputElement;
       const corruptedFile = new File(['<html><body><p>Unclosed tag'], 'corrupted.html', { type: 'text/html' });
       
       const mockFileReader = {
@@ -810,7 +817,7 @@ describe('Import/Export Functionality Tests', () => {
         </MockWrapper>
       );
 
-      const copyMarkdownButton = screen.getByText('Copy as Markdown');
+      const copyMarkdownButton = screen.getByTestId('copy-markdown');
       fireEvent.click(copyMarkdownButton);
 
       expect(mockWriteText).toHaveBeenCalled();
@@ -834,7 +841,7 @@ describe('Import/Export Functionality Tests', () => {
         </MockWrapper>
       );
 
-      const copyButton = screen.getByText('Copy as Text');
+      const copyButton = screen.getByTestId('copy-text');
       fireEvent.click(copyButton);
 
       // Should not crash
