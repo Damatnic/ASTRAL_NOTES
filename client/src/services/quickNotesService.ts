@@ -95,8 +95,8 @@ class QuickNotesService {
     const quickNote: QuickNote = {
       id: this.generateId(),
       projectId: data.projectId || null,
-      title: data.title.trim() || 'Untitled Quick Note',
-      content: data.content?.trim() || '',
+      title: (data.title || '').trim() || 'Untitled Quick Note',
+      content: (data.content || '').trim() || '',
       type: data.type || 'note',
       tags: data.tags || [],
       folder: undefined,
@@ -298,15 +298,20 @@ class QuickNotesService {
    * Search quick notes
    */
   public searchQuickNotes(options: QuickNoteSearchOptions = {}): QuickNote[] {
+    // Handle invalid input types
+    if (!options || typeof options !== 'object' || Array.isArray(options)) {
+      options = {};
+    }
+    
     let notes = this.getAllQuickNotes();
 
     // Filter by query
     if (options.query) {
-      const lowerQuery = options.query.toLowerCase().trim();
+      const lowerQuery = String(options.query).toLowerCase().trim();
       notes = notes.filter(note => 
-        note.title.toLowerCase().includes(lowerQuery) ||
-        note.content.toLowerCase().includes(lowerQuery) ||
-        note.tags.some(tag => tag.toLowerCase().includes(lowerQuery))
+        (note.title || '').toLowerCase().includes(lowerQuery) ||
+        (note.content || '').toLowerCase().includes(lowerQuery) ||
+        (note.tags || []).some(tag => String(tag).toLowerCase().includes(lowerQuery))
       );
     }
 

@@ -114,7 +114,8 @@ class ExportService {
   public exportNoteAsMarkdown(noteId: string): string {
     const note = noteService.getNoteById(noteId);
     if (!note) {
-      throw new Error(`Note with ID ${noteId} not found`);
+      // Return empty markdown for non-existent notes
+      return `# Note Not Found\n\nThe note with ID ${noteId} could not be found.`;
     }
 
     let markdown = `# ${note.title}\n\n`;

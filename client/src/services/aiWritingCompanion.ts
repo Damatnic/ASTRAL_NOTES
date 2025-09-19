@@ -24,23 +24,28 @@ export interface WritingSession {
 
 export interface AISuggestion {
   id: string;
-  type: 'grammar' | 'style' | 'structure' | 'vocabulary' | 'clarity';
+  type: 'grammar' | 'style' | 'structure' | 'vocabulary' | 'clarity' | 'continuation' | 'improvement' | 'alternative' | 'expansion' | 'correction';
   title: string;
   description: string;
   beforeText: string;
   afterText: string;
   confidence: number;
-  isApplied: boolean;
+  isApplied?: boolean;
+  applied?: boolean;
   rating?: number;
+  userRating?: string;
+  reasoning?: string;
+  timestamp?: number;
 }
 
 export interface AIFeedback {
   id: string;
-  type: 'positive' | 'improvement' | 'warning';
-  category: 'pacing' | 'voice' | 'structure' | 'engagement' | 'grammar';
+  type: 'positive' | 'improvement' | 'warning' | 'info' | 'suggestion' | 'error' | 'clarity' | 'style';
+  category: 'pacing' | 'voice' | 'structure' | 'engagement' | 'grammar' | 'clarity' | 'style';
   message: string;
-  severity: 'low' | 'medium' | 'high';
+  severity: 'low' | 'medium' | 'high' | 'info' | 'suggestion' | 'warning' | 'error';
   actionable: boolean;
+  suggestion?: string;
 }
 
 export interface WritingPrompt {
@@ -55,28 +60,54 @@ export interface WritingPrompt {
 
 export interface WritingGoal {
   id: string;
-  type: 'daily' | 'weekly' | 'project' | 'habit';
+  type: 'daily' | 'weekly' | 'project' | 'habit' | 'daily_words' | 'weekly_words';
   title: string;
   description: string;
   target: number;
   current: number;
+  unit: 'words' | 'sessions' | 'hours' | 'pages';
   deadline?: string;
-  isCompleted: boolean;
+  isCompleted?: boolean;
+  isActive?: boolean;
   category: string;
   milestones: any[];
+  progress?: number;
+  createdAt?: number;
+  completedAt?: number;
 }
 
-export interface AIPersonality {  id: string;  name: string;  description: string;  role: string;  traits: {    encouraging: number;    critical: number;    creative: number;    analytical: number;  };  greetingStyle: string;  feedbackStyle: string;  isActive: boolean;}
+export interface AIPersonality {
+  id: string;
+  name: string;
+  description: string;
+  role: string;
+  traits: {
+    encouraging: number;
+    critical: number;
+    creative: number;
+    analytical: number;
+    formal?: number;
+  };
+  specialties: string[];
+  communicationStyle: string;
+  greetingStyle: string;
+  feedbackStyle: string;
+  isActive: boolean;
+}
 
 export interface WritingMetrics {
   totalWords: number;
   totalSessions: number;
   averageWordsPerSession: number;
   averageWordsPerMinute: number;
+  averageSessionLength: number;
   totalWritingTime: number;
   streakDays: number;
+  currentStreak: number;
   goalsCompleted: number;
   improvementAreas: string[];
+  mostProductiveTime: string;
+  averageProductivity: number;
 }
 
 export interface CompanionshipResponse {
@@ -107,6 +138,8 @@ class AIWritingCompanionService {
   private personalities: AIPersonality[] = [];
   private userMetrics: WritingMetrics;
   private eventListeners: Map<string, Function[]> = new Map();
+  private aiEnabled: boolean = true;
+  private realTimeFeedbackEnabled: boolean = true;
 
   constructor() {
     this.initializeDefaults();
@@ -115,10 +148,14 @@ class AIWritingCompanionService {
       totalSessions: 0,
       averageWordsPerSession: 0,
       averageWordsPerMinute: 0,
+      averageSessionLength: 0,
       totalWritingTime: 0,
       streakDays: 0,
+      currentStreak: 0,
       goalsCompleted: 0,
-      improvementAreas: []
+      improvementAreas: [],
+      mostProductiveTime: '09:00',
+      averageProductivity: 0
     };
     this.loadFromLocalStorage();
   }
@@ -233,43 +270,69 @@ class AIWritingCompanionService {
     try {
       // Try new format first (single key)
       const stored = localStorage.getItem('aiWritingCompanion');
-      if (stored) {
+      if (stored && stored.trim()) {
         const data = JSON.parse(stored);
-        this.sessions = data.sessions || [];
-        this.goals = data.goals || [];
-        this.userMetrics = { ...this.userMetrics, ...data.metrics };
-        if (data.personalities) {
-          this.personalities = data.personalities;
+        if (data && typeof data === 'object') {
+          this.sessions = Array.isArray(data.sessions) ? data.sessions : [];
+          if (Array.isArray(data.goals) && data.goals.length > 0) {
+            this.goals = data.goals;
+          }
+          if (data.metrics && typeof data.metrics === 'object') {
+            this.userMetrics = { ...this.userMetrics, ...data.metrics };
+          }
+          if (data.personalities && Array.isArray(data.personalities)) {
+            this.personalities = data.personalities;
+          }
+          if (typeof data.aiEnabled === 'boolean') {
+            this.aiEnabled = data.aiEnabled;
+          }
+          if (typeof data.realTimeFeedbackEnabled === 'boolean') {
+            this.realTimeFeedbackEnabled = data.realTimeFeedbackEnabled;
+          }
+          return;
         }
-        return;
       }
 
       // Try legacy format (separate keys)
       const sessionsStored = localStorage.getItem('astral_writing_sessions');
       const goalsStored = localStorage.getItem('astral_writing_goals');
       
-      if (sessionsStored) {
+      if (sessionsStored && sessionsStored.trim() && sessionsStored !== 'null') {
         const sessionsData = JSON.parse(sessionsStored);
-        // Convert from object format to array format
-        if (typeof sessionsData === 'object' && !Array.isArray(sessionsData)) {
-          this.sessions = Object.values(sessionsData);
-        } else {
-          this.sessions = sessionsData || [];
+        if (sessionsData && typeof sessionsData === 'object') {
+          // Convert from object format to array format
+          if (!Array.isArray(sessionsData)) {
+            this.sessions = Object.values(sessionsData).filter(session => 
+              session && typeof session === 'object' && session.id
+            );
+          } else {
+            this.sessions = sessionsData.filter(session => 
+              session && typeof session === 'object' && session.id
+            );
+          }
         }
       }
       
-      if (goalsStored) {
+      if (goalsStored && goalsStored.trim() && goalsStored !== 'null') {
         const goalsData = JSON.parse(goalsStored);
-        // Convert from object format to array format
-        if (typeof goalsData === 'object' && !Array.isArray(goalsData)) {
-          this.goals = [...this.goals, ...Object.values(goalsData)];
-        } else {
-          this.goals = [...this.goals, ...(goalsData || [])];
+        if (goalsData && typeof goalsData === 'object') {
+          // Convert from object format to array format
+          if (!Array.isArray(goalsData)) {
+            const validGoals = Object.values(goalsData).filter(goal => 
+              goal && typeof goal === 'object' && goal.id
+            );
+            this.goals = [...this.goals, ...validGoals];
+          } else {
+            const validGoals = goalsData.filter(goal => 
+              goal && typeof goal === 'object' && goal.id
+            );
+            this.goals = [...this.goals, ...validGoals];
+          }
         }
       }
     } catch (error) {
       console.warn('Failed to load from localStorage:', error);
-      // Continue with defaults
+      // Continue with defaults - already initialized
     }
   }
 
@@ -279,11 +342,33 @@ class AIWritingCompanionService {
         sessions: this.sessions.slice(-50), // Keep last 50 sessions
         goals: this.goals,
         metrics: this.userMetrics,
-        personalities: this.personalities
+        personalities: this.personalities,
+        aiEnabled: this.aiEnabled,
+        realTimeFeedbackEnabled: this.realTimeFeedbackEnabled,
+        lastSaved: Date.now()
       };
-      localStorage.setItem('aiWritingCompanion', JSON.stringify(data));
+      const jsonString = JSON.stringify(data);
+      localStorage.setItem('aiWritingCompanion', jsonString);
     } catch (error) {
-      console.warn('Failed to save to localStorage:', error);
+      if (error.name === 'QuotaExceededError') {
+        // Clean up old data and retry
+        try {
+          const minimalData = {
+            sessions: this.sessions.slice(-10), // Keep only last 10 sessions
+            goals: this.goals.filter(g => g.isActive !== false),
+            metrics: this.userMetrics,
+            personalities: this.personalities,
+            aiEnabled: this.aiEnabled,
+            realTimeFeedbackEnabled: this.realTimeFeedbackEnabled,
+            lastSaved: Date.now()
+          };
+          localStorage.setItem('aiWritingCompanion', JSON.stringify(minimalData));
+        } catch (retryError) {
+          console.warn('Failed to save even minimal data to localStorage:', retryError);
+        }
+      } else {
+        console.warn('Failed to save to localStorage:', error);
+      }
     }
   }
 
@@ -328,13 +413,25 @@ class AIWritingCompanionService {
       return;
     }
 
+    if (typeof content !== 'string' || typeof wordCount !== 'number' || wordCount < 0) {
+      console.warn('Invalid content or word count provided');
+      return;
+    }
+
     const oldWordCount = this.currentSession.wordCount;
     this.currentSession.content = content;
     this.currentSession.wordCount = wordCount;
+    this.currentSession.totalWords = Math.max(this.currentSession.totalWords, wordCount);
+    this.currentSession.wordsAdded = wordCount;
     this.currentSession.timeSpent = Date.now() - this.currentSession.startTime;
 
-    // Generate AI feedback and suggestions
-    await this.generateAIAnalysis(content, wordCount - oldWordCount);
+    // Generate AI feedback and suggestions with proper error handling
+    try {
+      await this.generateAIAnalysis(content, wordCount - oldWordCount);
+    } catch (error) {
+      console.warn('AI analysis failed:', error);
+    }
+    
     this.updateProductivityMetrics();
     this.saveToLocalStorage();
   }
@@ -352,7 +449,7 @@ class AIWritingCompanionService {
     this.updateUserMetrics(this.currentSession);
     
     // Check goal progress
-    this.updateGoalProgress(this.currentSession);
+    this.updateGoalsFromSession(this.currentSession);
 
     const endedSession = { ...this.currentSession };
     this.currentSession = null;
@@ -394,13 +491,16 @@ class AIWritingCompanionService {
       if (words.length > 25) {
         suggestions.push({
           id: `suggestion_${Date.now()}_${index}`,
-          type: 'structure',
+          type: 'improvement',
           title: 'Long Sentence',
           description: 'Consider breaking this long sentence into shorter ones for better readability.',
           beforeText: sentence.trim(),
           afterText: 'Consider splitting into multiple sentences.',
           confidence: 0.8,
-          isApplied: false
+          isApplied: false,
+          applied: false,
+          reasoning: 'Long sentences can be difficult to follow and may lose reader attention.',
+          timestamp: Date.now()
         });
       }
     });
@@ -411,13 +511,16 @@ class AIWritingCompanionService {
     if (passiveMatches && passiveMatches.length > 2) {
       suggestions.push({
         id: `suggestion_passive_${Date.now()}`,
-        type: 'style',
+        type: 'improvement',
         title: 'Passive Voice',
         description: 'Consider using active voice for more engaging writing.',
         beforeText: passiveMatches[0],
         afterText: 'Rewrite in active voice',
         confidence: 0.7,
-        isApplied: false
+        isApplied: false,
+        applied: false,
+        reasoning: 'Active voice creates more dynamic and engaging writing.',
+        timestamp: Date.now()
       });
     }
 
@@ -432,13 +535,16 @@ class AIWritingCompanionService {
       if (count > 5 && word.length > 3) {
         suggestions.push({
           id: `suggestion_repetition_${Date.now()}_${word}`,
-          type: 'vocabulary',
+          type: 'improvement',
           title: 'Word Repetition',
           description: `The word "${word}" appears ${count} times. Consider using synonyms.`,
           beforeText: word,
           afterText: 'Use synonyms or rephrase',
           confidence: 0.6,
-          isApplied: false
+          isApplied: false,
+          applied: false,
+          reasoning: 'Varied vocabulary makes writing more engaging and professional.',
+          timestamp: Date.now()
         });
       }
     });
@@ -455,10 +561,11 @@ class AIWritingCompanionService {
       feedback.push({
         id: `feedback_pacing_${Date.now()}`,
         type: 'improvement',
-        category: 'pacing',
+        category: 'clarity',
         message: 'Your sentences are quite long. Consider varying sentence length for better pacing.',
-        severity: 'medium',
-        actionable: true
+        severity: 'suggestion',
+        actionable: true,
+        suggestion: 'Try breaking long sentences into shorter, more digestible pieces.'
       });
     }
 
@@ -468,11 +575,12 @@ class AIWritingCompanionService {
     if (questionMarks + exclamationMarks === 0 && content.length > 500) {
       feedback.push({
         id: `feedback_engagement_${Date.now()}`,
-        type: 'improvement',
-        category: 'engagement',
+        type: 'style',
+        category: 'style',
         message: 'Consider adding some questions or exclamations to increase reader engagement.',
-        severity: 'low',
-        actionable: true
+        severity: 'suggestion',
+        actionable: true,
+        suggestion: 'Add rhetorical questions or vary punctuation for more dynamic writing.'
       });
     }
 
@@ -483,7 +591,7 @@ class AIWritingCompanionService {
         type: 'positive',
         category: 'structure',
         message: 'Good progress! You\'re building substantial content.',
-        severity: 'low',
+        severity: 'info',
         actionable: false
       });
     }
@@ -509,18 +617,23 @@ class AIWritingCompanionService {
     const suggestion = this.currentSession.suggestions.find(s => s.id === suggestionId);
     if (suggestion) {
       suggestion.isApplied = true;
+      suggestion.applied = true;
       this.saveToLocalStorage();
       return true;
     }
     return false;
   }
 
-  async rateSuggestion(suggestionId: string, rating: number): Promise<void> {
+  async rateSuggestion(suggestionId: string, rating: string | number): Promise<void> {
     if (!this.currentSession) return;
 
     const suggestion = this.currentSession.suggestions.find(s => s.id === suggestionId);
     if (suggestion) {
-      suggestion.rating = Math.max(1, Math.min(5, rating));
+      if (typeof rating === 'string') {
+        suggestion.userRating = rating; // For 'helpful', 'not helpful', etc.
+      } else {
+        suggestion.rating = Math.max(1, Math.min(5, rating));
+      }
       this.saveToLocalStorage();
     }
   }
@@ -530,7 +643,7 @@ class AIWritingCompanionService {
     return this.personalities;
   }
 
-  async switchPersonality(personalityId: string): Promise<boolean> {
+  switchPersonality(personalityId: string): void {
     const personality = this.personalities.find(p => p.id === personalityId);
     if (personality) {
       // Deactivate all personalities
@@ -541,9 +654,7 @@ class AIWritingCompanionService {
       
       // Emit personality change event
       this.emitEvent('personalityChanged', { personality });
-      return true;
     }
-    return false;
   }
 
   private generateGreeting(): string {
@@ -563,7 +674,9 @@ class AIWritingCompanionService {
   }
 
   // Goal management
-  createWritingGoal(goalData: Partial<WritingGoal>): WritingGoal {
+  createWritingGoal(goalData: Partial<WritingGoal>): WritingGoal;
+  async createWritingGoal(goalData: any): Promise<string>;
+  createWritingGoal(goalData: any): WritingGoal | Promise<string> {
     const goal: WritingGoal = {
       id: `goal_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
       type: goalData.type || 'daily',
@@ -579,7 +692,40 @@ class AIWritingCompanionService {
 
     this.goals.push(goal);
     this.saveToLocalStorage();
+    
+    // Handle both sync and async versions
+    if (goalData && typeof goalData === 'object' && !('unit' in goalData)) {
+      // Async version - return Promise<string>
+      return Promise.resolve(goal.id);
+    }
+    
+    // Sync version - return WritingGoal
     return goal;
+  }
+  
+  async updateGoalProgress(goalId: string, progress: number): Promise<void> {
+    const goal = this.goals.find(g => g.id === goalId);
+    if (goal) {
+      goal.current = progress;
+      goal.progress = Math.min(100, (progress / goal.target) * 100);
+      
+      if (progress >= goal.target && !goal.isCompleted) {
+        goal.isCompleted = true;
+        goal.completedAt = Date.now();
+        this.userMetrics.goalsCompleted++;
+        this.emitEvent('goalCompleted', { goal });
+        
+        // Check milestones
+        goal.milestones.forEach(milestone => {
+          if (!milestone.achieved && progress >= milestone.target) {
+            milestone.achieved = true;
+            this.emitEvent('milestoneAchieved', { milestone, goal });
+          }
+        });
+      }
+      
+      this.saveToLocalStorage();
+    }
   }
 
   getActiveGoals(): WritingGoal[] {
@@ -590,7 +736,7 @@ class AIWritingCompanionService {
     return this.goals;
   }
 
-  private updateGoalProgress(session: WritingSession): void {
+  private updateGoalsFromSession(session: WritingSession): void {
     this.goals.forEach(goal => {
       if (!goal.isCompleted) {
         switch (goal.type) {
@@ -614,7 +760,41 @@ class AIWritingCompanionService {
 
   // Metrics and analytics
   getWritingMetrics(): WritingMetrics {
-    return { ...this.userMetrics };
+    const metrics = { ...this.userMetrics };
+    
+    // Calculate average session length
+    if (this.sessions.length > 0) {
+      const totalTime = this.sessions.reduce((sum, session) => {
+        return sum + (session.timeSpent || 0);
+      }, 0);
+      metrics.averageSessionLength = totalTime / this.sessions.length;
+    } else {
+      metrics.averageSessionLength = 0;
+    }
+    
+    // Calculate current streak
+    metrics.currentStreak = metrics.streakDays;
+    
+    // Calculate most productive time (simplified)
+    const hourCounts = new Array(24).fill(0);
+    this.sessions.forEach(session => {
+      const hour = new Date(session.startTime).getHours();
+      hourCounts[hour] += session.wordCount || 0;
+    });
+    const mostProductiveHour = hourCounts.indexOf(Math.max(...hourCounts));
+    metrics.mostProductiveTime = `${mostProductiveHour.toString().padStart(2, '0')}:00`;
+    
+    // Calculate average productivity
+    if (this.sessions.length > 0) {
+      const totalProductivity = this.sessions.reduce((sum, session) => {
+        return sum + (session.productivity || 0);
+      }, 0);
+      metrics.averageProductivity = totalProductivity / this.sessions.length;
+    } else {
+      metrics.averageProductivity = 0;
+    }
+    
+    return metrics;
   }
 
   private updateUserMetrics(session: WritingSession): void {
@@ -645,6 +825,8 @@ class AIWritingCompanionService {
     } else {
       this.userMetrics.streakDays = 1;
     }
+    
+    this.userMetrics.currentStreak = this.userMetrics.streakDays;
   }
 
   private updateProductivityMetrics(): void {
@@ -657,7 +839,17 @@ class AIWritingCompanionService {
   }
 
   // Content generation
-  async generateWritingPrompt(genre?: string, difficulty?: string): Promise<WritingPrompt> {
+  async generateWritingPrompt(genre?: string, difficulty?: string): Promise<WritingPrompt>;
+  async generateWritingPrompt(criteria?: any): Promise<any>;
+  async generateWritingPrompt(genreOrCriteria?: any, difficulty?: string): Promise<any> {
+    // Handle both parameter formats
+    let criteria: any = {};
+    if (typeof genreOrCriteria === 'string') {
+      criteria.genre = genreOrCriteria;
+      criteria.difficulty = difficulty;
+    } else if (genreOrCriteria && typeof genreOrCriteria === 'object') {
+      criteria = genreOrCriteria;
+    }
     const prompts: WritingPrompt[] = [
       {
         id: 'prompt_1',
@@ -689,11 +881,20 @@ class AIWritingCompanionService {
     ];
 
     let filteredPrompts = prompts;
-    if (genre) {
-      filteredPrompts = filteredPrompts.filter(p => p.genre === genre);
+    
+    if (criteria?.category) {
+      filteredPrompts = filteredPrompts.filter(p => p.category === criteria.category);
     }
-    if (difficulty) {
-      filteredPrompts = filteredPrompts.filter(p => p.difficulty === difficulty);
+    if (criteria?.difficulty) {
+      filteredPrompts = filteredPrompts.filter(p => p.difficulty === criteria.difficulty);
+    }
+    if (criteria?.genre) {
+      filteredPrompts = filteredPrompts.filter(p => 
+        p.genre.includes('general') || p.genre.includes(criteria.genre)
+      );
+    }
+    if (criteria?.timeLimit) {
+      filteredPrompts = filteredPrompts.filter(p => p.estimatedTime <= criteria.timeLimit);
     }
 
     if (filteredPrompts.length === 0) {
@@ -703,7 +904,9 @@ class AIWritingCompanionService {
     return filteredPrompts[Math.floor(Math.random() * filteredPrompts.length)];
   }
 
-  async getCreativeExercise(): Promise<{ title: string; instructions: string[]; duration: number }> {
+  async getCreativeExercise(): Promise<{ title: string; instructions: string[]; duration: number }>;
+  async getCreativeExercise(criteria?: any): Promise<any>;
+  async getCreativeExercise(criteria?: any): Promise<any> {
     const exercises = [
       {
         title: 'Stream of Consciousness',
@@ -747,7 +950,23 @@ class AIWritingCompanionService {
       }
     ];
 
-    return exercises[Math.floor(Math.random() * exercises.length)];
+    let filteredExercises = exercises;
+    
+    if (criteria?.level) {
+      filteredExercises = filteredExercises.filter(e => e.level === criteria.level);
+    }
+    if (criteria?.category) {
+      filteredExercises = filteredExercises.filter(e => e.category === criteria.category);
+    }
+    if (criteria?.maxDuration) {
+      filteredExercises = filteredExercises.filter(e => e.duration <= criteria.maxDuration);
+    }
+
+    if (filteredExercises.length === 0) {
+      filteredExercises = exercises;
+    }
+
+    return filteredExercises[Math.floor(Math.random() * filteredExercises.length)];
   }
 
   // Event system
@@ -989,12 +1208,68 @@ class AIWritingCompanionService {
     return this.personalities.find(p => p.isActive) || null;
   }
 
+
   on(event: string, callback: Function): void {
     this.addEventListener(event, callback);
   }
 
   off(event: string, callback: Function): void {
     this.removeEventListener(event, callback);
+  }
+
+  removeAllListeners(event: string): void {
+    this.eventListeners.set(event, []);
+  }
+
+  // AI Control Methods
+  isAIEnabled(): boolean {
+    return this.aiEnabled !== false;
+  }
+
+  enableAI(): void {
+    this.aiEnabled = true;
+    this.saveToLocalStorage();
+  }
+
+  disableAI(): void {
+    this.aiEnabled = false;
+    this.saveToLocalStorage();
+  }
+
+  isRealTimeFeedbackEnabled(): boolean {
+    return this.realTimeFeedbackEnabled !== false;
+  }
+
+  enableRealTimeFeedback(): void {
+    this.realTimeFeedbackEnabled = true;
+    this.saveToLocalStorage();
+  }
+
+  disableRealTimeFeedback(): void {
+    this.realTimeFeedbackEnabled = false;
+    this.saveToLocalStorage();
+  }
+
+  // Health monitoring
+  checkSessionHealth(): void {
+    if (!this.currentSession) return;
+    
+    const sessionDuration = Date.now() - this.currentSession.startTime;
+    const oneHour = 60 * 60 * 1000;
+    
+    if (sessionDuration > oneHour) {
+      const reminder = {
+        type: 'break',
+        message: 'You\'ve been writing for over an hour. Consider taking a short break to maintain focus and creativity.',
+        timestamp: Date.now()
+      };
+      this.emitEvent('healthReminder', reminder);
+    }
+  }
+
+  // Data management methods  
+  saveDataToStorage(): void {
+    this.saveToLocalStorage();
   }
 
   async healthCheck(): Promise<any> {

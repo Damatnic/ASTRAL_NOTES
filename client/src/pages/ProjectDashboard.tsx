@@ -427,7 +427,7 @@ export function ProjectDashboard() {
               <CardContent>
                 <div className="text-2xl font-bold">{Math.round(projectStats.progress)}%</div>
                 <p className="text-xs text-muted-foreground">
-                  {project.targetWordCount ? `of ${project.targetWordCount.toLocaleString()} target` : 'No target set'}
+                  {project.targetWordCount ? `of ${(project.targetWordCount || 0).toLocaleString()} target` : 'No target set'}
                 </p>
               </CardContent>
             </Card>
@@ -460,7 +460,7 @@ export function ProjectDashboard() {
                 <div className="space-y-2">
                   <div className="flex justify-between text-sm">
                     <span>{projectStats.totalWords.toLocaleString()} words</span>
-                    <span>{project.targetWordCount.toLocaleString()} target</span>
+                    <span>{(project.targetWordCount || 0).toLocaleString()} target</span>
                   </div>
                   <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-3">
                     <div 
@@ -470,7 +470,7 @@ export function ProjectDashboard() {
                   </div>
                   <p className="text-xs text-muted-foreground">
                     {project.targetWordCount - projectStats.totalWords > 0 
-                      ? `${(project.targetWordCount - projectStats.totalWords).toLocaleString()} words remaining`
+                      ? `${((project.targetWordCount || 0) - projectStats.totalWords).toLocaleString()} words remaining`
                       : 'Target achieved!'
                     }
                   </p>
@@ -735,7 +735,7 @@ export function ProjectDashboard() {
           </Card>
           <Card className="p-4">
             <div className="text-sm text-muted-foreground">Word Count</div>
-            <div className="text-2xl font-bold">{project.wordCount.toLocaleString()}</div>
+            <div className="text-2xl font-bold">{(project.wordCount || 0).toLocaleString()}</div>
           </Card>
           <Card className="p-4">
             <div className="text-sm text-muted-foreground">Notes</div>

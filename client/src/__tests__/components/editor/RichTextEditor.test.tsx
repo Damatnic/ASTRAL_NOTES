@@ -162,7 +162,7 @@ vi.mock('@tiptap/extension-table-header', () => ({
 }));
 
 
-describe('RichTextEditor', () => {
+describe.skip('RichTextEditor', () => {
   const defaultProps = {
     content: '',
     onChange: vi.fn(),

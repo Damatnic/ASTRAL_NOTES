@@ -111,6 +111,8 @@ class WritingGoalsService extends BrowserEventEmitter {
   private insights: WritingInsight[] = [];
   private currentSession: WritingSession | null = null;
   private storageKey = 'astral_notes_writing_goals';
+  private saveTimeoutId: number | null = null;
+  private batchOperationInProgress = false;
 
   constructor() {
     super();
@@ -132,7 +134,9 @@ class WritingGoalsService extends BrowserEventEmitter {
     };
 
     this.goals.push(goal);
-    this.saveGoals();
+    if (!this.batchOperationInProgress) {
+      this.saveGoals();
+    }
     this.emit('goalCreated', goal);
     this.generateInsights();
     return goal;
@@ -155,7 +159,9 @@ class WritingGoalsService extends BrowserEventEmitter {
       this.completeGoal(goalId);
     }
 
-    this.saveGoals();
+    if (!this.batchOperationInProgress) {
+      this.saveGoals();
+    }
     this.emit('goalUpdated', this.goals[goalIndex]);
     return this.goals[goalIndex];
   }
@@ -259,7 +265,7 @@ class WritingGoalsService extends BrowserEventEmitter {
     );
 
     this.sessions.push({ ...this.currentSession });
-    this.saveSessions();
+    this.debouncedSave();
     
     const completedSession = { ...this.currentSession };
     this.currentSession = null;
@@ -724,7 +730,7 @@ class WritingGoalsService extends BrowserEventEmitter {
     if (metrics.productivityScore < 30 && recentSessions.length > 3) {
       this.addInsight({
         type: 'warning',
-        title: 'Productivity Dip',
+        title: 'Productivity Warning',
         message: 'Your productivity has been lower than usual this week. Consider adjusting your writing schedule or environment.',
         actionable: true,
         action: {
@@ -909,10 +915,10 @@ class WritingGoalsService extends BrowserEventEmitter {
 
   // Helper Methods
   private updateGoalsProgress(wordsWritten: number): void {
-    const activeGoals = this.getActiveGoals();
-    
-    activeGoals.forEach(goal => {
-      if (goal.targetType === 'words') {
+    // Only update the goal associated with the current session
+    if (this.currentSession?.goalId) {
+      const goal = this.getGoal(this.currentSession.goalId);
+      if (goal && goal.targetType === 'words' && goal.status === 'active') {
         const previousValue = goal.currentValue;
         goal.currentValue = Math.min(goal.currentValue + wordsWritten, goal.targetValue);
         
@@ -920,7 +926,7 @@ class WritingGoalsService extends BrowserEventEmitter {
           this.completeGoal(goal.id);
         }
       }
-    });
+    }
 
     this.saveGoals();
   }
@@ -981,10 +987,30 @@ class WritingGoalsService extends BrowserEventEmitter {
 
   private saveSessions(): void {
     try {
-      localStorage.setItem(`${this.storageKey}_sessions`, JSON.stringify(this.sessions));
+      // Only keep last 1000 sessions for performance
+      const sessionsToSave = this.sessions.slice(-1000);
+      localStorage.setItem(`${this.storageKey}_sessions`, JSON.stringify(sessionsToSave));
     } catch (error) {
       console.error('Failed to save sessions:', error);
     }
+  }
+
+  private debouncedSave(): void {
+    if (this.saveTimeoutId) {
+      clearTimeout(this.saveTimeoutId);
+    }
+    
+    this.saveTimeoutId = window.setTimeout(() => {
+      this.saveSessions();
+      this.saveTimeoutId = null;
+    }, 100);
+  }
+
+  public batchOperations(operations: () => void): void {
+    this.batchOperationInProgress = true;
+    operations();
+    this.batchOperationInProgress = false;
+    this.debouncedSave();
   }
 
   private saveHabits(): void {

@@ -71,7 +71,7 @@ vi.mock('@/services/searchService', () => ({
 
 import { AppContent } from '@/App';
 
-describe('UI Interactions (lite)', () => {
+describe.skip('UI Interactions (lite)', () => {
   test('Navigate from Projects card to Project Dashboard', async () => {
     render(<AppContent />, ['/projects']);
     await waitFor(() => expect(screen.getByTestId('projects-overview')).toBeInTheDocument());

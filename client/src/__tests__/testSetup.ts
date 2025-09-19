@@ -58,16 +58,48 @@ global.IntersectionObserver = vi.fn().mockImplementation(() => ({
   thresholds: [],
 }));
 
-// Mock localStorage with proper implementation
+// Mock localStorage with proper implementation including quota simulation
 class LocalStorageMock {
   private store: { [key: string]: string } = {};
+  private maxSize = 10 * 1024 * 1024; // 10MB default quota
+  private simulateQuotaExceeded = false;
+  private returnInvalidJson = false;
   
   getItem = vi.fn((key: string) => {
-    return this.store[key] || null;
+    // Simulate invalid JSON for specific test scenarios
+    if (this.returnInvalidJson && key.includes('fallback')) {
+      return 'invalid json';
+    }
+    
+    const value = this.store[key] || null;
+    
+    // Simulate storage errors for testing
+    if (key.includes('storage-error-test')) {
+      throw new Error('Storage error');
+    }
+    
+    return value;
   });
   
   setItem = vi.fn((key: string, value: string) => {
-    this.store[key] = value.toString();
+    const valueStr = value ? value.toString() : '';
+    
+    // Calculate approximate size
+    const currentSize = Object.values(this.store).reduce((size, val) => size + val.length, 0);
+    
+    // Simulate quota exceeded error for large data or when explicitly set
+    if (this.simulateQuotaExceeded || currentSize + valueStr.length > this.maxSize) {
+      const error = new Error('QuotaExceededError');
+      error.name = 'QuotaExceededError';
+      throw error;
+    }
+    
+    // Simulate general storage errors for specific keys
+    if (key.includes('storage-full-test')) {
+      throw new Error('Storage full');
+    }
+    
+    this.store[key] = valueStr;
   });
   
   removeItem = vi.fn((key: string) => {
@@ -86,6 +118,23 @@ class LocalStorageMock {
     const keys = Object.keys(this.store);
     return keys[index] || null;
   });
+  
+  // Test utility methods
+  simulateQuotaError = (enabled: boolean = true) => {
+    this.simulateQuotaExceeded = enabled;
+  };
+  
+  simulateInvalidJson = (enabled: boolean = true) => {
+    this.returnInvalidJson = enabled;
+  };
+  
+  setMaxSize = (size: number) => {
+    this.maxSize = size;
+  };
+  
+  getCurrentSize = () => {
+    return Object.values(this.store).reduce((size, val) => size + val.length, 0);
+  };
 }
 
 const localStorageMock = new LocalStorageMock();
@@ -332,6 +381,8 @@ export const resetAllMocks = () => {
   localStorageMock.clear();
   sessionStorageMock.clear();
 };
+
+export { localStorageMock, sessionStorageMock };
 
 export const createMockEvent = (type: string, properties: any = {}) => {
   return {
@@ -760,4 +811,85 @@ export const createMockEditor = (options: any = {}) => {
     emit: vi.fn(),
     ...options.overrides,
   };
+};
+
+// ============================================================================
+// Storage and Core Service Enhancements
+// ============================================================================
+
+// Export utilities for storage error simulation
+export const simulateStorageError = (type: 'quota' | 'full' | 'invalid-json' = 'quota') => {
+  switch (type) {
+    case 'quota':
+      localStorageMock.simulateQuotaError(true);
+      break;
+    case 'full':
+      localStorageMock.setMaxSize(100); // Very small size to trigger errors
+      break;
+    case 'invalid-json':
+      localStorageMock.simulateInvalidJson(true);
+      break;
+  }
+};
+
+export const resetStorageSimulation = () => {
+  localStorageMock.simulateQuotaError(false);
+  localStorageMock.simulateInvalidJson(false);
+  localStorageMock.setMaxSize(10 * 1024 * 1024); // Reset to 10MB
+  localStorageMock.clear();
+};
+
+// ============================================================================
+// File Handling and Import/Export Mocking
+// ============================================================================
+
+// Mock file-saver for download functionality
+vi.mock('file-saver', () => ({
+  saveAs: vi.fn().mockResolvedValue(undefined),
+}));
+
+// Mock JSZip for ZIP file operations
+vi.mock('jszip', () => {
+  const MockZip = vi.fn().mockImplementation(() => ({
+    file: vi.fn().mockReturnThis(),
+    folder: vi.fn().mockReturnValue({
+      file: vi.fn().mockReturnThis(),
+      folder: vi.fn().mockReturnThis(),
+    }),
+    generateAsync: vi.fn().mockResolvedValue(new Blob(['mock zip content'], { type: 'application/zip' })),
+    loadAsync: vi.fn().mockResolvedValue({}),
+    files: {},
+  }));
+  MockZip.loadAsync = vi.fn().mockResolvedValue({});
+  
+  return { 
+    default: MockZip,
+    __esModule: true,
+  };
+});
+
+// Global mock data for tests
+export const mockDocumentStructure = {
+  title: 'Test Document',
+  content: 'Mock document content for testing',
+  chapters: [
+    { id: 'ch1', title: 'Chapter 1', content: 'Chapter content' }
+  ],
+  characters: [
+    { id: 'char1', name: 'Test Character', description: 'A test character' }
+  ],
+  locations: [
+    { id: 'loc1', name: 'Test Location', description: 'A test location' }
+  ],
+};
+
+export const mockProject = {
+  id: 'test-project',
+  title: 'Test Project',
+  description: 'A test project',
+  stories: [],
+  characters: [],
+  locations: [],
+  createdAt: new Date(),
+  updatedAt: new Date(),
 };

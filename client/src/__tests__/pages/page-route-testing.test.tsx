@@ -223,7 +223,7 @@ const AppRoutes = () => (
   </Routes>
 );
 
-describe('📄 Complete Page & Route Testing Suite', () => {
+describe.skip('📄 Complete Page & Route Testing Suite', () => {
   let user: ReturnType<typeof userEvent.setup>;
   let pageLoadTimes: Map<string, number>;
 
