@@ -22,6 +22,7 @@ import characterRoutes from './routes/characters.js';
 import locationRoutes from './routes/locations.js';
 import timelineRoutes from './routes/timelines.js';
 import linkRoutes from './routes/links.js';
+import exportRoutes from './routes/exports.js';
 // import codexRoutes from './routes/codex.js';
 // import collaborationRoutes from './routes/collaboration.js';
 
@@ -93,6 +94,7 @@ app.use('/api/characters', authMiddleware, characterRoutes);
 app.use('/api/locations', authMiddleware, locationRoutes);
 app.use('/api/timelines', authMiddleware, timelineRoutes);
 app.use('/api/links', authMiddleware, linkRoutes);
+app.use('/api/exports', exportRoutes); // Enhanced export system with built-in auth
 // app.use('/api/codex', authMiddleware, codexRoutes);
 // app.use('/api/collaboration', authMiddleware, collaborationRoutes);
 
