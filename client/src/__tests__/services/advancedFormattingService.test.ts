@@ -117,7 +117,8 @@ describe('AdvancedFormattingService', () => {
 
       mockLocalStorage.getItem.mockReturnValue(JSON.stringify(savedSettings));
 
-      // Create new instance to test loading
+      // Force reload from mocked localStorage
+      advancedFormattingService.loadSettings();
       const settings = advancedFormattingService.getSettings();
 
       expect(settings.manuscript.font).toBe('Garamond');

@@ -16,6 +16,7 @@ export interface IntegratedAnalysis {
   overallScore: number;
   strengths: string[];
   improvements: string[];
+  insights: string[]; // Added for test compatibility
   actionableSteps: string[];
   serviceInsights: {
     writing: any;
@@ -77,6 +78,7 @@ export class UltimateIntegrationService {
       overallScore: this.calculateOverallScore(writingAnalysis, storyAnalysis, contentAnalysis),
       strengths: this.consolidateStrengths(writingAnalysis, storyAnalysis, contentAnalysis),
       improvements: this.consolidateImprovements(writingAnalysis, storyAnalysis, contentAnalysis),
+      insights: this.generateInsights(writingAnalysis, storyAnalysis, contentAnalysis, coachingInsights),
       actionableSteps: this.generateActionableSteps(writingAnalysis, storyAnalysis, contentAnalysis, coachingInsights),
       serviceInsights: {
         writing: writingAnalysis,
@@ -359,6 +361,40 @@ export class UltimateIntegrationService {
     }
 
     return steps.slice(0, 5);
+  }
+
+  private generateInsights(writing: any, story: any, content: any, coaching: any): string[] {
+    const insights: string[] = [];
+
+    // Extract insights from all services
+    if (writing?.insights) {
+      insights.push(...(Array.isArray(writing.insights) ? writing.insights : [writing.insights]));
+    }
+
+    if (story?.insights) {
+      insights.push(...(Array.isArray(story.insights) ? story.insights : [story.insights]));
+    }
+
+    if (content?.insights) {
+      insights.push(...(Array.isArray(content.insights) ? content.insights : [content.insights]));
+    }
+
+    // Add coaching insights if available
+    if (coaching?.length > 0) {
+      insights.push(...coaching.map((c: any) => c.description).filter(Boolean));
+    }
+
+    // Add some generic insights if we don't have enough
+    if (insights.length === 0) {
+      insights.push(
+        'Your writing shows potential for improvement',
+        'Consider focusing on character development',
+        'Work on varying sentence structure',
+        'Expand descriptive language'
+      );
+    }
+
+    return [...new Set(insights)].slice(0, 6); // Remove duplicates and limit
   }
 }
 

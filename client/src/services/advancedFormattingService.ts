@@ -549,7 +549,7 @@ class AdvancedFormattingService extends BrowserEventEmitter {
     }
   }
 
-  private loadSettings(): void {
+  public loadSettings(): void {
     try {
       const stored = localStorage.getItem(`${this.storageKey}_settings`);
       if (stored) {

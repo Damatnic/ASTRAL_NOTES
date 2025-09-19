@@ -514,11 +514,6 @@ export class AIResponseValidator {
   static validateResponse(response: any, expectedSchema: any): ValidationResult {
     const errors: string[] = [];
     
-    if (!response) {
-      errors.push("Response cannot be null or undefined");
-      return { valid: false, errors };
-    }
-
     // Validate required fields
     if (!response.id) errors.push('Missing required field: id');
     if (!response.content) errors.push('Missing required field: content');

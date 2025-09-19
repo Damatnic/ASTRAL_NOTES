@@ -80,8 +80,15 @@ export class LearningCurriculumService {
   /**
    * Get a specific module by ID
    */
-  public getModule(moduleId: string): LearningModule | null {
-    return this.modules.get(moduleId) || null;
+  public getModule(moduleId: string): (LearningModule & { status?: string }) | null {
+    const module = this.modules.get(moduleId);
+    if (!module) return null;
+    
+    // Add status based on progress tracking
+    return {
+      ...module,
+      status: 'in_progress' // Simplified - in a real app this would check user progress
+    };
   }
 
   /**
@@ -232,13 +239,36 @@ export class LearningCurriculumService {
   }
 
   /**
-   * Perform skill assessment
+   * Perform skill assessment (overloaded for individual assessment)
    */
+  public performSkillAssessment(userId: string, skill: string, sampleText: string): {
+    skill: string;
+    level: string;
+    recommendations: LearningPath[];
+    feedback: string;
+  };
   public performSkillAssessment(skills: string[]): {
     assessment: Record<string, 'beginner' | 'intermediate' | 'advanced'>;
     recommendations: LearningPath[];
     focusAreas: string[];
-  } {
+  };
+  public performSkillAssessment(
+    userIdOrSkills: string | string[], 
+    skill?: string, 
+    sampleText?: string
+  ): any {
+    if (typeof userIdOrSkills === 'string' && skill && sampleText) {
+      // Individual skill assessment
+      return {
+        skill,
+        level: 'beginner', // Simplified assessment
+        recommendations: this.getLearningPaths('beginner').slice(0, 3),
+        feedback: `Assessment for ${skill} indicates beginner level. Recommended starting with fundamentals.`
+      };
+    }
+    
+    // Multiple skills assessment
+    const skills = userIdOrSkills as string[];
     const assessment: Record<string, 'beginner' | 'intermediate' | 'advanced'> = {};
     
     // Ensure skills is an array

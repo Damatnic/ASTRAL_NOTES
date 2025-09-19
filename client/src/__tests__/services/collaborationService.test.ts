@@ -129,6 +129,7 @@ describe('CollaborationService', () => {
 
     test('should handle disconnection', () => {
       collaborationService['socket'] = mockSocket;
+      collaborationService.setupSocketListeners();
       collaborationService['session'] = mockSession;
 
       const disconnectHandler = vi.mocked(mockSocket.on).mock.calls.find(
@@ -143,6 +144,7 @@ describe('CollaborationService', () => {
 
     test('should disconnect cleanly', () => {
       collaborationService['socket'] = mockSocket;
+      collaborationService.setupSocketListeners();
       collaborationService['session'] = mockSession;
 
       collaborationService.disconnect();
@@ -156,6 +158,7 @@ describe('CollaborationService', () => {
   describe('User Management', () => {
     beforeEach(() => {
       collaborationService['socket'] = mockSocket;
+      collaborationService.setupSocketListeners();
       collaborationService['session'] = mockSession;
     });
 
@@ -260,6 +263,7 @@ describe('CollaborationService', () => {
   describe('Document Changes', () => {
     beforeEach(() => {
       collaborationService['socket'] = mockSocket;
+      collaborationService.setupSocketListeners();
       collaborationService['localUser'] = {
         ...mockUser,
         status: 'online',
@@ -330,6 +334,7 @@ describe('CollaborationService', () => {
   describe('Document Locking', () => {
     beforeEach(() => {
       collaborationService['socket'] = mockSocket;
+      collaborationService.setupSocketListeners();
     });
 
     test('should handle document locking', () => {
@@ -389,6 +394,7 @@ describe('CollaborationService', () => {
   describe('Presence and Cursors', () => {
     beforeEach(() => {
       collaborationService['socket'] = mockSocket;
+      collaborationService.setupSocketListeners();
     });
 
     test('should handle cursor movements', () => {
@@ -557,6 +563,7 @@ describe('CollaborationService', () => {
   describe('Comments System', () => {
     beforeEach(() => {
       collaborationService['socket'] = mockSocket;
+      collaborationService.setupSocketListeners();
     });
 
     test('should handle adding comments', () => {
@@ -664,6 +671,7 @@ describe('CollaborationService', () => {
 
     test('should check if connected', () => {
       collaborationService['socket'] = mockSocket;
+      collaborationService.setupSocketListeners();
 
       const isConnected = collaborationService.isConnected();
 
@@ -708,6 +716,7 @@ describe('CollaborationService', () => {
 
     test('should stop heartbeat on disconnection', () => {
       collaborationService['socket'] = mockSocket;
+      collaborationService.setupSocketListeners();
       collaborationService['heartbeatInterval'] = setInterval(() => {}, 1000);
 
       collaborationService.disconnect();
@@ -717,6 +726,7 @@ describe('CollaborationService', () => {
 
     test('should handle reconnection attempts', () => {
       collaborationService['socket'] = mockSocket;
+      collaborationService.setupSocketListeners();
       collaborationService['reconnectAttempts'] = 3;
 
       const disconnectHandler = vi.mocked(mockSocket.on).mock.calls.find(

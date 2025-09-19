@@ -11,6 +11,9 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { NoteEditor } from '../../pages/NoteEditor';
 import { ToastProvider } from '../../components/ui/Toast';
 
+// Import services for mocking
+import { noteService } from '../../services/noteService';
+
 // Mock services
 vi.mock('../../services/noteService', () => ({
   noteService: {
@@ -106,7 +109,7 @@ describe('Enhanced Note Editor - Integration Tests', () => {
         expect(screen.getByDisplayValue('Untitled Note')).toBeInTheDocument();
       });
 
-      const { noteService } = require('../../services/noteService');
+      // Use the imported mocked noteService
       expect(noteService.createNote).toHaveBeenCalled();
     });
 
@@ -163,7 +166,7 @@ describe('Enhanced Note Editor - Integration Tests', () => {
 
       // Auto-save should handle formatted content
       await waitFor(() => {
-        const { noteService } = require('../../services/noteService');
+        // Use the imported mocked noteService
         expect(noteService.updateNote).toHaveBeenCalled();
       }, { timeout: 5000 });
     });
@@ -437,7 +440,7 @@ describe('Enhanced Note Editor - Integration Tests', () => {
 
       // Auto-save system should handle multiple rapid changes
       await waitFor(() => {
-        const { noteService } = require('../../services/noteService');
+        // Use the imported mocked noteService
         expect(noteService.updateNote).toHaveBeenCalled();
       }, { timeout: 5000 });
     });
@@ -447,7 +450,7 @@ describe('Enhanced Note Editor - Integration Tests', () => {
     it('should maintain responsiveness with large content', async () => {
       // Update mock to return large content
       const largeContent = '<p>' + 'Large content '.repeat(1000) + '</p>';
-      const { noteService } = require('../../services/noteService');
+      // Use the imported mocked noteService
       noteService.getNoteById.mockResolvedValueOnce({
         id: 'large-note',
         title: 'Large Note',
@@ -511,7 +514,7 @@ describe('Enhanced Note Editor - Integration Tests', () => {
   describe('Error Recovery Integration', () => {
     it('should recover from service failures gracefully', async () => {
       // Mock service failure
-      const { noteService } = require('../../services/noteService');
+      // Use the imported mocked noteService
       noteService.updateNote.mockRejectedValueOnce(new Error('Network error'));
 
       render(
@@ -651,7 +654,7 @@ describe('Enhanced Note Editor - Integration Tests', () => {
       });
 
       // Verify all services were called appropriately
-      const { noteService } = require('../../services/noteService');
+      // Use the imported mocked noteService
       expect(noteService.updateNote).toHaveBeenCalled();
 
       const { saveAs } = require('file-saver');

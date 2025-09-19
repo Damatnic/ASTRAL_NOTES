@@ -243,7 +243,7 @@ class CollaborationService {
   /**
    * Setup socket event listeners
    */
-  private setupSocketListeners(): void {
+  public setupSocketListeners(): void {
     if (!this.socket) return;
 
     // User events

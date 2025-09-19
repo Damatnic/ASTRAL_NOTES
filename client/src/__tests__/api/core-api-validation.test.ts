@@ -178,7 +178,7 @@ describe('🔍 Core API Validation Suite', () => {
 
   describe('📁 Project Service API (20 checks)', () => {
     it('should create projects successfully', () => {
-      const project = projectService.createProjectSyncSync({
+      const project = projectService.createProjectSync({
         title: 'Test Project',
         description: 'A test project',
         genre: 'fantasy',
