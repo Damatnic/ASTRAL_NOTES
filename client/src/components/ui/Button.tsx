@@ -124,6 +124,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         )}
         ref={ref}
         disabled={isDisabled}
+        aria-disabled={isDisabled ? 'true' : undefined}
         aria-label={ariaLabel || (typeof children === 'string' ? children : undefined)}
         title={tooltip}
         {...props}

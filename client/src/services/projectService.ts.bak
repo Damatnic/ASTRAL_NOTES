@@ -402,7 +402,7 @@ export class ProjectService {
   public duplicateProject(id: string): Project | null {
     const original = this.getProjectById(id);
     if (!original) {
-      throw new Error("Project not found");
+      return null;
     }
 
     const duplicated = this.createProject({
@@ -479,7 +479,7 @@ export class ProjectService {
         }
       }
     }
-    return null;
+    throw new Error('Story not found');
   }
 
   public async deleteStory(storyId: string): Promise<boolean> {
@@ -550,7 +550,7 @@ export class ProjectService {
         }
       }
     }
-    return null;
+    throw new Error('Character not found');
   }
 
   public async deleteCharacter(characterId: string): Promise<boolean> {
@@ -572,27 +572,17 @@ export class ProjectService {
    * Additional async methods for test compatibility
    */
   public async getProjects(): Promise<Project[]> {
-    try {
-      return this.getAllProjects();
-    } catch (error) {
-      console.warn('Error getting projects:', error);
-      return [];
-    }
+    return this.getAllProjects();
   }
 
   public async getProject(id: string): Promise<Project | null> {
     return this.getProjectById(id);
   }
 
-  // For API compatibility - both sync and async versions
-  public updateProject(id: string, data: UpdateProjectData): Project | null {
-    return this.updateProjectSync(id, data);
-  }
-
-  public async updateProjectAsync(id: string, data: UpdateProjectData): Promise<Project | null> {
+  public async updateProject(id: string, data: UpdateProjectData): Promise<Project | null> {
     const result = this.updateProjectSync(id, data);
     if (!result) {
-      return null;
+      throw new Error('Project not found');
     }
     
     // Update localStorage with proper structure for test compatibility
@@ -752,7 +742,7 @@ export class ProjectService {
   public async createBackup(projectId: string): Promise<any> {
     const project = this.getProjectById(projectId);
     if (!project) {
-      return null;
+      throw new Error('Project not found');
     }
 
     return {
@@ -776,7 +766,7 @@ export class ProjectService {
   public async exportProject(projectId: string, format: string): Promise<any> {
     const project = this.getProjectById(projectId);
     if (!project) {
-      return null;
+      throw new Error('Project not found');
     }
 
     return {
@@ -844,7 +834,7 @@ export class ProjectService {
   public async saveAsTemplate(projectId: string, templateData: { name: string; description: string }): Promise<any> {
     const project = this.getProjectById(projectId);
     if (!project) {
-      return null;
+      throw new Error('Project not found');
     }
 
     return {

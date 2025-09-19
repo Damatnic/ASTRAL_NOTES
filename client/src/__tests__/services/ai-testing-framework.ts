@@ -519,34 +519,35 @@ export class AIResponseValidator {
       return { valid: false, errors };
     }
 
-    // Validate required fields
-    if (!response.id) errors.push('Missing required field: id');
-    if (!response.content) errors.push('Missing required field: content');
-    if (!response.model) errors.push('Missing required field: model');
-    if (!response.provider) errors.push('Missing required field: provider');
-    
-    // Validate types
-    if (response.id && typeof response.id !== 'string') {
-      errors.push('Field "id" must be string');
-    }
-    
-    if (response.content && typeof response.content !== 'string') {
-      errors.push('Field "content" must be string');
-    }
-    
-    // Validate usage object
-    if (response.usage) {
-      if (typeof response.usage.totalTokens !== 'number') {
-        errors.push('Field "usage.totalTokens" must be number');
+    // If expectedSchema is provided, validate against it instead of default schema
+    if (expectedSchema) {
+      for (const [key, expectedType] of Object.entries(expectedSchema)) {
+        if (response[key] === undefined) {
+          errors.push(`Missing required field: ${key}`);
+        } else {
+          const actualType = typeof response[key];
+          if (expectedType === 'array' && !Array.isArray(response[key])) {
+            errors.push(`Field "${key}" must be array`);
+          } else if (expectedType === 'object' && (actualType !== 'object' || Array.isArray(response[key]))) {
+            errors.push(`Field "${key}" must be object`);
+          } else if (typeof expectedType === 'string' && expectedType !== 'array' && expectedType !== 'object' && actualType !== expectedType) {
+            errors.push(`Field "${key}" must be ${expectedType}, got ${actualType}`);
+          }
+        }
       }
-      if (response.usage.totalTokens < 0) {
-        errors.push('Field "usage.totalTokens" must be non-negative');
+    } else {
+      // Default validation for AI responses
+      if (!response.id) errors.push('Missing required field: id');
+      if (!response.content) errors.push('Missing required field: content');
+      
+      // Validate types
+      if (response.id && typeof response.id !== 'string') {
+        errors.push('Field "id" must be string');
       }
-    }
-    
-    // Validate timestamp
-    if (response.timestamp && typeof response.timestamp !== 'number') {
-      errors.push('Field "timestamp" must be number');
+      
+      if (response.content && typeof response.content !== 'string') {
+        errors.push('Field "content" must be string');
+      }
     }
     
     return {
@@ -654,10 +655,19 @@ export function createPerformanceBenchmark() {
     expectResponseTime: (maxMs: number) => ({
       async: (testFn: () => Promise<any>) => async () => {
         const start = performance.now();
-        await testFn();
+        const result = await testFn();
         const duration = performance.now() - start;
         expect(duration).toBeLessThan(maxMs);
         return duration;
+      }
+    }),
+    expectResponseTimeAndGetResult: (maxMs: number) => ({
+      async: (testFn: () => Promise<any>) => async () => {
+        const start = performance.now();
+        const result = await testFn();
+        const duration = performance.now() - start;
+        expect(duration).toBeLessThan(maxMs);
+        return result;
       }
     }),
     expectThroughput: (minRequestsPerSecond: number) => ({

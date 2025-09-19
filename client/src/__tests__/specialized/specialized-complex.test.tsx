@@ -79,6 +79,244 @@ const TestWrapper: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   );
 };
 
+// Global mock components for integration tests
+const MockSceneBuilder = ({ 
+  scene = { id: '1', title: '', content: '', characters: [], location: '' },
+  onSave = () => {},
+  onCancel = () => {} 
+}) => (
+  <div data-testid="scene-builder">
+    <input 
+      data-testid="scene-title"
+      value={scene.title}
+      placeholder="Scene title"
+      onChange={(e) => onSave({ ...scene, title: e.target.value })}
+    />
+    <textarea 
+      data-testid="scene-content"
+      value={scene.content}
+      placeholder="Scene content"
+      onChange={(e) => onSave({ ...scene, content: e.target.value })}
+    />
+    <div data-testid="character-selector">
+      Characters: {scene.characters.join(', ')}
+    </div>
+    <input 
+      data-testid="scene-location"
+      value={scene.location}
+      placeholder="Location"
+      onChange={(e) => onSave({ ...scene, location: e.target.value })}
+    />
+    <button data-testid="save-scene" onClick={() => onSave(scene)}>Save</button>
+    <button data-testid="cancel-scene" onClick={onCancel}>Cancel</button>
+  </div>
+);
+
+const MockProjectDashboard = ({ 
+  project = { id: '1', name: '', progress: 0, deadlines: [] },
+  stats = { scenes: 0, characters: 0, words: 0 } 
+}) => (
+  <div data-testid="project-dashboard">
+    <h2 data-testid="project-name">{project.name}</h2>
+    <div data-testid="project-progress">Progress: {project.progress}%</div>
+    <div data-testid="project-stats">
+      <span data-testid="scene-count">{stats.scenes} scenes</span>
+      <span data-testid="character-count">{stats.characters} characters</span>
+      <span data-testid="word-count">{stats.words} words</span>
+    </div>
+    <div data-testid="deadlines">
+      {project.deadlines.map((deadline: any, index: number) => (
+        <div key={index} data-testid={`deadline-${index}`}>
+          {deadline.title}: {deadline.date}
+        </div>
+      ))}
+    </div>
+  </div>
+);
+
+const MockAICharacterGenerator = ({ 
+  onGenerate = () => {},
+  isGenerating = false,
+  character = null 
+}) => (
+  <div data-testid="ai-character-generator">
+    <button 
+      data-testid="generate-character"
+      onClick={onGenerate}
+      disabled={isGenerating}
+    >
+      {isGenerating ? 'Generating...' : 'Generate Character'}
+    </button>
+    {character && (
+      <div data-testid="generated-character">
+        <h3>{character.name}</h3>
+        <p>{character.description}</p>
+      </div>
+    )}
+  </div>
+);
+
+const MockAIWritingCoach = ({ 
+  suggestions = [],
+  onAnalyze = () => {},
+  isAnalyzing = false 
+}) => (
+  <div data-testid="ai-writing-coach">
+    <button 
+      data-testid="analyze-writing"
+      onClick={onAnalyze}
+      disabled={isAnalyzing}
+    >
+      {isAnalyzing ? 'Analyzing...' : 'Analyze Writing'}
+    </button>
+    <div data-testid="suggestions">
+      {suggestions.map((suggestion: string, index: number) => (
+        <div key={index} data-testid={`suggestion-${index}`}>
+          {suggestion}
+        </div>
+      ))}
+    </div>
+  </div>
+);
+
+const MockCodexManager = ({ 
+  entries = [],
+  onAdd = () => {},
+  onSearch = () => {} 
+}) => (
+  <div data-testid="codex-manager">
+    <input data-testid="search-codex" placeholder="Search codex..." />
+    <button data-testid="add-entry" onClick={onAdd}>Add Entry</button>
+    <div data-testid="codex-entries">
+      {entries.map((entry: any, index: number) => (
+        <div key={index} data-testid={`entry-${index}`}>
+          {entry.title}
+        </div>
+      ))}
+    </div>
+  </div>
+);
+
+const MockUniverseBuilder = ({ 
+  universes = [],
+  selectedUniverse = null,
+  onCreateUniverse = () => {},
+  onSelectUniverse = () => {} 
+}) => (
+  <div data-testid="universe-builder">
+    <button data-testid="create-universe" onClick={onCreateUniverse}>
+      Create Universe
+    </button>
+    <div data-testid="universe-list">
+      {universes.map((universe: any, index: number) => (
+        <div 
+          key={index}
+          data-testid={`universe-${index}`}
+          className={selectedUniverse === index ? 'selected' : ''}
+          onClick={() => onSelectUniverse(index)}
+        >
+          <h3>{universe.name}</h3>
+          <p>{universe.description}</p>
+          <div data-testid="universe-stats">
+            {universe.projects?.length || 0} projects
+          </div>
+        </div>
+      ))}
+    </div>
+  </div>
+);
+
+const MockSeriesBible = ({ 
+  series = { name: '', books: [], characters: [], timeline: [] },
+  onUpdateSeries = () => {},
+  onAddBook = () => {} 
+}) => (
+  <div data-testid="series-bible">
+    <input 
+      data-testid="series-name"
+      value={series.name}
+      placeholder="Series name"
+      onChange={(e) => onUpdateSeries({ ...series, name: e.target.value })}
+    />
+    <div data-testid="books-section">
+      <h3>Books ({series.books.length})</h3>
+      <button data-testid="add-book" onClick={onAddBook}>Add Book</button>
+      {series.books.map((book: any, index: number) => (
+        <div key={index} data-testid={`book-${index}`}>
+          {book.title} - {book.status}
+        </div>
+      ))}
+    </div>
+    <div data-testid="characters-section">
+      <h3>Characters ({series.characters.length})</h3>
+      {series.characters.map((character: any, index: number) => (
+        <div key={index} data-testid={`series-character-${index}`}>
+          {character.name}
+        </div>
+      ))}
+    </div>
+  </div>
+);
+
+const MockTestRunner = ({ 
+  tests = [],
+  isRunning = false,
+  results = null,
+  onRunTests = () => {} 
+}) => (
+  <div data-testid="test-runner">
+    <button 
+      data-testid="run-tests"
+      onClick={onRunTests}
+      disabled={isRunning}
+    >
+      {isRunning ? 'Running Tests...' : 'Run Tests'}
+    </button>
+    <div data-testid="test-list">
+      {tests.map((test: any, index: number) => (
+        <div key={index} data-testid={`test-${index}`}>
+          {test.name} - {test.status}
+        </div>
+      ))}
+    </div>
+    {results && (
+      <div data-testid="test-results">
+        Passed: {results.passed}, Failed: {results.failed}
+      </div>
+    )}
+  </div>
+);
+
+const MockPerformanceMonitor = ({ 
+  metrics = { loadTime: 0, memoryUsage: 0, renderTime: 0 },
+  isMonitoring = false,
+  onToggleMonitoring = () => {} 
+}) => (
+  <div data-testid="performance-monitor">
+    <button 
+      data-testid="toggle-monitoring"
+      onClick={onToggleMonitoring}
+      className={isMonitoring ? 'active' : 'inactive'}
+    >
+      {isMonitoring ? 'Stop Monitoring' : 'Start Monitoring'}
+    </button>
+    <div data-testid="performance-metrics">
+      <div data-testid="load-time">Load Time: {metrics.loadTime}ms</div>
+      <div data-testid="memory-usage">Memory: {metrics.memoryUsage}MB</div>
+      <div data-testid="render-time">Render: {metrics.renderTime}ms</div>
+    </div>
+  </div>
+);
+
+const MockErrorBoundary = ({ 
+  hasError = false,
+  children = <div data-testid="error-boundary-content">Content</div>
+}) => (
+  hasError ? 
+    <div data-testid="error-fallback">Something went wrong</div> : 
+    <div data-testid="error-boundary">{children}</div>
+);
+
 describe('🎯 Specialized & Complex Components Test Suite', () => {
   let user: ReturnType<typeof userEvent.setup>;
 

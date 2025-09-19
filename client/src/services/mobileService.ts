@@ -101,7 +101,7 @@ export class MobileService {
     let breakpoint: 'mobile' | 'tablet' | 'desktop';
     if (width < 768) {
       breakpoint = 'mobile';
-    } else if (width < 1024) {
+    } else if (width <= 1024) {
       breakpoint = 'tablet';
     } else {
       breakpoint = 'desktop';

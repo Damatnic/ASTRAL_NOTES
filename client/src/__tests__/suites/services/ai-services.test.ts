@@ -24,30 +24,89 @@ const createMockService = (serviceName: string) => ({
   getPersonalizedCoaching: vi.fn().mockResolvedValue({ advice: 'Mock coaching advice', exercises: [] }),
   assessProgress: vi.fn().mockResolvedValue({ score: 85, areas: ['grammar', 'style'] }),
   adaptCoaching: vi.fn().mockResolvedValue({ newStrategy: 'focus on structure' }),
-  getSuggestions: vi.fn().mockResolvedValue(['Mock suggestion 1', 'Mock suggestion 2']),
-  getPlotSuggestions: vi.fn().mockResolvedValue(['Plot development idea 1', 'Plot development idea 2']),
-  getCharacterSuggestions: vi.fn().mockResolvedValue(['Character development idea 1']),
-  analyzeStructure: vi.fn().mockResolvedValue({ acts: 3, scenes: 12, pacing: 'good' }),
+  getSuggestions: vi.fn().mockResolvedValue({ 
+    nextSentences: ['Mock next sentence 1', 'Mock next sentence 2'],
+    plotTwists: ['Unexpected revelation', 'Character betrayal'],
+    characterActions: ['Character decides to fight', 'Character seeks help']
+  }),
+  getPlotSuggestions: vi.fn().mockResolvedValue({
+    nextEvents: ['Major revelation', 'Character confrontation'],
+    conflicts: ['Internal struggle', 'External obstacle'],
+    resolutions: ['Peaceful solution', 'Dramatic showdown']
+  }),
+  getCharacterSuggestions: vi.fn().mockResolvedValue({
+    growthOpportunities: ['Learn new skill', 'Face inner fear'],
+    conflicts: ['Moral dilemma', 'Personal betrayal'],
+    relationships: ['Deepen friendship', 'Reconcile with enemy']
+  }),
+  analyzeStructure: vi.fn().mockResolvedValue({ 
+    structure: { acts: 3, scenes: 12, progression: 'traditional' },
+    pacing: { overall: 'good', issues: [], rhythm: 'steady' },
+    balance: { plotToCharacter: 0.7, actionToDialogue: 0.6, tension: 0.8 }
+  }),
   // Additional methods for AI services
   startSession: vi.fn().mockResolvedValue({ id: 'session-123', type: 'story-writing', startTime: Date.now() }),
   updateMetrics: vi.fn().mockResolvedValue({ wordsWritten: 250, timeSpent: 1500 }),
   getProgress: vi.fn().mockResolvedValue({ score: 75, metrics: { words: 250, time: 1500 } }),
   analyzeStyle: vi.fn().mockResolvedValue({ style: 'narrative', confidence: 0.85, suggestions: [] }),
-  analyzeEmotionalTone: vi.fn().mockResolvedValue({ tone: 'positive', intensity: 0.7, emotions: ['hope', 'excitement'] }),
+  analyzeEmotionalTone: vi.fn().mockResolvedValue({ 
+    tone: 'positive', 
+    intensity: 0.7, 
+    emotions: ['hope', 'excitement'],
+    primaryEmotion: 'sadness',
+    secondaryEmotions: ['nostalgia', 'longing', 'melancholy']
+  }),
   analyzeWritingPatterns: vi.fn().mockResolvedValue({ patterns: ['dialogue-heavy', 'descriptive'], accuracy: 0.9 }),
   getLearningModules: vi.fn().mockResolvedValue([{ id: 'mod1', title: 'Character Development', level: 'beginner' }]),
   addKnowledgeItem: vi.fn().mockResolvedValue({ id: 'item-123', added: true }),
   getWorkflowSuggestions: vi.fn().mockResolvedValue([{ action: 'outline', priority: 'high', description: 'Create chapter outline' }]),
-  getInspiration: vi.fn().mockResolvedValue({ prompt: 'What if...', category: 'sci-fi', source: 'random' }),
-  generateOutline: vi.fn().mockResolvedValue({ chapters: 10, summary: 'Mock outline' }),
+  getInspiration: vi.fn().mockResolvedValue({ 
+    prompt: 'What if...', 
+    category: 'sci-fi', 
+    source: 'random',
+    sources: ['Historical documents', 'Art galleries', 'Nature walks'],
+    research: ['Key historical events', 'Period-appropriate details', 'Cultural context']
+  }),
+  generateOutline: vi.fn().mockResolvedValue({ 
+    acts: [
+      { title: 'Setup', chapters: 3, description: 'Introduce characters and world' },
+      { title: 'Confrontation', chapters: 4, description: 'Rising action and conflicts' },
+      { title: 'Resolution', chapters: 3, description: 'Climax and conclusion' }
+    ],
+    chapters: [
+      { title: 'The Beginning', summary: 'Story opens', wordTarget: 2000 },
+      { title: 'First Challenge', summary: 'Inciting incident', wordTarget: 2500 }
+    ],
+    keyEvents: ['Inciting incident', 'Plot point 1', 'Midpoint', 'Plot point 2', 'Climax']
+  }),
   suggestStoryImprovements: vi.fn().mockResolvedValue(['Improvement 1', 'Improvement 2']),
   generatePrompts: vi.fn().mockResolvedValue(['Creative prompt 1', 'Creative prompt 2']),
-  getCreativeExercises: vi.fn().mockResolvedValue(['Exercise 1', 'Exercise 2']),
+  getCreativeExercises: vi.fn().mockResolvedValue([
+    { title: 'Character Backstory', instructions: 'Write a detailed backstory for your main character', duration: 15 },
+    { title: 'Dialogue Practice', instructions: 'Write a conversation between two characters', duration: 20 }
+  ]),
   getInspirationSources: vi.fn().mockResolvedValue(['Source 1', 'Source 2']),
-  predictNext: vi.fn().mockResolvedValue(['next word', 'next phrase']),
+  predictNext: vi.fn().mockResolvedValue({
+    words: ['street', 'path', 'corridor'],
+    phrases: ['narrow street', 'cobblestone path', 'dimly lit corridor']
+  }),
   completeSentence: vi.fn().mockResolvedValue(['completion 1', 'completion 2']),
-  predictPlot: vi.fn().mockResolvedValue(['plot development 1']),
-  improveEmotionalArc: vi.fn().mockResolvedValue(['improvement 1']),
+  predictPlot: vi.fn().mockResolvedValue({
+    nextEvents: ['Hero faces first trial', 'Mentor reveals secret', 'Villain strikes back'],
+    probability: { high: 0.8, medium: 0.15, low: 0.05 }
+  }),
+  improveEmotionalArc: vi.fn().mockResolvedValue({
+    improvements: [
+      'Add transition between fear and determination',
+      'Consider building curiosity more gradually',
+      'Enhance emotional depth in chapter 2'
+    ],
+    pacing: {
+      current: 'rushed',
+      suggested: 'gradual build',
+      recommendations: ['Slow emotional transitions', 'Add emotional beats']
+    }
+  }),
   validateCharacterEmotions: vi.fn().mockResolvedValue({ consistent: true, issues: [] }),
   setUserPreferences: vi.fn().mockResolvedValue(undefined),
   getFeatureToggles: vi.fn().mockResolvedValue({ feature1: true, feature2: false }),

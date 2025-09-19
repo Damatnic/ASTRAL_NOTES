@@ -548,6 +548,32 @@ class AIWritingService {
       }
     };
   }
+
+  // Additional methods required by comprehensive tests
+  get name(): string {
+    return 'aiWritingService';
+  }
+
+  isConfigured(): boolean {
+    return this.initialized;
+  }
+
+  async analyzeWriting(text: string): Promise<any> {
+    const analysis = await this.analyzeText(text);
+    return {
+      suggestions: analysis.suggestions.map(s => ({
+        type: s.type,
+        issue: s.title,
+        suggestion: s.description,
+        confidence: s.confidence
+      })),
+      readabilityScore: analysis.readabilityScore,
+      sentimentScore: analysis.toneAnalysis.positive - analysis.toneAnalysis.negative
+    };
+  }
 }
 
 export const aiWritingService = new AIWritingService();
+
+// Export for test compatibility
+export { aiWritingService as default };

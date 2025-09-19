@@ -267,12 +267,12 @@ describe('🛡️ Comprehensive Error Handling Test Suite (287 Checks)', () => {
     });
 
     it('should handle updating non-existent project', () => {
-      const result = projectService.updateProject('non-existent', { title: 'Updated' });
+      const result = projectService.updateProjectSync('non-existent', { title: 'Updated' });
       expect(result).toBeNull();
     });
 
     it('should handle deleting non-existent project', () => {
-      const result = projectService.deleteProject('non-existent');
+      const result = projectService.deleteProjectSync('non-existent');
       expect(result).toBe(false);
     });
 
@@ -298,7 +298,7 @@ describe('🛡️ Comprehensive Error Handling Test Suite (287 Checks)', () => {
 
     it('should handle projects with invalid dates', () => {
       expect(() => {
-        projectService.updateProject('test-id', {
+        projectService.updateProjectSync('test-id', {
           createdAt: 'invalid-date',
           lastEditedAt: 'also-invalid'
         } as any);
@@ -1125,7 +1125,7 @@ describe('🛡️ Comprehensive Error Handling Test Suite (287 Checks)', () => {
             type: 'note',
             tags: []
           }),
-          () => projectService.updateProject(project.id, {
+          () => projectService.updateProjectSync(project.id, {
             title: 'Updated Concurrent Project'
           }),
           () => exportService.exportProject(project.id)
@@ -1254,7 +1254,7 @@ describe('🛡️ Comprehensive Error Handling Test Suite (287 Checks)', () => {
 
         // Rapid updates
         for (let i = 0; i < 100; i++) {
-          projectService.updateProject(project.id, {
+          projectService.updateProjectSync(project.id, {
             title: `Rapid Update ${i}`
           });
         }

@@ -293,13 +293,13 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
 
         {showStats && (
           <EditorStats
-            wordCount={editorState.wordCount}
-            characterCount={editorState.characterCount}
-            isModified={editorState.isModified}
-            isSaving={isSaving}
-            lastSaved={editorState.lastSaved}
-            maxLength={maxLength}
-            theme={theme}
+            stats={{
+              words: editorState.wordCount,
+              characters: editorState.characterCount,
+              charactersWithoutSpaces: editorState.characterCount,
+              paragraphs: 1,
+              readingTime: Math.ceil(editorState.wordCount / 200)
+            }}
           />
         )}
       </div>

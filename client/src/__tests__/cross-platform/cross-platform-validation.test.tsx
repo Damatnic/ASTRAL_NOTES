@@ -96,8 +96,8 @@ const ResponsiveComponent = ({ children }: { children: React.ReactNode }) => {
   }, []);
   
   const isMobile = viewport.width < 768;
-  const isTablet = viewport.width >= 768 && viewport.width < 1024;
-  const isDesktop = viewport.width >= 1024;
+  const isTablet = viewport.width >= 768 && viewport.width <= 1024;
+  const isDesktop = viewport.width > 1024;
   
   return (
     <div 

@@ -202,12 +202,6 @@ class CollaborationService {
           this.emit('session:sync', session);
         });
 
-        this.socket.on('disconnect', (reason) => {
-          console.log('Disconnected from collaboration server:', reason);
-          this.stopHeartbeat();
-          this.handleDisconnect();
-        });
-
         this.socket.on('error', (error) => {
           console.error('Socket error:', error);
           reject(error);
@@ -245,6 +239,17 @@ class CollaborationService {
    */
   public setupSocketListeners(): void {
     if (!this.socket) return;
+
+    // Connection events
+    this.socket.on('disconnect', (reason) => {
+      console.log('Disconnected from collaboration server:', reason);
+      this.stopHeartbeat();
+      this.handleDisconnect();
+    });
+
+    this.socket.on('error', (error) => {
+      console.error('Socket error:', error);
+    });
 
     // User events
     this.socket.on('user:joined', (user: CollaborationUser) => {
@@ -294,6 +299,7 @@ class CollaborationService {
 
     // Conflict handling
     this.socket.on('conflict:detected', (conflict: ConflictResolution) => {
+      this.emit('conflict:detected', conflict);
       this.handleConflict(conflict);
     });
 
@@ -530,20 +536,37 @@ class CollaborationService {
   /**
    * Add comment to document
    */
-  public addComment(
-    documentId: string,
-    content: string,
-    position: { start: number; end: number }
-  ): void {
+  public addComment(commentDataOrDocumentId: {
+    documentId: string;
+    content: string;
+    position: { start: number; end: number };
+  } | string, content?: string, position?: { start: number; end: number }): void {
     if (!this.socket || !this.localUser) return;
+
+    let commentData: {
+      documentId: string;
+      content: string;
+      position: { start: number; end: number };
+    };
+
+    // Handle both parameter formats
+    if (typeof commentDataOrDocumentId === 'string') {
+      commentData = {
+        documentId: commentDataOrDocumentId,
+        content: content!,
+        position: position!
+      };
+    } else {
+      commentData = commentDataOrDocumentId;
+    }
 
     const comment: Comment = {
       id: this.generateId(),
-      documentId,
+      documentId: commentData.documentId,
       userId: this.localUser.id,
       userName: this.localUser.name,
-      content,
-      position,
+      content: commentData.content,
+      position: commentData.position,
       timestamp: new Date(),
       resolved: false
     };
@@ -649,10 +672,21 @@ class CollaborationService {
    * Get user permissions (placeholder implementation)
    */
   public getUserPermissions(userId: string): any {
-    // This could be expanded based on your permission system
+    if (!this.session || !this.localUser) {
+      return {
+        canEdit: false,
+        canComment: false,
+        canManageUsers: false
+      };
+    }
+
+    const isOwner = this.session.owner === userId;
+    const isCurrentUser = this.localUser.id === userId;
+    
     return {
       canEdit: true,
       canComment: true,
+      canManageUsers: isOwner || isCurrentUser,
       canLock: true,
     };
   }

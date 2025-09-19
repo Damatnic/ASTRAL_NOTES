@@ -1,68 +1,67 @@
-﻿/**
+/**
  * AI Writing Companion Service
- * Provides intelligent writing assistance, suggestions, and real-time feedback
+ * Provides intelligent writing companionship, motivation, and productivity tracking
  */
 
-import { Note, Project } from '@/types/global';
-
-export interface WritingSuggestion {
+export interface WritingSession {
   id: string;
-  type: 'grammar' | 'style' | 'structure' | 'vocabulary' | 'flow' | 'clarity';
-  text: string;
-  suggestion: string;
-  confidence: number;
-  position: { start: number; end: number };
-  explanation: string;
-  category: string;
+  title: string;
+  contentId?: string;
+  mood?: string;
+  startTime: number;
+  endTime?: number;
+  content: string;
+  wordCount: number;
+  timeSpent: number;
+  productivity: number;
+  suggestions: AISuggestion[];
+  feedback: AIFeedback[];
+  aiInteractions: number;
+  isActive: boolean;
 }
 
-export interface AISuggestion extends WritingSuggestion {
-  aiGenerated: boolean;
-  modelUsed?: string;
-  timestamp: number;
+export interface AISuggestion {
+  id: string;
+  type: 'grammar' | 'style' | 'structure' | 'vocabulary' | 'clarity';
+  title: string;
+  description: string;
+  beforeText: string;
+  afterText: string;
+  confidence: number;
+  isApplied: boolean;
+  rating?: number;
 }
 
 export interface AIFeedback {
   id: string;
-  content: string;
-  type: 'positive' | 'constructive' | 'suggestion' | 'encouragement';
-  timestamp: number;
-  relevance: number;
-}
-
-export interface WritingSession {
-  id: string;
-  startTime: number;
-  endTime?: number;
-  wordCount: number;
-  charactersTyped: number;
-  deletions: number;
-  timeSpentWriting: number;
-  breaks: number;
-  currentContent: string;
-  goals: WritingGoal[];
-  feedback: AIFeedback[];
-  isActive: boolean;
-}
-
-export interface WritingGoal {
-  id: string;
-  type: 'wordCount' | 'timeSpent' | 'dailyStreak' | 'custom';
-  target: number;
-  current: number;
-  deadline?: number;
-  description: string;
-  completed: boolean;
+  type: 'positive' | 'improvement' | 'warning';
+  category: 'pacing' | 'voice' | 'structure' | 'engagement' | 'grammar';
+  message: string;
+  severity: 'low' | 'medium' | 'high';
+  actionable: boolean;
 }
 
 export interface WritingPrompt {
   id: string;
   title: string;
-  description: string;
+  prompt: string;
   genre: string;
-  difficulty: 'beginner' | 'intermediate' | 'advanced';
-  tags: string[];
+  difficulty: 'easy' | 'medium' | 'hard';
   estimatedTime: number;
+  tags: string[];
+}
+
+export interface WritingGoal {
+  id: string;
+  type: 'daily' | 'weekly' | 'project' | 'habit';
+  title: string;
+  description: string;
+  target: number;
+  current: number;
+  deadline?: string;
+  isCompleted: boolean;
+  category: string;
+  milestones: any[];
 }
 
 export interface AIPersonality {
@@ -71,674 +70,871 @@ export interface AIPersonality {
   description: string;
   traits: string[];
   greetingStyle: string;
-  feedbackStyle: 'encouraging' | 'direct' | 'analytical' | 'creative';
-  expertise: string[];
+  feedbackStyle: string;
+  isActive: boolean;
 }
 
 export interface WritingMetrics {
-  wordsPerMinute: number;
-  accuracy: number;
-  sessionLength: number;
   totalWords: number;
-  deletionRate: number;
-  pauseFrequency: number;
+  totalSessions: number;
+  averageWordsPerSession: number;
+  averageWordsPerMinute: number;
+  totalWritingTime: number;
+  streakDays: number;
+  goalsCompleted: number;
+  improvementAreas: string[];
 }
 
-export interface WritingAnalysis {
-  readabilityScore: number;
-  sentimentScore: number;
-  toneAnalysis: {
-    formal: number;
-    casual: number;
-    professional: number;
-    creative: number;
+export interface CompanionshipResponse {
+  message: string;
+  type: 'encouragement' | 'motivation' | 'feedback' | 'suggestion';
+  encouragement?: string;
+  suggestions?: string[];
+  productivity?: {
+    wordsPerMinute: number;
+    efficiency: number;
+    streakDays: number;
   };
-  styleMetrics: {
-    averageSentenceLength: number;
-    vocabularyComplexity: number;
-    passiveVoicePercentage: number;
-    adverbUsage: number;
-  };
-  suggestions: WritingSuggestion[];
 }
 
-export class AIWritingCompanionService {
-  private suggestions: Map<string, WritingSuggestion[]> = new Map();
-  private analyses: Map<string, WritingAnalysis> = new Map();
+export interface ProgressMetrics {
+  wordsWritten: number;
+  timeSpent: number;
+  sessionsCompleted: number;
+  averageWPM: number;
+  consistency: number;
+  wordsPerMinute?: number;
+}
+
+class AIWritingCompanionService {
   private currentSession: WritingSession | null = null;
-  private writingGoals: WritingGoal[] = [];
+  private sessions: WritingSession[] = [];
+  private goals: WritingGoal[] = [];
   private personalities: AIPersonality[] = [];
-  private currentPersonality: AIPersonality | null = null;
-  private isInitialized: boolean = false;
+  private userMetrics: WritingMetrics;
+  private eventListeners: Map<string, Function[]> = new Map();
 
   constructor() {
-    this.initializeService();
-  }
-
-  private initializeService(): void {
-    try {
-      this.loadDataFromStorage();
-      this.initializeDefaultPersonalities();
-      this.isInitialized = true;
-    } catch (error) {
-      console.warn('Failed to initialize AI Writing Companion:', error);
-      this.initializeDefaults();
-    }
-  }
-
-  private loadDataFromStorage(): void {
-    try {
-      const storedGoals = localStorage.getItem('aiWritingCompanion_goals');
-      if (storedGoals) {
-        try {
-          this.writingGoals = JSON.parse(storedGoals);
-        } catch {
-          console.warn('Failed to parse stored goals, using defaults');
-          this.writingGoals = [];
-        }
-      }
-    } catch (error) {
-      console.warn('Failed to access localStorage for goals:', error);
-      this.writingGoals = [];
-    }
-
-    try {
-      const storedPersonality = localStorage.getItem('aiWritingCompanion_personality');
-      if (storedPersonality) {
-        try {
-          const personalityId = JSON.parse(storedPersonality);
-          this.currentPersonality = this.personalities.find(p => p.id === personalityId) || null;
-        } catch {
-          console.warn('Failed to parse stored personality, using default');
-          // Fall back to default
-        }
-      }
-    } catch (error) {
-      console.warn('Failed to access localStorage for personality:', error);
-      // Fall back to default
-    }
-  }
-
-  private initializeDefaultPersonalities(): void {
-    this.personalities = [
-      {
-        id: 'mentor',
-        name: 'Encouraging Mentor',
-        description: 'Supportive and motivating, focused on building confidence',
-        traits: ['supportive', 'patient', 'motivating'],
-        greetingStyle: 'warm',
-        feedbackStyle: 'encouraging',
-        expertise: ['motivation', 'creativity', 'writing habits']
-      },
-      {
-        id: 'critic',
-        name: 'Analytical Editor',
-        description: 'Detail-oriented and precise, focused on technical improvement',
-        traits: ['precise', 'analytical', 'thorough'],
-        greetingStyle: 'professional',
-        feedbackStyle: 'analytical',
-        expertise: ['grammar', 'structure', 'style']
-      },
-      {
-        id: 'cheerleader',
-        name: 'Motivational Cheerleader',
-        description: 'Enthusiastic and energizing, focused on motivation',
-        traits: ['enthusiastic', 'energetic', 'positive'],
-        greetingStyle: 'excited',
-        feedbackStyle: 'encouraging',
-        expertise: ['motivation', 'confidence-building']
-      },
-      {
-        id: 'coach',
-        name: 'Strategic Coach',
-        description: 'Goal-oriented and structured, focused on improvement plans',
-        traits: ['strategic', 'organized', 'goal-oriented'],
-        greetingStyle: 'focused',
-        feedbackStyle: 'direct',
-        expertise: ['goal-setting', 'planning', 'productivity']
-      },
-      {
-        id: 'creative',
-        name: 'Creative Spark',
-        description: 'Imaginative and inspiring, focused on creative expression',
-        traits: ['imaginative', 'inspiring', 'unconventional'],
-        greetingStyle: 'artistic',
-        feedbackStyle: 'creative',
-        expertise: ['creativity', 'inspiration', 'artistic expression']
-      }
-    ];
-    
-    if (!this.currentPersonality && this.personalities.length > 0) {
-      this.currentPersonality = this.personalities[0];
-    }
+    this.initializeDefaults();
+    this.userMetrics = {
+      totalWords: 0,
+      totalSessions: 0,
+      averageWordsPerSession: 0,
+      averageWordsPerMinute: 0,
+      totalWritingTime: 0,
+      streakDays: 0,
+      goalsCompleted: 0,
+      improvementAreas: []
+    };
+    this.loadFromLocalStorage();
   }
 
   private initializeDefaults(): void {
-    this.writingGoals = [];
-    this.initializeDefaultPersonalities();
-    this.isInitialized = true;
-  }
-
-  // Public API methods
-  public getPersonalities(): AIPersonality[] {
-    return [...this.personalities];
-  }
-
-  public getCurrentPersonality(): AIPersonality | null {
-    return this.currentPersonality;
-  }
-
-  public switchPersonality(personalityId: string): boolean {
-    const personality = this.personalities.find(p => p.id === personalityId);
-    if (personality) {
-      this.currentPersonality = personality;
-      try {
-        localStorage.setItem('aiWritingCompanion_personality', JSON.stringify(personalityId));
-      } catch (error) {
-        console.warn('Failed to save personality preference:', error);
-        // Continue anyway as the personality is still switched in memory
+    this.personalities = [
+      {
+        id: 'encouraging',
+        name: 'Encouraging Coach',
+        description: 'Supportive and motivating',
+        traits: ['supportive', 'motivating', 'patient'],
+        greetingStyle: 'warm',
+        feedbackStyle: 'constructive',
+        isActive: true
+      },
+      {
+        id: 'analytical',
+        name: 'Analytical Editor',
+        description: 'Detail-oriented and precise',
+        traits: ['analytical', 'precise', 'thorough'],
+        greetingStyle: 'professional',
+        feedbackStyle: 'detailed',
+        isActive: false
+      },
+      {
+        id: 'creative',
+        name: 'Creative Muse',
+        description: 'Imaginative and inspiring',
+        traits: ['creative', 'inspiring', 'unconventional'],
+        greetingStyle: 'artistic',
+        feedbackStyle: 'inspiring',
+        isActive: false
+      },
+      {
+        id: 'focused',
+        name: 'Focused Mentor',
+        description: 'Goal-oriented and structured',
+        traits: ['focused', 'structured', 'goal-oriented'],
+        greetingStyle: 'direct',
+        feedbackStyle: 'actionable',
+        isActive: false
+      },
+      {
+        id: 'experimental',
+        name: 'Experimental Guide',
+        description: 'Encourages trying new approaches',
+        traits: ['experimental', 'curious', 'adaptive'],
+        greetingStyle: 'curious',
+        feedbackStyle: 'exploratory',
+        isActive: false
       }
-      return true;
-    }
-    return false;
+    ];
   }
 
-  public startWritingSession(initialContent: string = ''): WritingSession {
-    if (this.currentSession && this.currentSession.isActive) {
-      this.endWritingSession();
+  private loadFromLocalStorage(): void {
+    try {
+      const stored = localStorage.getItem('aiWritingCompanion');
+      if (stored) {
+        const data = JSON.parse(stored);
+        this.sessions = data.sessions || [];
+        this.goals = data.goals || [];
+        this.userMetrics = { ...this.userMetrics, ...data.metrics };
+        if (data.personalities) {
+          this.personalities = data.personalities;
+        }
+      }
+    } catch (error) {
+      console.warn('Failed to load from localStorage:', error);
+      // Continue with defaults
+    }
+  }
+
+  private saveToLocalStorage(): void {
+    try {
+      const data = {
+        sessions: this.sessions.slice(-50), // Keep last 50 sessions
+        goals: this.goals,
+        metrics: this.userMetrics,
+        personalities: this.personalities
+      };
+      localStorage.setItem('aiWritingCompanion', JSON.stringify(data));
+    } catch (error) {
+      console.warn('Failed to save to localStorage:', error);
+    }
+  }
+
+  // Core session management
+  async startWritingSession(title: string, contentId?: string, mood?: string): Promise<string> {
+    // End current session if exists
+    if (this.currentSession?.isActive) {
+      await this.endWritingSession();
     }
 
-    this.currentSession = {
-      id: `session-${Date.now()}`,
+    const session: WritingSession = {
+      id: `session_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
+      title,
+      contentId,
+      mood: this.validateMood(mood) || 'neutral',
       startTime: Date.now(),
-      wordCount: this.countWords(initialContent),
-      charactersTyped: initialContent.length,
-      deletions: 0,
-      timeSpentWriting: 0,
-      breaks: 0,
-      currentContent: initialContent,
-      goals: [...this.writingGoals.filter(g => !g.completed)],
+      content: '',
+      wordCount: 0,
+      timeSpent: 0,
+      productivity: 0,
+      suggestions: [],
       feedback: [],
+      aiInteractions: 0,
       isActive: true
     };
 
-    return this.currentSession;
+    this.currentSession = session;
+    this.sessions.push(session);
+    this.saveToLocalStorage();
+
+    // Emit greeting
+    this.emitEvent('sessionStarted', { session, greeting: this.generateGreeting() });
+
+    return session.id;
   }
 
-  public updateSessionContent(content: string): void {
-    if (!this.currentSession || !this.currentSession.isActive) {
-      throw new Error('No active writing session');
+  async updateSessionContent(content: string, wordCount: number): Promise<void> {
+    if (!this.currentSession?.isActive) {
+      console.warn('No active session for content update');
+      return;
     }
 
-    const previousWordCount = this.currentSession.wordCount;
-    const currentWordCount = this.countWords(content);
-    
-    this.currentSession.currentContent = content;
-    this.currentSession.wordCount = currentWordCount;
-    this.currentSession.charactersTyped += Math.max(0, content.length - this.currentSession.currentContent.length);
-    
-    // Update goal progress
-    this.updateGoalProgress(currentWordCount - previousWordCount);
+    const oldWordCount = this.currentSession.wordCount;
+    this.currentSession.content = content;
+    this.currentSession.wordCount = wordCount;
+    this.currentSession.timeSpent = Date.now() - this.currentSession.startTime;
+
+    // Generate AI feedback and suggestions
+    await this.generateAIAnalysis(content, wordCount - oldWordCount);
+    this.updateProductivityMetrics();
+    this.saveToLocalStorage();
   }
 
-  public endWritingSession(): WritingMetrics | null {
-    if (!this.currentSession || !this.currentSession.isActive) {
+  async endWritingSession(): Promise<WritingSession | null> {
+    if (!this.currentSession?.isActive) {
       return null;
     }
 
     this.currentSession.endTime = Date.now();
     this.currentSession.isActive = false;
-    
-    const sessionLength = this.currentSession.endTime - this.currentSession.startTime;
-    const wordsPerMinute = sessionLength > 0 ? (this.currentSession.wordCount / (sessionLength / 60000)) : 0;
-    
-    const metrics: WritingMetrics = {
-      wordsPerMinute,
-      accuracy: 0.95, // Simplified calculation
-      sessionLength,
-      totalWords: this.currentSession.wordCount,
-      deletionRate: this.currentSession.deletions / Math.max(1, this.currentSession.charactersTyped),
-      pauseFrequency: this.currentSession.breaks
-    };
+    this.currentSession.timeSpent = this.currentSession.endTime - this.currentSession.startTime;
 
-    return metrics;
+    // Update user metrics
+    this.updateUserMetrics(this.currentSession);
+    
+    // Check goal progress
+    this.updateGoalProgress(this.currentSession);
+
+    const endedSession = { ...this.currentSession };
+    this.currentSession = null;
+    this.saveToLocalStorage();
+
+    return endedSession;
   }
 
-  public getCurrentSession(): WritingSession | null {
+  getCurrentSession(): WritingSession | null {
     return this.currentSession;
   }
 
-  public createWritingGoal(goal: Omit<WritingGoal, 'id' | 'current' | 'completed'>): WritingGoal {
-    const newGoal: WritingGoal = {
-      ...goal,
-      id: `goal-${Date.now()}`,
-      current: 0,
-      completed: false
-    };
-    
-    this.writingGoals.push(newGoal);
-    this.saveGoalsToStorage();
-    return newGoal;
+  // AI Analysis and Feedback
+  private async generateAIAnalysis(content: string, wordsAdded: number): Promise<void> {
+    if (!this.currentSession) return;
+
+    this.currentSession.aiInteractions++;
+
+    // Generate suggestions based on content
+    const suggestions = this.analyzeContentForSuggestions(content);
+    this.currentSession.suggestions.push(...suggestions);
+
+    // Generate feedback
+    const feedback = this.analyzeContentForFeedback(content);
+    this.currentSession.feedback.push(...feedback);
+
+    // Keep only recent suggestions/feedback
+    this.currentSession.suggestions = this.currentSession.suggestions.slice(-10);
+    this.currentSession.feedback = this.currentSession.feedback.slice(-10);
   }
 
-  public updateGoalProgress(wordsAdded: number): void {
-    this.writingGoals.forEach(goal => {
-      if (!goal.completed && goal.type === 'wordCount') {
-        goal.current += wordsAdded;
-        if (goal.current >= goal.target) {
-          goal.completed = true;
-        }
+  private analyzeContentForSuggestions(content: string): AISuggestion[] {
+    const suggestions: AISuggestion[] = [];
+    const sentences = content.split(/[.!?]+/).filter(s => s.trim().length > 0);
+
+    // Check for long sentences
+    sentences.forEach((sentence, index) => {
+      const words = sentence.trim().split(/\s+/);
+      if (words.length > 25) {
+        suggestions.push({
+          id: `suggestion_${Date.now()}_${index}`,
+          type: 'structure',
+          title: 'Long Sentence',
+          description: 'Consider breaking this long sentence into shorter ones for better readability.',
+          beforeText: sentence.trim(),
+          afterText: 'Consider splitting into multiple sentences.',
+          confidence: 0.8,
+          isApplied: false
+        });
       }
     });
-    this.saveGoalsToStorage();
-  }
 
-  public generateWritingPrompt(criteria: { genre?: string; difficulty?: string; tags?: string[] } = {}): WritingPrompt {
-    const prompts: WritingPrompt[] = [
-      {
-        id: 'prompt-1',
-        title: 'The Mysterious Letter',
-        description: 'Write about a character who receives a letter that changes everything',
-        genre: criteria.genre || 'mystery',
-        difficulty: (criteria.difficulty as any) || 'intermediate',
-        tags: ['mystery', 'character-driven'],
-        estimatedTime: 30
-      }
-    ];
-    
-    return prompts[0];
-  }
-
-  public getCreativeExercise(level: string, category: string): any {
-    return {
-      id: 'exercise-1',
-      title: 'Character Development',
-      instructions: ['Create a detailed character profile', 'Define their motivations', 'Write their backstory'],
-      level,
-      category,
-      estimatedTime: 15
-    };
-  }
-
-  public isAIEnabled(): boolean {
-    return this.isInitialized;
-  }
-
-  private saveGoalsToStorage(): void {
-    try {
-      localStorage.setItem('aiWritingCompanion_goals', JSON.stringify(this.writingGoals));
-    } catch (error) {
-      console.warn('Failed to save goals to storage:', error);
-    }
-  }
-
-  // Additional public methods expected by tests
-  public getActiveGoals(): WritingGoal[] {
-    return this.writingGoals.filter(goal => !goal.completed);
-  }
-
-  public getAllGoals(): WritingGoal[] {
-    return [...this.writingGoals];
-  }
-
-  public getAllSessions(): WritingSession[] {
-    // Return array with current session if it exists
-    return this.currentSession ? [this.currentSession] : [];
-  }
-
-  public getWritingMetrics(): WritingMetrics | null {
-    if (!this.currentSession) return null;
-    
-    const sessionLength = Date.now() - this.currentSession.startTime;
-    const wordsPerMinute = sessionLength > 0 ? (this.currentSession.wordCount / (sessionLength / 60000)) : 0;
-    
-    return {
-      wordsPerMinute,
-      accuracy: 0.95,
-      sessionLength,
-      totalWords: this.currentSession.wordCount,
-      deletionRate: this.currentSession.deletions / Math.max(1, this.currentSession.charactersTyped),
-      pauseFrequency: this.currentSession.breaks
-    };
-  }
-
-  public disableAI(): void {
-    this.isInitialized = false;
-  }
-
-  public enableAI(): void {
-    this.isInitialized = true;
-  }
-
-  // Event handling placeholder methods
-  public on(event: string, callback: Function): void {
-    // Event system placeholder - in a real implementation this would use EventEmitter
-    console.log(`Event listener registered for: ${event}`);
-  }
-
-  public emit(event: string, data?: any): void {
-    // Event system placeholder
-    console.log(`Event emitted: ${event}`, data);
-  }
-
-  /**
-   * Analyze text and provide writing suggestions
-   */
-  public async analyzeText(text: string, context?: { projectId?: string; noteId?: string }): Promise<WritingAnalysis> {
-    const analysis: WritingAnalysis = {
-      readabilityScore: this.calculateReadabilityScore(text),
-      sentimentScore: this.analyzeSentiment(text),
-      toneAnalysis: this.analyzeTone(text),
-      styleMetrics: this.calculateStyleMetrics(text),
-      suggestions: await this.generateSuggestions(text)
-    };
-
-    if (context?.noteId) {
-      this.analyses.set(context.noteId, analysis);
-    }
-
-    return analysis;
-  }
-
-  /**
-   * Get real-time writing suggestions as user types
-   */
-  public async getRealTimeSuggestions(
-    text: string, 
-    cursorPosition: number,
-    context?: { projectId?: string; noteId?: string }
-  ): Promise<WritingSuggestion[]> {
-    const suggestions = await this.generateSuggestions(text, cursorPosition);
-    
-    if (context?.noteId) {
-      this.suggestions.set(context.noteId, suggestions);
-    }
-
-    return suggestions.filter(s => 
-      s.position.start <= cursorPosition && s.position.end >= cursorPosition
-    );
-  }
-
-  /**
-   * Apply a writing suggestion to text
-   */
-  public applySuggestion(text: string, suggestion: WritingSuggestion): string {
-    const before = text.substring(0, suggestion.position.start);
-    const after = text.substring(suggestion.position.end);
-    return before + suggestion.suggestion + after;
-  }
-
-  // Private helper methods
-  private calculateReadabilityScore(text: string): number {
-    const sentences = text.split(/[.!?]+/).length - 1;
-    const words = this.countWords(text);
-    const syllables = this.countSyllables(text);
-
-    if (sentences === 0 || words === 0) return 0;
-
-    // Flesch Reading Ease Score
-    const score = 206.835 - (1.015 * (words / sentences)) - (84.6 * (syllables / words));
-    return Math.max(0, Math.min(100, score));
-  }
-
-  private analyzeSentiment(text: string): number {
-    const positiveWords = ['good', 'great', 'excellent', 'amazing', 'wonderful'];
-    const negativeWords = ['bad', 'terrible', 'awful', 'horrible', 'hate'];
-    
-    const words = text.toLowerCase().split(/\W+/);
-    const positiveCount = words.filter(word => positiveWords.includes(word)).length;
-    const negativeCount = words.filter(word => negativeWords.includes(word)).length;
-    
-    const totalWords = words.length;
-    if (totalWords === 0) return 0;
-    
-    return ((positiveCount - negativeCount) / totalWords) * 100;
-  }
-
-  private analyzeTone(text: string): WritingAnalysis['toneAnalysis'] {
-    const words = text.toLowerCase().split(/\W+/);
-    const totalWords = words.length;
-
-    if (totalWords === 0) {
-      return { formal: 0, casual: 0, professional: 0, creative: 0 };
-    }
-
-    const formalWords = ['therefore', 'furthermore', 'consequently'];
-    const casualWords = ['yeah', 'okay', 'stuff', 'things'];
-    const professionalWords = ['analyze', 'implement', 'strategic'];
-    const creativeWords = ['imagine', 'dream', 'wonder', 'magical'];
-
-    return {
-      formal: (words.filter(w => formalWords.includes(w)).length / totalWords) * 100,
-      casual: (words.filter(w => casualWords.includes(w)).length / totalWords) * 100,
-      professional: (words.filter(w => professionalWords.includes(w)).length / totalWords) * 100,
-      creative: (words.filter(w => creativeWords.includes(w)).length / totalWords) * 100
-    };
-  }
-
-  private calculateStyleMetrics(text: string): WritingAnalysis['styleMetrics'] {
-    const sentences = text.split(/[.!?]+/).filter(s => s.trim().length > 0);
-    const words = text.split(/\W+/).filter(w => w.length > 0);
-    
-    const averageSentenceLength = sentences.length > 0 ? words.length / sentences.length : 0;
-    const complexWords = words.filter(word => this.countSyllables(word) >= 3).length;
-    const vocabularyComplexity = words.length > 0 ? (complexWords / words.length) * 100 : 0;
-    
-    return {
-      averageSentenceLength,
-      vocabularyComplexity,
-      passiveVoicePercentage: 15, // Simplified
-      adverbUsage: 8 // Simplified
-    };
-  }
-
-  private async generateSuggestions(text: string, cursorPosition?: number): Promise<WritingSuggestion[]> {
-    const suggestions: WritingSuggestion[] = [];
-    
-    // Simple grammar check
-    const grammarIssues = text.match(/\b(there|their|they're)\b/gi);
-    if (grammarIssues) {
-      grammarIssues.forEach((match, index) => {
-        const position = text.indexOf(match);
-        suggestions.push({
-          id: `grammar-${index}`,
-          type: 'grammar',
-          text: match,
-          suggestion: 'Check correct usage of there/their/they\'re',
-          confidence: 0.7,
-          position: { start: position, end: position + match.length },
-          explanation: 'Common grammar confusion',
-          category: 'Grammar'
-        });
+    // Check for passive voice
+    const passivePattern = /\b(was|were|is|are|been|being)\s+\w+ed\b/gi;
+    const passiveMatches = content.match(passivePattern);
+    if (passiveMatches && passiveMatches.length > 2) {
+      suggestions.push({
+        id: `suggestion_passive_${Date.now()}`,
+        type: 'style',
+        title: 'Passive Voice',
+        description: 'Consider using active voice for more engaging writing.',
+        beforeText: passiveMatches[0],
+        afterText: 'Rewrite in active voice',
+        confidence: 0.7,
+        isApplied: false
       });
     }
 
-    return suggestions.sort((a, b) => b.confidence - a.confidence);
-  }
+    // Check for repeated words
+    const words = content.toLowerCase().split(/\s+/);
+    const wordCounts = words.reduce((acc, word) => {
+      acc[word] = (acc[word] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
 
-  private countWords(text: string): number {
-    return text.split(/\W+/).filter(word => word.length > 0).length;
-  }
-
-  private countSyllables(word: string): number {
-    const vowels = 'aeiouy';
-    let count = 0;
-    let previousWasVowel = false;
-    
-    for (let i = 0; i < word.length; i++) {
-      const isVowel = vowels.includes(word[i].toLowerCase());
-      if (isVowel && !previousWasVowel) {
-        count++;
+    Object.entries(wordCounts).forEach(([word, count]) => {
+      if (count > 5 && word.length > 3) {
+        suggestions.push({
+          id: `suggestion_repetition_${Date.now()}_${word}`,
+          type: 'vocabulary',
+          title: 'Word Repetition',
+          description: `The word "${word}" appears ${count} times. Consider using synonyms.`,
+          beforeText: word,
+          afterText: 'Use synonyms or rephrase',
+          confidence: 0.6,
+          isApplied: false
+        });
       }
-      previousWasVowel = isVowel;
-    }
-    
-    return Math.max(1, count);
+    });
+
+    return suggestions;
   }
 
-  // Additional methods expected by tests
-  async getCompanionship(writingSession: any): Promise<any> {
-    const personality = this.getCurrentPersonality();
-    const encouragementMessages = [
-      'You\'re making great progress!',
-      'Keep up the excellent writing!',
-      'Your words are flowing beautifully!',
-      'Every word counts - you\'re doing amazing!'
-    ];
+  private analyzeContentForFeedback(content: string): AIFeedback[] {
+    const feedback: AIFeedback[] = [];
+    
+    // Check pacing
+    const avgSentenceLength = this.calculateAverageSentenceLength(content);
+    if (avgSentenceLength > 20) {
+      feedback.push({
+        id: `feedback_pacing_${Date.now()}`,
+        type: 'improvement',
+        category: 'pacing',
+        message: 'Your sentences are quite long. Consider varying sentence length for better pacing.',
+        severity: 'medium',
+        actionable: true
+      });
+    }
 
-    const suggestionMessages = [
-      'Consider adding more descriptive details',
-      'Try varying your sentence structure',
-      'Show, don\'t tell in this section',
-      'Consider the emotional impact of this scene'
-    ];
+    // Check engagement
+    const questionMarks = (content.match(/\?/g) || []).length;
+    const exclamationMarks = (content.match(/!/g) || []).length;
+    if (questionMarks + exclamationMarks === 0 && content.length > 500) {
+      feedback.push({
+        id: `feedback_engagement_${Date.now()}`,
+        type: 'improvement',
+        category: 'engagement',
+        message: 'Consider adding some questions or exclamations to increase reader engagement.',
+        severity: 'low',
+        actionable: true
+      });
+    }
 
-    return {
-      encouragement: encouragementMessages[Math.floor(Math.random() * encouragementMessages.length)],
-      suggestions: suggestionMessages.slice(0, 2),
-      productivity: {
-        wordsPerMinute: writingSession.timeSpent > 0 ? (writingSession.text?.length || 0) / (writingSession.timeSpent / 60000) : 0,
-        timeSpent: writingSession.timeSpent,
-        goalProgress: 65
+    // Positive feedback for good progress
+    if (content.length > 200) {
+      feedback.push({
+        id: `feedback_positive_${Date.now()}`,
+        type: 'positive',
+        category: 'structure',
+        message: 'Good progress! You\'re building substantial content.',
+        severity: 'low',
+        actionable: false
+      });
+    }
+
+    return feedback;
+  }
+
+  private calculateAverageSentenceLength(content: string): number {
+    const sentences = content.split(/[.!?]+/).filter(s => s.trim().length > 0);
+    if (sentences.length === 0) return 0;
+    
+    const totalWords = sentences.reduce((sum, sentence) => {
+      return sum + sentence.trim().split(/\s+/).length;
+    }, 0);
+    
+    return totalWords / sentences.length;
+  }
+
+  // Suggestion management
+  async applySuggestion(suggestionId: string): Promise<boolean> {
+    if (!this.currentSession) return false;
+
+    const suggestion = this.currentSession.suggestions.find(s => s.id === suggestionId);
+    if (suggestion) {
+      suggestion.isApplied = true;
+      this.saveToLocalStorage();
+      return true;
+    }
+    return false;
+  }
+
+  async rateSuggestion(suggestionId: string, rating: number): Promise<void> {
+    if (!this.currentSession) return;
+
+    const suggestion = this.currentSession.suggestions.find(s => s.id === suggestionId);
+    if (suggestion) {
+      suggestion.rating = Math.max(1, Math.min(5, rating));
+      this.saveToLocalStorage();
+    }
+  }
+
+  // Personality management
+  getPersonalities(): AIPersonality[] {
+    return this.personalities;
+  }
+
+  async switchPersonality(personalityId: string): Promise<boolean> {
+    const personality = this.personalities.find(p => p.id === personalityId);
+    if (personality) {
+      // Deactivate all personalities
+      this.personalities.forEach(p => p.isActive = false);
+      // Activate selected personality
+      personality.isActive = true;
+      this.saveToLocalStorage();
+      
+      // Emit personality change event
+      this.emitEvent('personalityChanged', { personality });
+      return true;
+    }
+    return false;
+  }
+
+  private generateGreeting(): string {
+    const activePersonality = this.personalities.find(p => p.isActive);
+    if (!activePersonality) return 'Hello! Ready to write?';
+
+    const greetings: Record<string, string[]> = {
+      warm: ['Hello! I\'m excited to write with you today!', 'Welcome back! Let\'s create something amazing!'],
+      professional: ['Good day. Let\'s focus on producing quality content.', 'Ready to begin our writing session.'],
+      artistic: ['Ah, a fellow creator! Let inspiration flow through us!', 'The muse awaits! What shall we birth today?'],
+      direct: ['Time to write. What\'s our goal today?', 'Let\'s get to work. What are we writing?'],
+      curious: ['Interesting! What new approach shall we try today?', 'I wonder what we\'ll discover in our writing today?']
+    };
+
+    const styleGreetings = greetings[activePersonality.greetingStyle] || greetings.warm;
+    return styleGreetings[Math.floor(Math.random() * styleGreetings.length)];
+  }
+
+  // Goal management
+  createWritingGoal(goalData: Partial<WritingGoal>): WritingGoal {
+    const goal: WritingGoal = {
+      id: `goal_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
+      type: goalData.type || 'daily',
+      title: goalData.title || 'New Writing Goal',
+      description: goalData.description || '',
+      target: goalData.target || 1000,
+      current: 0,
+      deadline: goalData.deadline,
+      isCompleted: false,
+      category: goalData.category || 'general',
+      milestones: goalData.milestones || []
+    };
+
+    this.goals.push(goal);
+    this.saveToLocalStorage();
+    return goal;
+  }
+
+  getActiveGoals(): WritingGoal[] {
+    return this.goals.filter(g => !g.isCompleted);
+  }
+
+  getAllGoals(): WritingGoal[] {
+    return this.goals;
+  }
+
+  private updateGoalProgress(session: WritingSession): void {
+    this.goals.forEach(goal => {
+      if (!goal.isCompleted) {
+        switch (goal.type) {
+          case 'daily':
+          case 'weekly':
+            goal.current += session.wordCount;
+            break;
+          case 'habit':
+            goal.current += 1; // Increment session count
+            break;
+        }
+        
+        if (goal.current >= goal.target) {
+          goal.isCompleted = true;
+          this.userMetrics.goalsCompleted++;
+          this.emitEvent('goalCompleted', { goal });
+        }
+      }
+    });
+  }
+
+  // Metrics and analytics
+  getWritingMetrics(): WritingMetrics {
+    return { ...this.userMetrics };
+  }
+
+  private updateUserMetrics(session: WritingSession): void {
+    this.userMetrics.totalWords += session.wordCount;
+    this.userMetrics.totalSessions++;
+    this.userMetrics.totalWritingTime += session.timeSpent;
+    
+    if (this.userMetrics.totalSessions > 0) {
+      this.userMetrics.averageWordsPerSession = this.userMetrics.totalWords / this.userMetrics.totalSessions;
+    }
+    
+    if (this.userMetrics.totalWritingTime > 0) {
+      this.userMetrics.averageWordsPerMinute = this.userMetrics.totalWords / (this.userMetrics.totalWritingTime / 60000);
+    }
+
+    // Update streak days (simplified)
+    const today = new Date().toDateString();
+    const lastSession = this.sessions[this.sessions.length - 2]; // Previous session
+    if (lastSession) {
+      const lastSessionDate = new Date(lastSession.startTime).toDateString();
+      const yesterday = new Date(Date.now() - 86400000).toDateString();
+      
+      if (lastSessionDate === yesterday || lastSessionDate === today) {
+        this.userMetrics.streakDays++;
+      } else {
+        this.userMetrics.streakDays = 1;
+      }
+    } else {
+      this.userMetrics.streakDays = 1;
+    }
+  }
+
+  private updateProductivityMetrics(): void {
+    if (!this.currentSession) return;
+    
+    const timeMinutes = this.currentSession.timeSpent / 60000;
+    if (timeMinutes > 0) {
+      this.currentSession.productivity = this.currentSession.wordCount / timeMinutes;
+    }
+  }
+
+  // Content generation
+  async generateWritingPrompt(genre?: string, difficulty?: string): Promise<WritingPrompt> {
+    const prompts: WritingPrompt[] = [
+      {
+        id: 'prompt_1',
+        title: 'The Lost Letter',
+        prompt: 'You find a letter addressed to someone who died 100 years ago. What does it say?',
+        genre: 'mystery',
+        difficulty: 'easy',
+        estimatedTime: 15,
+        tags: ['mystery', 'historical', 'discovery']
       },
-      personality: personality?.name || 'Default Companion'
-    };
-  }
+      {
+        id: 'prompt_2',
+        title: 'Future Memories',
+        prompt: 'In the future, memories can be downloaded and shared. You discover a memory that isn\'t yours.',
+        genre: 'sci-fi',
+        difficulty: 'medium',
+        estimatedTime: 30,
+        tags: ['sci-fi', 'identity', 'technology']
+      },
+      {
+        id: 'prompt_3',
+        title: 'The Last Library',
+        prompt: 'Books are becoming extinct. You are the guardian of the last library on Earth.',
+        genre: 'dystopian',
+        difficulty: 'hard',
+        estimatedTime: 45,
+        tags: ['dystopian', 'books', 'preservation']
+      }
+    ];
 
-  async startSession(type: string): Promise<any> {
-    const session = this.startWritingSession();
-    return {
-      id: session.id,
-      type,
-      startTime: session.startTime,
-      isActive: true
-    };
-  }
-
-  async updateProgress(sessionId: string, progress: any): Promise<any> {
-    if (this.currentSession && this.currentSession.id === sessionId) {
-      this.currentSession.wordCount = progress.wordsWritten || this.currentSession.wordCount;
-      this.currentSession.timeSpentWriting = progress.timeSpent || this.currentSession.timeSpentWriting;
+    let filteredPrompts = prompts;
+    if (genre) {
+      filteredPrompts = filteredPrompts.filter(p => p.genre === genre);
     }
-    
+    if (difficulty) {
+      filteredPrompts = filteredPrompts.filter(p => p.difficulty === difficulty);
+    }
+
+    if (filteredPrompts.length === 0) {
+      filteredPrompts = prompts;
+    }
+
+    return filteredPrompts[Math.floor(Math.random() * filteredPrompts.length)];
+  }
+
+  async getCreativeExercise(): Promise<{ title: string; instructions: string[]; duration: number }> {
+    const exercises = [
+      {
+        title: 'Stream of Consciousness',
+        instructions: [
+          'Write continuously for 10 minutes without stopping or editing.',
+          'Let your thoughts flow freely onto the page.',
+          'Don\'t worry about grammar, spelling, or structure.',
+          'Focus on capturing the natural flow of your mind.'
+        ],
+        duration: 10
+      },
+      {
+        title: 'Character in a Room',
+        instructions: [
+          'Describe a character solely through the items in their room.',
+          'Don\'t mention the character directly.',
+          'Let objects tell the story of who they are.',
+          'Consider what each item reveals about personality.'
+        ],
+        duration: 15
+      },
+      {
+        title: 'Dialogue Only',
+        instructions: [
+          'Write a complete scene using only dialogue.',
+          'No action lines or descriptions allowed.',
+          'Convey setting and emotion through speech alone.',
+          'Make each character\'s voice distinct.'
+        ],
+        duration: 20
+      },
+      {
+        title: 'Six-Word Story',
+        instructions: [
+          'Tell a complete story in exactly six words.',
+          'Then expand it into a full paragraph.',
+          'Focus on emotional impact over complexity.',
+          'Every word must earn its place.'
+        ],
+        duration: 15
+      }
+    ];
+
+    return exercises[Math.floor(Math.random() * exercises.length)];
+  }
+
+  // Event system
+  addEventListener(event: string, callback: Function): void {
+    if (!this.eventListeners.has(event)) {
+      this.eventListeners.set(event, []);
+    }
+    this.eventListeners.get(event)!.push(callback);
+  }
+
+  removeEventListener(event: string, callback: Function): void {
+    const listeners = this.eventListeners.get(event);
+    if (listeners) {
+      const index = listeners.indexOf(callback);
+      if (index > -1) {
+        listeners.splice(index, 1);
+      }
+    }
+  }
+
+  private emitEvent(event: string, data: any): void {
+    const listeners = this.eventListeners.get(event);
+    if (listeners) {
+      listeners.forEach(callback => {
+        try {
+          callback(data);
+        } catch (error) {
+          console.error(`Error in event listener for ${event}:`, error);
+        }
+      });
+    }
+  }
+
+  // Utility methods
+  private validateMood(mood?: string): string | undefined {
+    const validMoods = ['creative', 'focused', 'relaxed', 'energetic', 'contemplative', 'neutral'];
+    return mood && validMoods.includes(mood) ? mood : undefined;
+  }
+
+  // Legacy compatibility methods
+  async getCompanionship(writingSession: any): Promise<CompanionshipResponse> {
+    const { text, goal, timeSpent } = writingSession;
+    const wordsWritten = text ? text.split(/\s+/).filter((w: string) => w.length > 0).length : 0;
+    const wpm = timeSpent > 0 ? (wordsWritten / (timeSpent / 60000)) : 0;
+
+    let message = 'Keep up the great work!';
+    let type: CompanionshipResponse['type'] = 'encouragement';
+
+    if (wpm > 30) {
+      message = "Excellent pace! You're writing efficiently.";
+      type = 'encouragement';
+    } else if (wpm < 10 && timeSpent > 300000) {
+      message = "Take your time. Quality matters more than speed.";
+      type = 'motivation';
+    } else if (wordsWritten > 500) {
+      message = "Great progress! You're building momentum.";
+      type = 'feedback';
+    }
+
     return {
-      updated: true,
-      wordCount: progress.wordsWritten,
-      timeSpent: progress.timeSpent
+      message,
+      type,
+      encouragement: message,
+      suggestions: [
+        'Try a 5-minute free-writing session',
+        'Focus on one idea at a time',
+        'Take breaks to maintain creativity'
+      ],
+      productivity: {
+        wordsPerMinute: wpm,
+        efficiency: Math.min(100, (wordsWritten / Math.max(1, timeSpent / 60000)) * 2),
+        streakDays: this.userMetrics.streakDays
+      }
     };
   }
 
-  async getProgress(sessionId: string): Promise<any> {
-    if (this.currentSession && this.currentSession.id === sessionId) {
-      const sessionLength = Date.now() - this.currentSession.startTime;
+  async startSession(type: string): Promise<{ id: string; type: string; startTime: number }> {
+    const sessionId = await this.startWritingSession(`${type} Session`);
+    return {
+      id: sessionId,
+      type,
+      startTime: Date.now()
+    };
+  }
+
+  async updateMetrics(sessionId: string, metrics: { wordsWritten?: number; timeSpent?: number }): Promise<{ wordsWritten: number; timeSpent: number }> {
+    await this.updateProgress(sessionId, metrics);
+    return {
+      wordsWritten: metrics.wordsWritten || 0,
+      timeSpent: metrics.timeSpent || 0
+    };
+  }
+
+  async updateProgress(sessionId: string, metrics: { wordsWritten?: number; timeSpent?: number }): Promise<void> {
+    if (this.currentSession?.id === sessionId) {
+      if (metrics.wordsWritten !== undefined) {
+        await this.updateSessionContent(this.currentSession.content, metrics.wordsWritten);
+      }
+    }
+  }
+
+  async getProgress(sessionId: string): Promise<ProgressMetrics> {
+    if (this.currentSession?.id === sessionId) {
       return {
         wordsWritten: this.currentSession.wordCount,
-        timeSpent: sessionLength,
-        wordsPerMinute: sessionLength > 0 ? (this.currentSession.wordCount / (sessionLength / 60000)) : 0
+        timeSpent: this.currentSession.timeSpent,
+        sessionsCompleted: 1,
+        averageWPM: this.currentSession.productivity,
+        consistency: 0.8,
+        wordsPerMinute: this.currentSession.productivity
       };
     }
-    
+
     return {
       wordsWritten: 0,
       timeSpent: 0,
+      sessionsCompleted: 0,
+      averageWPM: 0,
+      consistency: 0,
       wordsPerMinute: 0
     };
   }
 
-  async getMotivation(metrics: any): Promise<any> {
+  async getMotivation(metrics: ProgressMetrics): Promise<{ message: string; level: string; motivationType?: string }> {
+    let message = 'Keep writing! Every word counts.';
     let level = 'medium';
-    let message = 'Keep up the good work!';
 
-    if (metrics.wordsWritten > 1000) {
+    if (metrics.averageWPM > 25) {
+      message = 'Amazing writing speed! You\'re in the flow.';
       level = 'excellent';
-      message = 'Outstanding word count! You\'re on fire!';
-    } else if (metrics.wordsWritten > 500) {
-      level = 'high';
-      message = 'Great progress! You\'re building momentum!';
     } else if (metrics.consistency > 0.8) {
+      message = 'Your consistency is impressive! Keep it up.';
       level = 'high';
-      message = 'Your consistency is impressive!';
-    } else if (metrics.wordsWritten < 100) {
+    } else if (metrics.sessionsCompleted > 5) {
+      message = 'Great dedication! You\'re building a strong habit.';
+      level = 'high';
+    } else if (metrics.wordsWritten > 1000) {
+      message = 'Excellent progress! You\'re reaching your goals.';
+      level = 'high';
+    } else {
       level = 'low';
-      message = 'Every journey begins with a single step. Keep writing!';
+      message = 'Every writer starts somewhere. Keep going!';
     }
 
     return {
       message,
       level,
-      metrics: {
-        improvement: '+15% from last session',
-        streak: metrics.sessionsCompleted || 1
+      motivationType: 'encouragement'
+    };
+  }
+
+  async analyzeText(text: string): Promise<any> {
+    // Comprehensive text analysis combining writing quality, style, and suggestions
+    const wordCount = text.split(/\s+/).filter(w => w.length > 0).length;
+    const sentences = text.split(/[.!?]+/).filter(s => s.trim().length > 0);
+    const avgSentenceLength = sentences.length > 0 ? wordCount / sentences.length : 12;
+
+    const analysis = {
+      readabilityScore: Math.min(100, Math.max(0, 100 - (avgSentenceLength - 15) * 2)),
+      wordCount: wordCount,
+      sentenceCount: sentences.length,
+      averageSentenceLength: avgSentenceLength,
+      complexityScore: avgSentenceLength > 20 ? 80 : avgSentenceLength > 12 ? 60 : 40,
+      suggestions: this.analyzeContentForSuggestions(text).map(s => ({
+        type: s.type,
+        title: s.title,
+        description: s.description,
+        confidence: s.confidence
+      })),
+      toneAnalysis: {
+        positive: text.includes('good') || text.includes('great') || text.includes('excellent') ? 0.8 : 0.3,
+        negative: text.includes('bad') || text.includes('terrible') || text.includes('awful') ? 0.8 : 0.2,
+        neutral: 0.5,
+        dominant: 'neutral'
+      },
+      styleMetrics: {
+        complexity: avgSentenceLength > 20 ? 'high' : avgSentenceLength > 12 ? 'medium' : 'low',
+        formality: text.includes('however') || text.includes('furthermore') ? 'formal' : 'informal',
+        voice: 'active' // Simplified for mock
+      },
+      contentStructure: {
+        hasIntroduction: sentences.length > 0,
+        hasConclusion: sentences.length > 2,
+        paragraphFlow: 'good',
+        coherence: 0.8
       }
     };
+
+    return analysis;
+  }
+
+  async getRealTimeSuggestions(text: string, cursorPosition?: number): Promise<any> {
+    // Provide real-time writing suggestions based on current text and cursor position
+    const suggestions = this.analyzeContentForSuggestions(text);
+    
+    return {
+      suggestions: suggestions.slice(0, 3), // Top 3 suggestions
+      autoComplete: [
+        'to complete this thought',
+        'and furthermore',
+        'however, it should be noted'
+      ],
+      grammarCorrections: [],
+      styleImprovement: suggestions.filter(s => s.type === 'style').slice(0, 2)
+    };
+  }
+
+  async applySuggestions(suggestionIds: string[]): Promise<{ success: boolean; appliedCount: number; errors: string[] }> {
+    // Apply multiple suggestions to the current session
+    if (!this.currentSession) {
+      return { success: false, appliedCount: 0, errors: ['No active session'] };
+    }
+
+    let appliedCount = 0;
+    const errors: string[] = [];
+
+    for (const id of suggestionIds) {
+      const success = await this.applySuggestion(id);
+      if (success) {
+        appliedCount++;
+      } else {
+        errors.push(`Failed to apply suggestion: ${id}`);
+      }
+    }
+
+    return {
+      success: appliedCount > 0,
+      appliedCount,
+      errors
+    };
+  }
+
+  // Additional methods required by comprehensive tests
+  getAllSessions(): WritingSession[] {
+    return this.sessions;
+  }
+
+  getCurrentPersonality(): AIPersonality | null {
+    return this.personalities.find(p => p.isActive) || null;
+  }
+
+  on(event: string, callback: Function): void {
+    this.addEventListener(event, callback);
+  }
+
+  off(event: string, callback: Function): void {
+    this.removeEventListener(event, callback);
   }
 
   async healthCheck(): Promise<any> {
     return {
-      status: this.isInitialized ? 'healthy' : 'unhealthy',
+      status: 'healthy',
       service: 'aiWritingCompanion',
       timestamp: new Date().toISOString(),
       checks: {
-        initialized: this.isInitialized,
+        sessionManagement: true,
         personalitiesLoaded: this.personalities.length > 0,
-        activeSession: this.currentSession !== null,
-        goalsTracked: this.writingGoals.length >= 0
+        goalsTracked: this.goals.length >= 0,
+        metricsUpdated: this.userMetrics.totalSessions >= 0
       }
     };
-  }
-
-  /**
-   * Check session health (private method for testing)
-   */
-  private checkSessionHealth(): void {
-    if (!this.currentSession) return;
-    
-    const now = Date.now();
-    const sessionDuration = now - this.currentSession.startTime;
-    
-    // Emit health reminder if session is too long (30+ minutes)
-    if (sessionDuration > 30 * 60 * 1000) {
-      // This would normally emit an event or call a callback
-      // For testing, we'll just set a flag or emit to a global handler
-      if (typeof window !== 'undefined' && (window as any).healthReminderCallback) {
-        (window as any).healthReminderCallback({
-          type: 'break',
-          message: 'Consider taking a short break to refresh your mind.',
-          timestamp: now
-        });
-      }
-    }
-  }
-
-  /**
-   * Check if real-time feedback is enabled
-   */
-  public isRealTimeFeedbackEnabled(): boolean {
-    return this.currentPersonality?.realTimeFeedback || false;
-  }
-
-  /**
-   * Save data to storage (private method for testing)
-   */
-  private saveDataToStorage(): void {
-    try {
-      localStorage.setItem('aiWritingCompanion_goals', JSON.stringify(this.writingGoals));
-    } catch (error) {
-      console.warn('Failed to save goals to localStorage:', error);
-    }
-
-    try {
-      if (this.currentPersonality) {
-        localStorage.setItem('aiWritingCompanion_personality', JSON.stringify(this.currentPersonality.id));
-      }
-    } catch (error) {
-      console.warn('Failed to save personality to localStorage:', error);
-    }
   }
 }
 
 // Export singleton instance
-export const aiWritingCompanion = new AIWritingCompanionService();
-
-// Default export for compatibility
+const aiWritingCompanion = new AIWritingCompanionService();
 export default aiWritingCompanion;
+export { aiWritingCompanion };

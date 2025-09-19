@@ -352,7 +352,7 @@ export const createMockProject = (overrides: any = {}) => ({
   id: 'test-project-1',
   title: 'Test Project',
   description: 'A test project for unit tests',
-  userId: 'test-user-1',
+  userId: 'local-user',
   status: 'writing' as const,
   isPublic: false,
   tags: ['test'],

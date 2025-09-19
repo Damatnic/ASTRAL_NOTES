@@ -452,6 +452,8 @@ describe('CollaborationService', () => {
 
   describe('Conflict Resolution', () => {
     beforeEach(() => {
+      collaborationService['socket'] = mockSocket;
+      collaborationService.setupSocketListeners();
       collaborationService['localUser'] = {
         ...mockUser,
         status: 'online',
@@ -747,6 +749,8 @@ describe('CollaborationService', () => {
 
   describe('Error Handling', () => {
     test('should handle socket errors gracefully', () => {
+      collaborationService['socket'] = mockSocket;
+      collaborationService.setupSocketListeners();
       const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
       const errorHandler = vi.mocked(mockSocket.on).mock.calls.find(

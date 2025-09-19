@@ -3,6 +3,9 @@
  * Comprehensive mock for @tiptap/react to enable editor testing
  */
 
+import { vi } from 'vitest';
+import React from 'react';
+
 export const Editor = vi.fn().mockImplementation(() => ({
   commands: {
     setContent: vi.fn(),
@@ -23,6 +26,7 @@ export const Editor = vi.fn().mockImplementation(() => ({
     toggleStrike: vi.fn(),
     toggleCode: vi.fn(),
     toggleHeading: vi.fn(),
+    setParagraph: vi.fn(),
     toggleBulletList: vi.fn(),
     toggleOrderedList: vi.fn(),
     toggleTaskList: vi.fn(),
@@ -44,6 +48,7 @@ export const Editor = vi.fn().mockImplementation(() => ({
     setTextAlign: vi.fn(),
     setColor: vi.fn(),
     setHighlight: vi.fn(),
+    toggleHighlight: vi.fn(),
     setFontFamily: vi.fn(),
     selectAll: vi.fn(),
     clearContent: vi.fn(),
@@ -73,6 +78,110 @@ export const Editor = vi.fn().mockImplementation(() => ({
     setItalic: vi.fn().mockReturnValue(true),
     undo: vi.fn().mockReturnValue(true),
     redo: vi.fn().mockReturnValue(true),
+    toggleHighlight: vi.fn().mockReturnValue(true),
+    toggleBold: vi.fn().mockReturnValue(true),
+    toggleItalic: vi.fn().mockReturnValue(true),
+    toggleUnderline: vi.fn().mockReturnValue(true),
+    chain: vi.fn().mockReturnValue({
+      focus: vi.fn().mockReturnValue({
+        toggleHighlight: vi.fn().mockReturnValue({
+          run: vi.fn()
+        }),
+        toggleBold: vi.fn().mockReturnValue({
+          run: vi.fn()
+        }),
+        toggleItalic: vi.fn().mockReturnValue({
+          run: vi.fn()
+        }),
+        toggleUnderline: vi.fn().mockReturnValue({
+          run: vi.fn()
+        }),
+        undo: vi.fn().mockReturnValue({
+          run: vi.fn()
+        }),
+        redo: vi.fn().mockReturnValue({
+          run: vi.fn()
+        }),
+        toggleHeading: vi.fn().mockReturnValue({
+          run: vi.fn()
+        }),
+        setParagraph: vi.fn().mockReturnValue({
+          run: vi.fn()
+        }),
+        toggleBulletList: vi.fn().mockReturnValue({
+          run: vi.fn()
+        }),
+        toggleOrderedList: vi.fn().mockReturnValue({
+          run: vi.fn()
+        }),
+        toggleTaskList: vi.fn().mockReturnValue({
+          run: vi.fn()
+        }),
+        setLink: vi.fn().mockReturnValue({
+          run: vi.fn()
+        }),
+        insertTable: vi.fn().mockReturnValue({
+          run: vi.fn()
+        }),
+        toggleCodeBlock: vi.fn().mockReturnValue({
+          run: vi.fn()
+        }),
+        toggleCode: vi.fn().mockReturnValue({
+          run: vi.fn()
+        }),
+        run: vi.fn()
+      })
+    })
+  }),
+  chain: () => ({
+    focus: vi.fn().mockReturnValue({
+      toggleHighlight: vi.fn().mockReturnValue({
+        run: vi.fn()
+      }),
+      toggleBold: vi.fn().mockReturnValue({
+        run: vi.fn()
+      }),
+      toggleItalic: vi.fn().mockReturnValue({
+        run: vi.fn()
+      }),
+      toggleUnderline: vi.fn().mockReturnValue({
+        run: vi.fn()
+      }),
+      undo: vi.fn().mockReturnValue({
+        run: vi.fn()
+      }),
+      redo: vi.fn().mockReturnValue({
+        run: vi.fn()
+      }),
+      toggleHeading: vi.fn().mockReturnValue({
+        run: vi.fn()
+      }),
+      setParagraph: vi.fn().mockReturnValue({
+        run: vi.fn()
+      }),
+      toggleBulletList: vi.fn().mockReturnValue({
+        run: vi.fn()
+      }),
+      toggleOrderedList: vi.fn().mockReturnValue({
+        run: vi.fn()
+      }),
+      toggleTaskList: vi.fn().mockReturnValue({
+        run: vi.fn()
+      }),
+      setLink: vi.fn().mockReturnValue({
+        run: vi.fn()
+      }),
+      insertTable: vi.fn().mockReturnValue({
+        run: vi.fn()
+      }),
+      toggleCodeBlock: vi.fn().mockReturnValue({
+        run: vi.fn()
+      }),
+      toggleCode: vi.fn().mockReturnValue({
+        run: vi.fn()
+      }),
+      run: vi.fn()
+    })
   }),
   getHTML: vi.fn().mockReturnValue('<p>Mock HTML content</p>'),
   getText: vi.fn().mockReturnValue('Mock text content'),
