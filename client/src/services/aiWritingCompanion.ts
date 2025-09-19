@@ -12,6 +12,8 @@ export interface WritingSession {
   endTime?: number;
   content: string;
   wordCount: number;
+  totalWords: number;
+  wordsAdded: number;
   timeSpent: number;
   productivity: number;
   suggestions: AISuggestion[];
@@ -64,15 +66,7 @@ export interface WritingGoal {
   milestones: any[];
 }
 
-export interface AIPersonality {
-  id: string;
-  name: string;
-  description: string;
-  traits: string[];
-  greetingStyle: string;
-  feedbackStyle: string;
-  isActive: boolean;
-}
+export interface AIPersonality {  id: string;  name: string;  description: string;  role: string;  traits: {    encouraging: number;    critical: number;    creative: number;    analytical: number;  };  greetingStyle: string;  feedbackStyle: string;  isActive: boolean;}
 
 export interface WritingMetrics {
   totalWords: number;
@@ -132,55 +126,112 @@ class AIWritingCompanionService {
   private initializeDefaults(): void {
     this.personalities = [
       {
-        id: 'encouraging',
-        name: 'Encouraging Coach',
-        description: 'Supportive and motivating',
-        traits: ['supportive', 'motivating', 'patient'],
-        greetingStyle: 'warm',
+        id: 'mentor',
+        name: 'Wise Mentor',
+        description: 'Mentor personality',
+        role: 'mentor',
+        traits: {
+          encouraging: 80,
+          critical: 20,
+          creative: 60,
+          analytical: 70
+        },
+        specialties: ["guidance", "motivation", "story_structure"],
+        communicationStyle: 'supportive',
+        greetingStyle: 'supportive',
         feedbackStyle: 'constructive',
         isActive: true
       },
       {
-        id: 'analytical',
-        name: 'Analytical Editor',
-        description: 'Detail-oriented and precise',
-        traits: ['analytical', 'precise', 'thorough'],
-        greetingStyle: 'professional',
-        feedbackStyle: 'detailed',
+        id: 'critic',
+        name: 'Analytical Critic',
+        description: 'Critic personality',
+        role: 'critic',
+        traits: {
+          encouraging: 30,
+          critical: 90,
+          creative: 40,
+          analytical: 95
+        },
+        specialties: ["grammar", "style_analysis", "plot_holes"],
+        communicationStyle: 'formal',
+        greetingStyle: 'formal',
+        feedbackStyle: 'constructive',
         isActive: false
       },
       {
-        id: 'creative',
-        name: 'Creative Muse',
-        description: 'Imaginative and inspiring',
-        traits: ['creative', 'inspiring', 'unconventional'],
-        greetingStyle: 'artistic',
-        feedbackStyle: 'inspiring',
+        id: 'cheerleader',
+        name: 'Enthusiastic Cheerleader',
+        description: 'Cheerleader personality',
+        role: 'cheerleader',
+        traits: {
+          encouraging: 95,
+          critical: 10,
+          creative: 75,
+          analytical: 30
+        },
+        specialties: ["motivation", "confidence_building", "encouragement"],
+        communicationStyle: 'playful',
+        greetingStyle: 'playful',
+        feedbackStyle: 'constructive',
         isActive: false
       },
       {
-        id: 'focused',
-        name: 'Focused Mentor',
-        description: 'Goal-oriented and structured',
-        traits: ['focused', 'structured', 'goal-oriented'],
+        id: 'collaborator',
+        name: 'Creative Collaborator',
+        description: 'Collaborator personality',
+        role: 'collaborator',
+        traits: {
+          encouraging: 70,
+          critical: 40,
+          creative: 90,
+          analytical: 60
+        },
+        specialties: ["brainstorming", "idea_generation", "creative_prompts"],
+        communicationStyle: 'casual',
+        greetingStyle: 'casual',
+        feedbackStyle: 'constructive',
+        isActive: false
+      },
+      {
+        id: 'editor',
+        name: 'Professional Editor',
+        description: 'Editor personality',
+        role: 'editor',
+        traits: {
+          encouraging: 50,
+          critical: 80,
+          creative: 30,
+          analytical: 85
+        },
+        specialties: ["editing", "proofreading", "structure"],
+        communicationStyle: 'direct',
         greetingStyle: 'direct',
-        feedbackStyle: 'actionable',
+        feedbackStyle: 'constructive',
         isActive: false
-      },
+      }
+    ];
+
+    // Initialize default daily writing goal
+    this.goals = [
       {
-        id: 'experimental',
-        name: 'Experimental Guide',
-        description: 'Encourages trying new approaches',
-        traits: ['experimental', 'curious', 'adaptive'],
-        greetingStyle: 'curious',
-        feedbackStyle: 'exploratory',
-        isActive: false
+        id: 'default-daily',
+        type: 'daily',
+        title: 'Daily Writing Goal',
+        description: 'Write every day to build consistency',
+        target: 500,
+        current: 0,
+        deadline: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+        isCompleted: false,
+        category: 'productivity',
+        milestones: []
       }
     ];
   }
 
   private loadFromLocalStorage(): void {
     try {
+      // Try new format first (single key)
       const stored = localStorage.getItem('aiWritingCompanion');
       if (stored) {
         const data = JSON.parse(stored);
@@ -189,6 +240,31 @@ class AIWritingCompanionService {
         this.userMetrics = { ...this.userMetrics, ...data.metrics };
         if (data.personalities) {
           this.personalities = data.personalities;
+        }
+        return;
+      }
+
+      // Try legacy format (separate keys)
+      const sessionsStored = localStorage.getItem('astral_writing_sessions');
+      const goalsStored = localStorage.getItem('astral_writing_goals');
+      
+      if (sessionsStored) {
+        const sessionsData = JSON.parse(sessionsStored);
+        // Convert from object format to array format
+        if (typeof sessionsData === 'object' && !Array.isArray(sessionsData)) {
+          this.sessions = Object.values(sessionsData);
+        } else {
+          this.sessions = sessionsData || [];
+        }
+      }
+      
+      if (goalsStored) {
+        const goalsData = JSON.parse(goalsStored);
+        // Convert from object format to array format
+        if (typeof goalsData === 'object' && !Array.isArray(goalsData)) {
+          this.goals = [...this.goals, ...Object.values(goalsData)];
+        } else {
+          this.goals = [...this.goals, ...(goalsData || [])];
         }
       }
     } catch (error) {
@@ -226,6 +302,8 @@ class AIWritingCompanionService {
       startTime: Date.now(),
       content: '',
       wordCount: 0,
+      totalWords: 0,
+      wordsAdded: 0,
       timeSpent: 0,
       productivity: 0,
       suggestions: [],

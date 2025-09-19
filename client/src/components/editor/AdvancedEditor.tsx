@@ -59,7 +59,8 @@ import {
   Sun,
   Focus as FocusIcon,
   Timer,
-  BarChart3
+  BarChart3,
+  Target
 } from 'lucide-react';
 import { EditorToolbar } from './EditorToolbar';
 import { EditorStats } from './EditorStats';

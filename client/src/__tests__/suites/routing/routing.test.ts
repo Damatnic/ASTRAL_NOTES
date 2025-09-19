@@ -15,7 +15,7 @@ import { resetAllMocks } from '../../testSetup';
 // Import route components
 import { AppContent } from '../../../App';
 import { Dashboard } from '../../../pages/Dashboard';
-import { ProjectsOverview } from '../../../pages/ProjectsOverview';
+import { Projects } from '../../../pages/Projects';
 import { ProjectDashboard } from '../../../pages/ProjectDashboard';
 import { StoryEditor } from '../../../pages/StoryEditor';
 import { CharacterProfiles } from '../../../pages/CharacterProfiles';

@@ -446,12 +446,14 @@ export class ProjectService {
       order: 0
     };
 
-    // Store story in project
-    const project = this.getProjectById(data.projectId);
-    if (project) {
-      project.stories = project.stories || [];
-      project.stories.push(story);
-      this.updateProjectSync(data.projectId, { updatedAt: now });
+    // Store story in project and save to storage
+    const projects = this.getAllProjects();
+    const projectIndex = projects.findIndex(p => p.id === data.projectId);
+    if (projectIndex !== -1) {
+      projects[projectIndex].stories = projects[projectIndex].stories || [];
+      projects[projectIndex].stories.push(story);
+      projects[projectIndex].updatedAt = now;
+      storageService.saveProjects(projects);
     }
 
     return story;
@@ -464,35 +466,68 @@ export class ProjectService {
 
   public async updateStory(storyId: string, updates: any): Promise<any> {
     const projects = this.getAllProjects();
-    for (const project of projects) {
+
+    for (let i = 0; i < projects.length; i++) {
+
+      const project = projects[i];
+
       if (project.stories) {
+
         const storyIndex = project.stories.findIndex(s => s.id === storyId);
+
         if (storyIndex !== -1) {
+
           const updatedStory = {
+
             ...project.stories[storyIndex],
+
             ...updates,
+
             updatedAt: new Date().toISOString()
+
           };
-          project.stories[storyIndex] = updatedStory;
-          this.updateProjectSync(project.id, { updatedAt: new Date().toISOString() });
+
+          projects[i].stories[storyIndex] = updatedStory;
+
+          projects[i].updatedAt = new Date().toISOString();
+
+          storageService.saveProjects(projects);
+
           return updatedStory;
+
         }
+
       }
+
     }
     return null;
   }
 
   public async deleteStory(storyId: string): Promise<boolean> {
     const projects = this.getAllProjects();
-    for (const project of projects) {
+
+    for (let i = 0; i < projects.length; i++) {
+
+      const project = projects[i];
+
       if (project.stories) {
+
         const storyIndex = project.stories.findIndex(s => s.id === storyId);
+
         if (storyIndex !== -1) {
-          project.stories.splice(storyIndex, 1);
-          this.updateProjectSync(project.id, { updatedAt: new Date().toISOString() });
+
+          projects[i].stories.splice(storyIndex, 1);
+
+          projects[i].updatedAt = new Date().toISOString();
+
+          storageService.saveProjects(projects);
+
           return true;
+
         }
+
       }
+
     }
     return false;
   }
@@ -517,12 +552,14 @@ export class ProjectService {
       updatedAt: now
     };
 
-    // Store character in project
-    const project = this.getProjectById(data.projectId);
-    if (project) {
-      project.characters = project.characters || [];
-      project.characters.push(character);
-      this.updateProjectSync(data.projectId, { updatedAt: now });
+    // Store character in project and save to storage
+    const projects = this.getAllProjects();
+    const projectIndex = projects.findIndex(p => p.id === data.projectId);
+    if (projectIndex !== -1) {
+      projects[projectIndex].characters = projects[projectIndex].characters || [];
+      projects[projectIndex].characters.push(character);
+      projects[projectIndex].updatedAt = now;
+      storageService.saveProjects(projects);
     }
 
     return character;
@@ -535,35 +572,68 @@ export class ProjectService {
 
   public async updateCharacter(characterId: string, updates: any): Promise<any> {
     const projects = this.getAllProjects();
-    for (const project of projects) {
+
+    for (let i = 0; i < projects.length; i++) {
+
+      const project = projects[i];
+
       if (project.characters) {
+
         const characterIndex = project.characters.findIndex(c => c.id === characterId);
+
         if (characterIndex !== -1) {
+
           const updatedCharacter = {
+
             ...project.characters[characterIndex],
+
             ...updates,
+
             updatedAt: new Date().toISOString()
+
           };
-          project.characters[characterIndex] = updatedCharacter;
-          this.updateProjectSync(project.id, { updatedAt: new Date().toISOString() });
+
+          projects[i].characters[characterIndex] = updatedCharacter;
+
+          projects[i].updatedAt = new Date().toISOString();
+
+          storageService.saveProjects(projects);
+
           return updatedCharacter;
+
         }
+
       }
+
     }
     return null;
   }
 
   public async deleteCharacter(characterId: string): Promise<boolean> {
     const projects = this.getAllProjects();
-    for (const project of projects) {
+
+    for (let i = 0; i < projects.length; i++) {
+
+      const project = projects[i];
+
       if (project.characters) {
+
         const characterIndex = project.characters.findIndex(c => c.id === characterId);
+
         if (characterIndex !== -1) {
-          project.characters.splice(characterIndex, 1);
-          this.updateProjectSync(project.id, { updatedAt: new Date().toISOString() });
+
+          projects[i].characters.splice(characterIndex, 1);
+
+          projects[i].updatedAt = new Date().toISOString();
+
+          storageService.saveProjects(projects);
+
           return true;
+
         }
+
       }
+
     }
     return false;
   }

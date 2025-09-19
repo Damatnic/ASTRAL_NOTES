@@ -184,7 +184,11 @@ export function StoryEditor() {
   // Load story data
   useEffect(() => {
     const loadStory = async () => {
-      if (!storyId) return;
+      if (!storyId || storyId === '') {
+        setStory({ error: 'Story Not Found' } as any);
+        setIsLoading(false);
+        return;
+      }
       
       setIsLoading(true);
       try {
@@ -397,12 +401,12 @@ export function StoryEditor() {
     );
   }
 
-  if (!story) {
+  if (!story || (story as any).error) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center space-y-4">
           <BookOpen className="h-12 w-12 mx-auto text-muted-foreground" />
-          <p className="text-lg font-medium">Story not found</p>
+          <p className="text-lg font-medium">{(story as any)?.error || 'Story not found'}</p>
           <Button onClick={() => navigate('/projects')}>
             Back to Projects
           </Button>
@@ -412,7 +416,7 @@ export function StoryEditor() {
   }
 
   return (
-    <div className="h-screen flex flex-col bg-background">
+    <div className="h-screen flex flex-col bg-background" data-testid="story-editor">
       {/* Header */}
       <div className="border-b border-border/50 bg-card/50 backdrop-blur-sm">
         <div className="flex items-center justify-between p-4">
@@ -659,6 +663,7 @@ export function StoryEditor() {
             <div className="flex-1 flex flex-col">
               {/* Chapter header */}
               <div className="p-4 border-b border-border/50 bg-card/30">
+                <div className="text-sm text-muted-foreground mb-2">Story Tools</div>
                 <div className="flex items-center justify-between">
                   <div>
                     <Input
@@ -735,6 +740,7 @@ export function StoryEditor() {
                   showStats={true}
                   autoFocus={true}
                   className="h-full"
+                  data-testid="rich-text-editor"
                 />
               </div>
             </div>

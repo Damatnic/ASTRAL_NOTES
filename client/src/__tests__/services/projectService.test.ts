@@ -96,7 +96,13 @@ describe('ProjectService', () => {
 
     it('updates a project', async () => {
       const mockProject = createMockProject();
-      mockLocalStorage.getItem.mockReturnValue(JSON.stringify([mockProject]));
+      const mockData = {
+        projects: [mockProject],
+        notes: {},
+        preferences: {},
+        appData: { lastBackup: null, dataVersion: '1.0.0' }
+      };
+      mockLocalStorage.getItem.mockReturnValue(JSON.stringify(mockData));
 
       const updates = {
         title: 'Updated Title',
@@ -116,19 +122,31 @@ describe('ProjectService', () => {
 
     it('deletes a project', async () => {
       const mockProject = createMockProject();
-      mockLocalStorage.getItem.mockReturnValue(JSON.stringify([mockProject]));
+      const mockData = {
+        projects: [mockProject],
+        notes: {},
+        preferences: {},
+        appData: { lastBackup: null, dataVersion: '1.0.0' }
+      };
+      mockLocalStorage.getItem.mockReturnValue(JSON.stringify(mockData));
 
       const result = await projectService.deleteProject(mockProject.id);
 
       expect(result).toBe(true);
       expect(mockLocalStorage.setItem).toHaveBeenCalledWith(
-        'astral-projects',
-        JSON.stringify([])
+        'astral_notes_data',
+        expect.stringMatching(/"projects":\[\]/)
       );
     });
 
     it('handles project not found during deletion', async () => {
-      mockLocalStorage.getItem.mockReturnValue(JSON.stringify([]));
+      const mockData = {
+        projects: [],
+        notes: {},
+        preferences: {},
+        appData: { lastBackup: null, dataVersion: '1.0.0' }
+      };
+      mockLocalStorage.getItem.mockReturnValue(JSON.stringify(mockData));
 
       const result = await projectService.deleteProject('non-existent-id');
 
@@ -139,7 +157,13 @@ describe('ProjectService', () => {
   describe('Story Management', () => {
     it('creates a new story', async () => {
       const mockProject = createMockProject();
-      mockLocalStorage.getItem.mockReturnValue(JSON.stringify([mockProject]));
+      const mockData = {
+        projects: [mockProject],
+        notes: {},
+        preferences: {},
+        appData: { lastBackup: null, dataVersion: '1.0.0' }
+      };
+      mockLocalStorage.getItem.mockReturnValue(JSON.stringify(mockData));
 
       const storyData = {
         title: 'Test Story',
@@ -163,7 +187,13 @@ describe('ProjectService', () => {
       const mockProject = createMockProject();
       const mockStory = createMockStory();
       mockProject.stories = [mockStory];
-      mockLocalStorage.getItem.mockReturnValue(JSON.stringify([mockProject]));
+      const mockData = {
+        projects: [mockProject],
+        notes: {},
+        preferences: {},
+        appData: { lastBackup: null, dataVersion: '1.0.0' }
+      };
+      mockLocalStorage.getItem.mockReturnValue(JSON.stringify(mockData));
 
       const stories = await projectService.getStories(mockProject.id);
 
@@ -175,7 +205,13 @@ describe('ProjectService', () => {
       const mockProject = createMockProject();
       const mockStory = createMockStory();
       mockProject.stories = [mockStory];
-      mockLocalStorage.getItem.mockReturnValue(JSON.stringify([mockProject]));
+      const mockData = {
+        projects: [mockProject],
+        notes: {},
+        preferences: {},
+        appData: { lastBackup: null, dataVersion: '1.0.0' }
+      };
+      mockLocalStorage.getItem.mockReturnValue(JSON.stringify(mockData));
 
       const updates = {
         title: 'Updated Story Title',
@@ -195,7 +231,13 @@ describe('ProjectService', () => {
       const mockProject = createMockProject();
       const mockStory = createMockStory();
       mockProject.stories = [mockStory];
-      mockLocalStorage.getItem.mockReturnValue(JSON.stringify([mockProject]));
+      const mockData = {
+        projects: [mockProject],
+        notes: {},
+        preferences: {},
+        appData: { lastBackup: null, dataVersion: '1.0.0' }
+      };
+      mockLocalStorage.getItem.mockReturnValue(JSON.stringify(mockData));
 
       const result = await projectService.deleteStory(mockStory.id);
 
@@ -206,7 +248,13 @@ describe('ProjectService', () => {
   describe('Character Management', () => {
     it('creates a new character', async () => {
       const mockProject = createMockProject();
-      mockLocalStorage.getItem.mockReturnValue(JSON.stringify([mockProject]));
+      const mockData = {
+        projects: [mockProject],
+        notes: {},
+        preferences: {},
+        appData: { lastBackup: null, dataVersion: '1.0.0' }
+      };
+      mockLocalStorage.getItem.mockReturnValue(JSON.stringify(mockData));
 
       const characterData = {
         name: 'Test Character',
@@ -230,7 +278,13 @@ describe('ProjectService', () => {
       const mockProject = createMockProject();
       const mockCharacter = createMockCharacter();
       mockProject.characters = [mockCharacter];
-      mockLocalStorage.getItem.mockReturnValue(JSON.stringify([mockProject]));
+      const mockData = {
+        projects: [mockProject],
+        notes: {},
+        preferences: {},
+        appData: { lastBackup: null, dataVersion: '1.0.0' }
+      };
+      mockLocalStorage.getItem.mockReturnValue(JSON.stringify(mockData));
 
       const characters = await projectService.getCharacters(mockProject.id);
 
@@ -242,7 +296,13 @@ describe('ProjectService', () => {
       const mockProject = createMockProject();
       const mockCharacter = createMockCharacter();
       mockProject.characters = [mockCharacter];
-      mockLocalStorage.getItem.mockReturnValue(JSON.stringify([mockProject]));
+      const mockData = {
+        projects: [mockProject],
+        notes: {},
+        preferences: {},
+        appData: { lastBackup: null, dataVersion: '1.0.0' }
+      };
+      mockLocalStorage.getItem.mockReturnValue(JSON.stringify(mockData));
 
       const updates = {
         name: 'Updated Character Name',
@@ -262,7 +322,13 @@ describe('ProjectService', () => {
       const mockProject = createMockProject();
       const mockCharacter = createMockCharacter();
       mockProject.characters = [mockCharacter];
-      mockLocalStorage.getItem.mockReturnValue(JSON.stringify([mockProject]));
+      const mockData = {
+        projects: [mockProject],
+        notes: {},
+        preferences: {},
+        appData: { lastBackup: null, dataVersion: '1.0.0' }
+      };
+      mockLocalStorage.getItem.mockReturnValue(JSON.stringify(mockData));
 
       const result = await projectService.deleteCharacter(mockCharacter.id);
 
@@ -279,7 +345,13 @@ describe('ProjectService', () => {
       mockProject2.id = 'project-2';
       mockProject2.title = 'Sci-Fi Thriller';
       
-      mockLocalStorage.getItem.mockReturnValue(JSON.stringify([mockProject1, mockProject2]));
+      const mockData = {
+        projects: [mockProject1, mockProject2],
+        notes: {},
+        preferences: {},
+        appData: { lastBackup: null, dataVersion: '1.0.0' }
+      };
+      mockLocalStorage.getItem.mockReturnValue(JSON.stringify(mockData));
 
       const results = await projectService.search('fantasy');
 
@@ -296,7 +368,13 @@ describe('ProjectService', () => {
       const mockCharacter = createMockCharacter();
       mockCharacter.name = 'Fantasy Hero';
       mockProject.characters = [mockCharacter];
-      mockLocalStorage.getItem.mockReturnValue(JSON.stringify([mockProject]));
+      const mockData = {
+        projects: [mockProject],
+        notes: {},
+        preferences: {},
+        appData: { lastBackup: null, dataVersion: '1.0.0' }
+      };
+      mockLocalStorage.getItem.mockReturnValue(JSON.stringify(mockData));
 
       const results = await projectService.search('fantasy', {
         types: ['character'],
@@ -310,7 +388,13 @@ describe('ProjectService', () => {
 
     it('returns empty results for no matches', async () => {
       const mockProject = createMockProject();
-      mockLocalStorage.getItem.mockReturnValue(JSON.stringify([mockProject]));
+      const mockData = {
+        projects: [mockProject],
+        notes: {},
+        preferences: {},
+        appData: { lastBackup: null, dataVersion: '1.0.0' }
+      };
+      mockLocalStorage.getItem.mockReturnValue(JSON.stringify(mockData));
 
       const results = await projectService.search('nonexistent');
 
@@ -327,7 +411,13 @@ describe('ProjectService', () => {
       
       mockProject.stories = [mockStory];
       mockProject.characters = [mockCharacter];
-      mockLocalStorage.getItem.mockReturnValue(JSON.stringify([mockProject]));
+      const mockData = {
+        projects: [mockProject],
+        notes: {},
+        preferences: {},
+        appData: { lastBackup: null, dataVersion: '1.0.0' }
+      };
+      mockLocalStorage.getItem.mockReturnValue(JSON.stringify(mockData));
 
       const stats = await projectService.getProjectStatistics(mockProject.id);
 
@@ -350,7 +440,13 @@ describe('ProjectService', () => {
       mockStory.wordCount = 25000;
       mockProject.stories = [mockStory];
       
-      mockLocalStorage.getItem.mockReturnValue(JSON.stringify([mockProject]));
+      const mockData = {
+        projects: [mockProject],
+        notes: {},
+        preferences: {},
+        appData: { lastBackup: null, dataVersion: '1.0.0' }
+      };
+      mockLocalStorage.getItem.mockReturnValue(JSON.stringify(mockData));
 
       const progress = await projectService.getWritingProgress(mockProject.id);
 
@@ -372,7 +468,13 @@ describe('ProjectService', () => {
       
       mockProject.stories = [mockStory];
       mockProject.characters = [mockCharacter];
-      mockLocalStorage.getItem.mockReturnValue(JSON.stringify([mockProject]));
+      const mockData = {
+        projects: [mockProject],
+        notes: {},
+        preferences: {},
+        appData: { lastBackup: null, dataVersion: '1.0.0' }
+      };
+      mockLocalStorage.getItem.mockReturnValue(JSON.stringify(mockData));
 
       const backup = await projectService.createBackup(mockProject.id);
 
@@ -407,7 +509,13 @@ describe('ProjectService', () => {
 
     it('exports project data', async () => {
       const mockProject = createMockProject();
-      mockLocalStorage.getItem.mockReturnValue(JSON.stringify([mockProject]));
+      const mockData = {
+        projects: [mockProject],
+        notes: {},
+        preferences: {},
+        appData: { lastBackup: null, dataVersion: '1.0.0' }
+      };
+      mockLocalStorage.getItem.mockReturnValue(JSON.stringify(mockData));
 
       const exportData = await projectService.exportProject(mockProject.id, 'json');
 
@@ -422,7 +530,13 @@ describe('ProjectService', () => {
   describe('Collaboration', () => {
     it('shares a project', async () => {
       const mockProject = createMockProject();
-      mockLocalStorage.getItem.mockReturnValue(JSON.stringify([mockProject]));
+      const mockData = {
+        projects: [mockProject],
+        notes: {},
+        preferences: {},
+        appData: { lastBackup: null, dataVersion: '1.0.0' }
+      };
+      mockLocalStorage.getItem.mockReturnValue(JSON.stringify(mockData));
 
       const shareData = await projectService.shareProject(mockProject.id, {
         permissions: 'read',
@@ -439,7 +553,13 @@ describe('ProjectService', () => {
 
     it('revokes project sharing', async () => {
       const mockProject = createMockProject();
-      mockLocalStorage.getItem.mockReturnValue(JSON.stringify([mockProject]));
+      const mockData = {
+        projects: [mockProject],
+        notes: {},
+        preferences: {},
+        appData: { lastBackup: null, dataVersion: '1.0.0' }
+      };
+      mockLocalStorage.getItem.mockReturnValue(JSON.stringify(mockData));
 
       const result = await projectService.revokeShare('share-id-123');
 
@@ -478,7 +598,13 @@ describe('ProjectService', () => {
 
     it('saves project as template', async () => {
       const mockProject = createMockProject();
-      mockLocalStorage.getItem.mockReturnValue(JSON.stringify([mockProject]));
+      const mockData = {
+        projects: [mockProject],
+        notes: {},
+        preferences: {},
+        appData: { lastBackup: null, dataVersion: '1.0.0' }
+      };
+      mockLocalStorage.getItem.mockReturnValue(JSON.stringify(mockData));
 
       const template = await projectService.saveAsTemplate(mockProject.id, {
         name: 'My Template',
@@ -514,7 +640,13 @@ describe('ProjectService', () => {
     });
 
     it('handles missing project during update', async () => {
-      mockLocalStorage.getItem.mockReturnValue(JSON.stringify([]));
+      const mockData = {
+        projects: [],
+        notes: {},
+        preferences: {},
+        appData: { lastBackup: null, dataVersion: '1.0.0' }
+      };
+      mockLocalStorage.getItem.mockReturnValue(JSON.stringify(mockData));
 
       await expect(
         projectService.updateProject('non-existent', { title: 'New Title' })

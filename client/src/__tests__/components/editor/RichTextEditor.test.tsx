@@ -182,15 +182,22 @@ describe('RichTextEditor', () => {
     expect(screen.getByTestId('editor-content')).toBeInTheDocument();
   });
 
-  it('renders toolbar with formatting buttons', () => {
+  it('renders toolbar with formatting buttons', async () => {
     render(<RichTextEditor {...defaultProps} showToolbar />);
     
     expect(screen.getByLabelText('Bold')).toBeInTheDocument();
     expect(screen.getByLabelText('Italic')).toBeInTheDocument();
     expect(screen.getByLabelText('Underline')).toBeInTheDocument();
-    expect(screen.getByLabelText('Heading 1')).toBeInTheDocument();
     expect(screen.getByLabelText('Bullet List')).toBeInTheDocument();
-    expect(screen.getByLabelText('Ordered List')).toBeInTheDocument();
+    expect(screen.getByLabelText('Numbered List')).toBeInTheDocument();
+    
+    // Open heading dropdown to access Heading 1 button
+    const headingDropdown = screen.getByRole('button', { name: /heading/i });
+    fireEvent.click(headingDropdown);
+    
+    await waitFor(() => {
+      expect(screen.getByLabelText('Heading 1')).toBeInTheDocument();
+    });
   });
 
   it('handles bold formatting', async () => {

@@ -278,6 +278,7 @@ export function EditorToolbar({
           isActive && "bg-cosmic-100 text-cosmic-700 dark:bg-cosmic-900 dark:text-cosmic-300"
         )}
         title={item.label}
+        aria-label={item.label}
       >
         <Icon className="h-4 w-4" />
       </Button>
@@ -305,6 +306,8 @@ export function EditorToolbar({
               variant="ghost"
               onClick={() => setShowHeadingMenu(!showHeadingMenu)}
               className="flex items-center gap-1 px-3"
+              aria-label="Heading styles"
+              title="Heading styles"
             >
               <Type className="h-4 w-4" />
               <ChevronDown className="h-3 w-3" />
@@ -322,6 +325,7 @@ export function EditorToolbar({
                 <button
                   onClick={() => handleHeadingSelect(1)}
                   className="block w-full px-4 py-2 text-left hover:bg-muted"
+                  aria-label="Heading 1"
                 >
                   <Heading1 className="h-4 w-4 inline mr-2" />
                   Heading 1

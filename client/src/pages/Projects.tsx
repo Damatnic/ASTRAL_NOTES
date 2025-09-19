@@ -453,7 +453,7 @@ export function Projects() {
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
           <div className="space-y-2">
             <h1 className="text-4xl lg:text-5xl font-bold text-gradient">
-              My Writing Projects
+              All Projects
             </h1>
             <p className="text-lg text-muted-foreground text-balance">
               Organize, create, and manage your literary masterpieces
@@ -490,7 +490,7 @@ export function Projects() {
               leftIcon={<PlusCircle className="h-4 w-4" />}
               shimmer
             >
-              New Project
+              Create New Project
             </Button>
           </div>
         </div>

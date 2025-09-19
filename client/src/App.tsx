@@ -32,6 +32,16 @@ const AIWriting = React.lazy(() => import('@/pages/AIWriting').then(m => ({ defa
 const Search = React.lazy(() => import('@/pages/Search').then(m => ({ default: m.Search })));
 const Settings = React.lazy(() => import('@/pages/Settings').then(m => ({ default: m.Settings })));
 const Professional = React.lazy(() => import('@/pages/Professional').then(m => ({ default: m.Professional })));
+const CharacterProfiles = React.lazy(() => import('@/pages/CharacterProfiles').then(m => ({ default: m.CharacterProfiles })));
+const WorldBuilding = React.lazy(() => import('@/pages/WorldBuilding').then(m => ({ default: m.WorldBuilding })));
+const PlotBoard = React.lazy(() => import('@/pages/PlotBoard').then(m => ({ default: m.PlotBoard })));
+const ResearchCenter = React.lazy(() => import('@/pages/ResearchCenter').then(m => ({ default: m.ResearchCenter })));
+const WritingAnalytics = React.lazy(() => import('@/pages/WritingAnalytics').then(m => ({ default: m.WritingAnalytics })));
+const Profile = React.lazy(() => import('@/pages/Profile').then(m => ({ default: m.Profile })));
+const Collaboration = React.lazy(() => import('@/pages/Collaboration').then(m => ({ default: m.Collaboration })));
+const Templates = React.lazy(() => import('@/pages/Templates').then(m => ({ default: m.Templates })));
+const Export = React.lazy(() => import('@/pages/Export').then(m => ({ default: m.Export })));
+const NotFound = React.lazy(() => import('@/pages/NotFound').then(m => ({ default: m.NotFound })));
 
 // Loading component
 function LoadingSpinner() {
@@ -96,25 +106,26 @@ export function AppContent() {
             <Route path="projects/:projectId/notes/new" element={<NoteEditor />} />
             <Route path="projects/:projectId/notes/:noteId" element={<NoteEditor />} />
             <Route path="projects/:projectId/stories/:storyId/edit" element={<StoryEditor />} />
+            <Route path="projects/:id/stories/:storyId" element={<StoryEditor />} />
+            <Route path="projects/:id/characters" element={<CharacterProfiles />} />
+            <Route path="projects/:id/characters/:characterId" element={<CharacterProfiles />} />
+            <Route path="projects/:id/world" element={<WorldBuilding />} />
+            <Route path="projects/:id/plotboard" element={<PlotBoard />} />
+            <Route path="projects/:id/research" element={<ResearchCenter />} />
             <Route path="notes/:id/edit" element={<StandaloneNoteEditor />} />
             <Route path="quick-notes" element={<QuickNotes />} />
             <Route path="ai-writing" element={<AIWriting />} />
             <Route path="search" element={<Search />} />
             <Route path="settings" element={<Settings />} />
             <Route path="professional" element={<Professional />} />
+            <Route path="analytics" element={<WritingAnalytics />} />
+            <Route path="profile" element={<Profile />} />
+            <Route path="collaboration" element={<Collaboration />} />
+            <Route path="templates" element={<Templates />} />
+            <Route path="export" element={<Export />} />
             
             {/* Catch-all route for 404 */}
-            <Route
-              path="*"
-              element={
-                <div className="flex items-center justify-center min-h-96">
-                  <div className="text-center">
-                    <h1 className="text-4xl font-bold text-muted-foreground mb-2">404</h1>
-                    <p className="text-muted-foreground">Page not found</p>
-                  </div>
-                </div>
-              }
-            />
+            <Route path="*" element={<NotFound />} />
           </Route>
         </Routes>
       </Suspense>

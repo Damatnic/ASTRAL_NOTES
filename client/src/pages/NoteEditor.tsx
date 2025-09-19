@@ -115,36 +115,74 @@ export function NoteEditor() {
   
   // Editor preferences
   const [editorPreferences, setEditorPreferences] = useState<EditorPreferences>({
-    theme: 'light',
-    colorScheme: 'default',
+    theme: 'default',
     fontSize: 16,
     fontFamily: 'Inter, system-ui, sans-serif',
     lineHeight: 1.6,
-    letterSpacing: 0,
-    wordSpacing: 0,
-    maxWidth: 800,
-    padding: 24,
-    showLineNumbers: false,
-    showRuler: false,
-    wrapText: true,
     isDistractionFree: false,
     isFullscreen: false,
-    isZenMode: false,
-    showMinimap: false,
-    highContrast: false,
-    largeText: false,
-    reduceMotion: false,
-    screenReaderMode: false,
-    keyboardNavigation: true,
-    enableSounds: true,
-    typingSounds: false,
-    saveSound: true,
-    cursorBlinking: true,
-    smoothScrolling: true,
-    autoIndent: true,
-    tabSize: 4,
+    showWordCount: true,
+    showReadingTime: true,
+    wordTarget: 0,
+    autoSaveEnabled: true,
+    autoSaveDelay: 3000,
   });
   
+  // Auto-save functionality
+  const saveNote = useCallback(async (noteData: Note) => {
+    if (!noteData?.id) return false;
+    
+    try {
+      setSaveStatus('saving');
+      setIsSaving(true);
+      await noteService.updateNote(noteData.id, noteData);
+      setHasUnsavedChanges(false);
+      setSaveStatus('saved');
+      setLastSaved(new Date());
+      return true;
+    } catch (error) {
+      console.error('Save error:', error);
+      setSaveStatus('error');
+      toast.error('Failed to save note');
+      return false;
+    } finally {
+      setIsSaving(false);
+    }
+  }, [toast]);
+  
+  // Update note content
+  const handleContentChange = useCallback((content: string) => {
+    if (!note) return;
+    
+    try {
+      const wordCount = content.trim().split(/\s+/).filter(word => word.length > 0).length;
+      const updatedNote = { ...note, content, wordCount };
+      
+      setNote(updatedNote);
+      setSessionWordCount(wordCount);
+      setHasUnsavedChanges(true);
+      setSaveStatus('idle');
+    } catch (error) {
+      console.error('Content change error:', error);
+      toast.error('Failed to update content');
+    }
+  }, [note, toast]);
+
+  // Manual save
+  const handleSave = useCallback(async () => {
+    if (!note) return;
+    
+    try {
+      const success = await saveNote(note);
+      if (success) {
+        // Save sound played - could add audio feedback here
+      }
+    } catch (error) {
+      console.error('Manual save error:', error);
+      toast.error('Failed to save note manually');
+    }
+  }, [note, saveNote, toast]);
+
   // Enhanced editor hook
   const {
     editor,
@@ -238,45 +276,6 @@ export function NoteEditor() {
     };
   }, []);
 
-  // Auto-save functionality
-  const saveNote = useCallback(async (noteData: Note) => {
-    if (!noteData?.id) return false;
-    
-    try {
-      setSaveStatus('saving');
-      setIsSaving(true);
-      await noteService.updateNote(noteData.id, noteData);
-      setHasUnsavedChanges(false);
-      setSaveStatus('saved');
-      setLastSaved(new Date());
-      return true;
-    } catch (error) {
-      console.error('Save error:', error);
-      setSaveStatus('error');
-      toast.error('Failed to save note');
-      return false;
-    } finally {
-      setIsSaving(false);
-    }
-  }, [toast]);
-
-  // Update note content
-  const handleContentChange = useCallback((content: string) => {
-    if (!note) return;
-    
-    try {
-      const wordCount = content.trim().split(/\s+/).filter(word => word.length > 0).length;
-      const updatedNote = { ...note, content, wordCount };
-      
-      setNote(updatedNote);
-      setSessionWordCount(wordCount);
-      setHasUnsavedChanges(true);
-      setSaveStatus('idle');
-    } catch (error) {
-      console.error('Content change error:', error);
-      toast.error('Failed to update content');
-    }
-  }, [note, toast]);
 
   // Update note title
   const handleTitleChange = useCallback((title: string) => {
@@ -291,22 +290,6 @@ export function NoteEditor() {
       toast.error('Failed to update title');
     }
   }, [note, toast]);
-
-  // Manual save
-  const handleSave = useCallback(async () => {
-    if (!note) return;
-    
-    try {
-      const success = await saveNote(note);
-      if (success && editorPreferences.saveSound && editorPreferences.enableSounds) {
-        // Play save sound (would be implemented with actual audio)
-        // Save sound played
-      }
-    } catch (error) {
-      console.error('Manual save error:', error);
-      toast.error('Failed to save note manually');
-    }
-  }, [note, saveNote, toast, editorPreferences]);
   
   // Handle import
   const handleImport = useCallback((content: string, format: 'html' | 'md' | 'txt') => {

@@ -71,16 +71,38 @@ const mockServiceWorker = {
 };
 
 // Mock media queries
-const mockMediaQuery = (query: string) => ({
-  matches: false,
-  media: query,
-  onchange: null,
-  addListener: vi.fn(),
-  removeListener: vi.fn(),
-  addEventListener: vi.fn(),
-  removeEventListener: vi.fn(),
-  dispatchEvent: vi.fn(),
-});
+const mockMediaQuery = (query: string) => {
+  // Determine if query matches current viewport
+  const matches = (() => {
+    if (query.includes('max-width: 768px')) {
+      return mockViewport.width <= 768;
+    }
+    if (query.includes('max-width: 480px')) {
+      return mockViewport.width <= 480;
+    }
+    if (query.includes('min-width: 1024px')) {
+      return mockViewport.width >= 1024;
+    }
+    if (query.includes('orientation: portrait')) {
+      return mockViewport.height > mockViewport.width;
+    }
+    if (query.includes('orientation: landscape')) {
+      return mockViewport.width > mockViewport.height;
+    }
+    return false;
+  })();
+
+  return {
+    matches,
+    media: query,
+    onchange: null,
+    addListener: vi.fn(),
+    removeListener: vi.fn(),
+    addEventListener: vi.fn(),
+    removeEventListener: vi.fn(),
+    dispatchEvent: vi.fn(),
+  };
+};
 
 // Mock responsive components
 const ResponsiveComponent = ({ children }: { children: React.ReactNode }) => {
@@ -224,10 +246,28 @@ describe('🔄 Cross-Platform Validation Testing Suite', () => {
       disconnect: vi.fn(),
     }));
 
-    // Mock matchMedia
+    // Mock matchMedia with reactive behavior
     Object.defineProperty(window, 'matchMedia', {
       writable: true,
-      value: vi.fn().mockImplementation(mockMediaQuery),
+      value: vi.fn().mockImplementation((query: string) => {
+        const mediaQueryObj = mockMediaQuery(query);
+        // Update the matches property dynamically
+        Object.defineProperty(mediaQueryObj, 'matches', {
+          get: () => {
+            if (query.includes('max-width: 768px')) {
+              return mockViewport.width <= 768;
+            }
+            if (query.includes('max-width: 480px')) {
+              return mockViewport.width <= 480;
+            }
+            if (query.includes('min-width: 1024px')) {
+              return mockViewport.width >= 1024;
+            }
+            return false;
+          }
+        });
+        return mediaQueryObj;
+      }),
     });
 
     // Mock service worker
@@ -786,6 +826,23 @@ describe('🔄 Cross-Platform Validation Testing Suite', () => {
 
     test('should handle memory constraints on mobile', () => {
       mockViewport.setSize(375, 667);
+      
+      // Ensure matchMedia is properly mocked for this test
+      const mockMatchMedia = vi.fn((query: string) => ({
+        matches: query.includes('max-width: 768px') && mockViewport.width <= 768,
+        media: query,
+        onchange: null,
+        addListener: vi.fn(),
+        removeListener: vi.fn(),
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+        dispatchEvent: vi.fn(),
+      }));
+      
+      Object.defineProperty(window, 'matchMedia', {
+        writable: true,
+        value: mockMatchMedia,
+      });
       
       const MemoryEfficientComponent = () => {
         const [visibleItems, setVisibleItems] = useState(20);

@@ -54,6 +54,7 @@ const buttonVariants = cva(
 export interface ButtonProps
   extends React.ButtonHTMLAttributes<HTMLButtonElement>,
     VariantProps<typeof buttonVariants> {
+  as?: keyof JSX.IntrinsicElements;
   asChild?: boolean;
   loading?: boolean;
   loadingText?: string;
@@ -72,6 +73,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     variant, 
     size, 
     fullWidth, 
+    as: Component = 'button',
     asChild = false, 
     loading = false, 
     loadingText = 'Loading...', 
@@ -114,7 +116,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     };
 
     return (
-      <button
+      <Component
         className={cn(
           buttonVariants({ variant, size, fullWidth }),
           isDisabled && 'opacity-50 pointer-events-none',
@@ -123,7 +125,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
           className
         )}
         ref={ref}
-        disabled={isDisabled}
+        disabled={Component === 'button' ? isDisabled : undefined}
         aria-disabled={isDisabled ? 'true' : undefined}
         aria-label={ariaLabel || (typeof children === 'string' ? children : undefined)}
         title={tooltip}
@@ -138,7 +140,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
             {badge}
           </span>
         )}
-      </button>
+      </Component>
     );
   }
 );

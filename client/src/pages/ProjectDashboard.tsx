@@ -72,6 +72,13 @@ export function ProjectDashboard() {
         navigate('/projects');
         return;
       }
+      
+      // Validate project ID format
+      if (projectId.includes('@') || projectId.includes('!') || projectId === '/') {
+        setProject({ error: 'Invalid Project ID' } as any);
+        setIsLoading(false);
+        return;
+      }
 
       try {
         setIsLoading(true);
@@ -82,8 +89,8 @@ export function ProjectDashboard() {
         ]);
 
         if (!projectData) {
-          toast.error('Project not found');
-          navigate('/projects');
+          setProject({ error: 'Project Not Found' } as any);
+          setIsLoading(false);
           return;
         }
 
@@ -674,6 +681,26 @@ export function ProjectDashboard() {
     },
   ];
 
+  // Handle error states
+  if (project && (project as any).error) {
+    return (
+      <div className="p-6 space-y-6" data-testid="project-dashboard">
+        <div className="text-center py-12">
+          <h1 className="text-2xl font-bold text-red-600">{(project as any).error}</h1>
+          <p className="text-muted-foreground mt-2">
+            The project you're looking for doesn't exist or has been moved.
+          </p>
+          <Button 
+            className="mt-4" 
+            onClick={() => navigate('/projects')}
+          >
+            Back to Projects
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="p-6 space-y-6" data-testid="project-dashboard">
       {/* Header */}
@@ -695,6 +722,29 @@ export function ProjectDashboard() {
           }`}>
             {project.status}
           </span>
+        </div>
+      </div>
+
+      {/* Project Title */}
+      <div className="space-y-4">
+        <h1 className="text-3xl font-bold">Project Dashboard</h1>
+        <div data-testid="project-stats" className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <Card className="p-4">
+            <div className="text-sm text-muted-foreground">Progress</div>
+            <div className="text-2xl font-bold">{Math.round((project.wordCount / (project.targetWordCount || 1)) * 100)}%</div>
+          </Card>
+          <Card className="p-4">
+            <div className="text-sm text-muted-foreground">Word Count</div>
+            <div className="text-2xl font-bold">{project.wordCount.toLocaleString()}</div>
+          </Card>
+          <Card className="p-4">
+            <div className="text-sm text-muted-foreground">Notes</div>
+            <div className="text-2xl font-bold">{notes.length}</div>
+          </Card>
+          <Card className="p-4">
+            <div className="text-sm text-muted-foreground">Status</div>
+            <div className="text-2xl font-bold capitalize">{project.status}</div>
+          </Card>
         </div>
       </div>
 

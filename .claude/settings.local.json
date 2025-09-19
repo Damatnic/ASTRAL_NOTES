@@ -74,7 +74,8 @@
       "Bash(done)",
       "Bash(cat:*)",
       "Bash(npx vitest run:*)",
-      "Bash(LC_ALL=C npm test)"
+      "Bash(LC_ALL=C npm test)",
+      "Bash(python:*)"
     ],
     "deny": [],
     "ask": []

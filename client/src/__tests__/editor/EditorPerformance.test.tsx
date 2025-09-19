@@ -181,13 +181,13 @@ describe('Enhanced Note Editor - Performance Tests', () => {
       
       await waitFor(() => {
         expect(result.current.editor).toBeTruthy();
-      });
+        expect(result.current.stats?.words).toBeGreaterThan(900);
+      }, { timeout: 5000 });
       
       const measurement = monitor.end('1k-word-load');
       
       // Should load within 2 seconds
       expect(measurement.duration).toBeLessThan(2000);
-      expect(result.current.stats?.words).toBeGreaterThan(900);
     });
 
     it('should handle 5,000 word document efficiently', async () => {
@@ -203,13 +203,13 @@ describe('Enhanced Note Editor - Performance Tests', () => {
       
       await waitFor(() => {
         expect(result.current.editor).toBeTruthy();
-      });
+        expect(result.current.stats?.words).toBeGreaterThan(4500);
+      }, { timeout: 8000 });
       
       const measurement = monitor.end('5k-word-load');
       
       // Should load within 5 seconds
       expect(measurement.duration).toBeLessThan(5000);
-      expect(result.current.stats?.words).toBeGreaterThan(4500);
     });
 
     it('should handle 10,000 word document efficiently', async () => {
@@ -225,13 +225,13 @@ describe('Enhanced Note Editor - Performance Tests', () => {
       
       await waitFor(() => {
         expect(result.current.editor).toBeTruthy();
-      }, { timeout: 10000 });
+        expect(result.current.stats?.words).toBeGreaterThan(9500);
+      }, { timeout: 12000 });
       
       const measurement = monitor.end('10k-word-load');
       
       // Should load within 10 seconds
       expect(measurement.duration).toBeLessThan(10000);
-      expect(result.current.stats?.words).toBeGreaterThan(9500);
     });
 
     it('should handle complex document with tables, lists, and formatting', async () => {

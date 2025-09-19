@@ -15,7 +15,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
 import { Modal } from '@/components/ui/Modal';
 import { Dropdown } from '@/components/ui/Dropdown';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/Tabs';
+import { ShadcnTabs as Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/Tabs';
 import { Badge } from '@/components/ui/Badge';
 import { Toast } from '@/components/ui/Toast';
 
@@ -490,7 +490,7 @@ describe('🎨 Visual Regression Testing Suite (298 Checks)', () => {
         </TestWrapper>
       );
       
-      expect(screen.getByDisplayValue('Option 1')).toBeInTheDocument();
+      expect(screen.getByText('Option 1')).toBeInTheDocument();
     });
 
     it('should render dropdown with icons in options', () => {

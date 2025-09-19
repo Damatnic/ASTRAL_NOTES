@@ -86,7 +86,8 @@ function ToastItem({
 
   // Entrance animation
   useEffect(() => {
-    const timer = setTimeout(() => setIsVisible(true), 50);
+    const delay = process.env.NODE_ENV === 'test' ? 0 : 50;
+    const timer = setTimeout(() => setIsVisible(true), delay);
     return () => clearTimeout(timer);
   }, []);
 
@@ -320,14 +321,18 @@ export function useToast() {
 // Simple Toast component for testing compatibility
 export function Toast({
   type = 'default',
+  title,
   message,
   isVisible = true,
-  onClose
+  onClose,
+  action
 }: {
   type?: 'success' | 'error' | 'warning' | 'info' | 'default';
+  title?: string;
   message: string;
   isVisible?: boolean;
   onClose?: () => void;
+  action?: ToastAction;
 }) {
   if (!isVisible) return null;
 
@@ -336,8 +341,10 @@ export function Toast({
   return (
     <ToastItem
       id="test-toast"
+      title={title}
       description={message}
       variant={variant}
+      action={action}
       onDismiss={onClose || (() => {})}
     />
   );
