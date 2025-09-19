@@ -326,10 +326,15 @@ class AIProviderService {
   setActiveProvider(providerId: string): void {
     if (this.providers.has(providerId)) {
       this.activeProvider = providerId;
-    } else {
-      // Set to null/empty to indicate no valid provider is active
-      this.activeProvider = '';
     }
+    // If provider is invalid, keep the current active provider (defensive behavior)
+  }
+
+  /**
+   * Clear active provider
+   */
+  clearActiveProvider(): void {
+    this.activeProvider = undefined;
   }
 
   /**

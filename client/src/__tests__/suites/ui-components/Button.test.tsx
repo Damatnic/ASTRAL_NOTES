@@ -10,6 +10,7 @@
  * - User interaction flows
  */
 
+import React, { useState } from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { Button } from '@/components/ui/Button';
 import {
@@ -544,8 +545,8 @@ describe('Button Component - Core UI Foundation Tests', () => {
 
     it('should handle rapid state changes', async () => {
       const Component = () => {
-        const [loading, setLoading] = React.useState(false);
-        const [disabled, setDisabled] = React.useState(false);
+        const [loading, setLoading] = useState(false);
+        const [disabled, setDisabled] = useState(false);
         
         return (
           <div>

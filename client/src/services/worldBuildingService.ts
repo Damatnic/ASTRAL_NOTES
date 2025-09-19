@@ -324,14 +324,17 @@ export class WorldBuildingService extends BrowserEventEmitter {
   private createGenerator(): WorldGenerator {
     return {
       generateLocation: (params: any): Partial<Location> => {
+        // Handle null/undefined parameters
+        const safeParams = params || {};
+        
         // Map test parameters to expected interface
         const locationParams: LocationGenerationParams = {
-          type: params.type || 'town',
-          size: params.size || 'medium',
-          climate: params.climate || params.biome || 'temperate',
-          terrain: params.terrain || (params.biome ? [params.biome] : ['plains']),
-          culture: params.culture || params.civilization,
-          economicFocus: params.economicFocus
+          type: safeParams.type || 'town',
+          size: safeParams.size || 'medium',
+          climate: safeParams.climate || safeParams.biome || 'temperate',
+          terrain: safeParams.terrain || (safeParams.biome ? [safeParams.biome] : ['plains']),
+          culture: safeParams.culture || safeParams.civilization,
+          economicFocus: safeParams.economicFocus
         };
 
         const baseLocation: Partial<Location> = {
@@ -369,17 +372,20 @@ export class WorldBuildingService extends BrowserEventEmitter {
       },
 
       generateCharacter: (params: CharacterGenerationParams): Partial<Character> => {
+        // Handle null/undefined parameters
+        const safeParams = params || { species: 'Human', role: 'citizen', importance: 'minor' };
+        
         const baseCharacter: Partial<Character> = {
-          name: this.generateCharacterName(params.species),
+          name: this.generateCharacterName(safeParams.species),
           type: 'character',
-          description: this.generateCharacterDescription(params),
-          category: params.role,
-          tags: [params.role, params.importance, params.species],
+          description: this.generateCharacterDescription(safeParams),
+          category: safeParams.role,
+          tags: [safeParams.role, safeParams.importance, safeParams.species],
           attributes: {},
           demographics: {
-            species: params.species,
-            age: this.generateAge(params.species),
-            occupation: params.occupation || this.generateOccupation(),
+            species: safeParams.species,
+            age: this.generateAge(safeParams.species),
+            occupation: safeParams.occupation || this.generateOccupation(),
             socialStatus: this.generateSocialStatus()
           },
           appearance: {
@@ -387,7 +393,7 @@ export class WorldBuildingService extends BrowserEventEmitter {
           },
           personality: {
             traits: this.generatePersonalityTraits(),
-            motivations: this.generateMotivations(params.role),
+            motivations: this.generateMotivations(safeParams.role),
             fears: this.generateFears(),
             values: this.generateValues(),
             flaws: this.generateFlaws()
@@ -409,40 +415,43 @@ export class WorldBuildingService extends BrowserEventEmitter {
       },
 
       generateCulture: (params: CultureGenerationParams): Partial<Culture> => {
+        // Handle null/undefined parameters
+        const safeParams = params || { size: 'tribe', environment: 'temperate', focus: 'trade', techLevel: 'medieval' };
+        
         const baseCulture: Partial<Culture> = {
           name: this.generateCultureName(),
           type: 'culture',
-          description: this.generateCultureDescription(params),
-          category: params.size,
-          tags: [params.size, params.environment, params.focus],
+          description: this.generateCultureDescription(safeParams),
+          category: safeParams.size,
+          tags: [safeParams.size, safeParams.environment, safeParams.focus],
           attributes: {},
           demographics: {
             primarySpecies: ['Human'],
-            population: this.calculateCulturePopulation(params.size),
+            population: this.calculateCulturePopulation(safeParams.size),
             locations: [],
-            socialStructure: this.generateSocialStructure(params.size)
+            socialStructure: this.generateSocialStructure(safeParams.size)
           },
           beliefs: {
             religions: [],
-            philosophies: this.generatePhilosophies(params.focus),
+            philosophies: this.generatePhilosophies(safeParams.focus),
             myths: this.generateMyths(),
             taboos: this.generateTaboos()
           },
           practices: {
-            traditions: this.generateTraditions(params.focus),
+            traditions: this.generateTraditions(safeParams.focus),
             rituals: this.generateRituals(),
             celebrations: this.generateCelebrations(),
-            artForms: this.generateArtForms(params.focus)
+            artForms: this.generateArtForms(safeParams.focus)
           },
           language: {
             spokenLanguages: [this.generateLanguageName()],
-            literacyRate: this.generateLiteracyRate(params.techLevel),
+            literacyRate: this.generateLiteracyRate(safeParams.techLevel),
             linguisticTraits: this.generateLinguisticTraits()
           },
           technology: {
-            level: params.techLevel as Culture['technology']['level'],
-            specializations: this.generateTechSpecializations(params.focus),
-            innovations: this.generateInnovations(params.techLevel)
+            level: safeParams.techLevel as Culture['technology']['level'],
+            specializations: this.generateTechSpecializations(safeParams.focus),
+            innovations: this.generateInnovations(safeParams.techLevel)
           }
         };
 

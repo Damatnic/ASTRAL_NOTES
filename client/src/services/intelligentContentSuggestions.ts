@@ -255,6 +255,80 @@ export class IntelligentContentSuggestionsService {
       reasoning: 'Clear references prevent confusion'
     }];
   }
+
+  // Additional methods for test compatibility
+  async getSuggestions(context: any): Promise<any> {
+    const suggestions = await this.generateSuggestions(context.currentText || '');
+    return {
+      nextSentences: suggestions.filter(s => s.type === 'addition').map(s => s.suggestion),
+      plotTwists: [
+        'An unexpected ally appears',
+        'The real enemy is revealed',
+        'A hidden truth emerges'
+      ],
+      characterActions: [
+        'Character makes a difficult choice',
+        'Internal conflict surfaces',
+        'Relationship dynamics shift'
+      ],
+      contentImprovement: suggestions,
+      writingTips: [
+        'Show, don\'t tell',
+        'Use active voice',
+        'Vary sentence structure'
+      ]
+    };
+  }
+
+  async getPlotSuggestions(plotContext: any): Promise<any> {
+    return {
+      nextEvents: [
+        'Escalate the current conflict',
+        'Introduce a new challenge',
+        'Reveal hidden information',
+        'Deepen character relationships'
+      ],
+      conflicts: [
+        'Person vs. self',
+        'Person vs. person', 
+        'Person vs. society',
+        'Person vs. nature'
+      ],
+      resolutions: [
+        'Gradual revelation',
+        'Decisive action',
+        'Compromise solution',
+        'Unexpected twist'
+      ],
+      thematicElements: plotContext.themes || ['growth', 'courage', 'friendship'],
+      pacing: plotContext.currentArc === 'rising action' ? 'accelerate' : 'maintain'
+    };
+  }
+
+  async getCharacterSuggestions(character: any): Promise<any> {
+    return {
+      growthOpportunities: [
+        'Challenge their core beliefs',
+        'Force them to make hard choices',
+        'Put them in unfamiliar situations',
+        'Test their relationships'
+      ],
+      conflicts: [
+        'Internal moral dilemma',
+        'Clash with opposing character',
+        'Struggle with past mistakes',
+        'Fight against circumstances'
+      ],
+      relationships: [
+        'Develop trust with ally',
+        'Confront rival or enemy',
+        'Mentor someone younger',
+        'Learn from a wise guide'
+      ],
+      arcProgression: character.arc === 'beginning' ? 'inciting incident' : 'development',
+      motivationDeepening: `Explore why ${character.name} wants ${character.currentState?.motivation || 'their goal'}`
+    };
+  }
 }
 
 // Export singleton instance

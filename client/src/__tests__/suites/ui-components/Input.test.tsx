@@ -10,7 +10,7 @@
  * - User interaction flows
  */
 
-import React from 'react';
+import React, { useState } from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { Input } from '@/components/ui/Input';
 import {
@@ -491,7 +491,7 @@ describe('Input Component - Core UI Foundation Tests', () => {
   describe('Form Integration', () => {
     it('should work within controlled form contexts', async () => {
       const FormComponent = () => {
-        const [value, setValue] = React.useState('');
+        const [value, setValue] = useState('');
         
         return (
           <form>
@@ -601,8 +601,8 @@ describe('Input Component - Core UI Foundation Tests', () => {
     it('should work with form libraries', async () => {
       // Test with common form library patterns
       const FormLibraryExample = () => {
-        const [errors, setErrors] = React.useState<{[key: string]: string}>({});
-        const [values, setValues] = React.useState<{[key: string]: string}>({});
+        const [errors, setErrors] = useState<{[key: string]: string}>({});
+        const [values, setValues] = useState<{[key: string]: string}>({});
         
         const handleChange = (name: string) => (e: React.ChangeEvent<HTMLInputElement>) => {
           setValues(prev => ({ ...prev, [name]: e.target.value }));

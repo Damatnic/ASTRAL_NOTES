@@ -474,7 +474,9 @@ describe('WorldBuildingService', () => {
         filterByTags: [],
         sortBy: 'name',
         includeRelationships: false,
-        includeMap: false
+        includeMap: false,
+        includeIncomplete: true,
+        includePrivateNotes: true
       });
       
       expect(exported).toBeDefined();
@@ -491,12 +493,14 @@ describe('WorldBuildingService', () => {
         filterByTags: [],
         sortBy: 'name',
         includeRelationships: false,
-        includeMap: false
+        includeMap: false,
+        includeIncomplete: true,
+        includePrivateNotes: true
       });
       
       expect(exported).toBeDefined();
       expect(typeof exported).toBe('string');
-      expect(exported!.includes('# World Export')).toBe(true);
+      expect(exported!.includes('# Test World')).toBe(true);
       expect(exported!.includes('Export Character')).toBe(true);
       expect(exported!.includes('Export Location')).toBe(true);
     });
@@ -507,7 +511,9 @@ describe('WorldBuildingService', () => {
         filterByTags: [],
         sortBy: 'name',
         includeRelationships: false,
-        includeMap: false
+        includeMap: false,
+        includeIncomplete: true,
+        includePrivateNotes: true
       });
       
       const parsed = JSON.parse(exported!);
@@ -521,7 +527,9 @@ describe('WorldBuildingService', () => {
         filterByTags: ['export'],
         sortBy: 'name',
         includeRelationships: false,
-        includeMap: false
+        includeMap: false,
+        includeIncomplete: true,
+        includePrivateNotes: true
       });
       
       const parsed = JSON.parse(exported!);

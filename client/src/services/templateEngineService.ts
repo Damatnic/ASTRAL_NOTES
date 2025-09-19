@@ -368,6 +368,13 @@ export class TemplateEngineService {
   }
 
   /**
+   * Get available templates (alias for getAllTemplates)
+   */
+  public getAvailableTemplates(): ExportTemplate[] {
+    return this.getAllTemplates();
+  }
+
+  /**
    * Get templates by category
    */
   public getTemplatesByCategory(category: TemplateCategory): ExportTemplate[] {

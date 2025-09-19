@@ -350,3 +350,19 @@ export const createMockNote = (projectId: string, overrides: any = {}) => ({
   isArchived: false,
   ...overrides
 });
+
+export const createMockCharacter = (overrides: any = {}) => ({
+  id: 'test-character-1',
+  name: 'Test Character',
+  description: 'A test character for unit tests',
+  projectId: 'test-project-1',
+  createdAt: '2024-01-01T00:00:00.000Z',
+  updatedAt: '2024-01-01T00:00:00.000Z',
+  role: 'main',
+  age: undefined,
+  appearance: '',
+  personality: '',
+  backstory: '',
+  goals: '',
+  ...overrides
+});

@@ -10,6 +10,7 @@
  * - Component integration flows
  */
 
+import React, { useState } from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { 
   Card, 
@@ -654,7 +655,7 @@ describe('Card Component Family - Core UI Foundation Tests', () => {
 
     it('should handle rapid re-renders', async () => {
       const Component = () => {
-        const [count, setCount] = React.useState(0);
+        const [count, setCount] = useState(0);
         
         return (
           <div>

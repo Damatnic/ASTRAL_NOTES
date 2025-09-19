@@ -72,7 +72,8 @@
       "Bash(do echo \"==== $service ====\")",
       "Bash(tail:*)",
       "Bash(done)",
-      "Bash(cat:*)"
+      "Bash(cat:*)",
+      "Bash(npx vitest run:*)"
     ],
     "deny": [],
     "ask": []

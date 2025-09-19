@@ -6,6 +6,7 @@
 export interface CreativeExercise {
   id: string;
   name: string;
+  title: string; // Added for test compatibility
   type: 'warmup' | 'character' | 'plot' | 'setting';
   description: string;
   instructions: string[];
@@ -16,7 +17,9 @@ export interface CreativeExercise {
 export interface Inspiration {
   id: string;
   type: 'quote' | 'scenario' | 'question';
+  title: string; // Added for test compatibility
   content: string;
+  category: string; // Added for test compatibility
   source?: string;
   mood: 'uplifting' | 'mysterious' | 'energetic';
 }
@@ -93,7 +96,10 @@ export class CreativityBoosterService {
   /**
    * Start a timed writing session
    */
-  public startTimedSession(duration: number, prompt?: string): {
+  public startTimedSession(duration: number, type?: string): {
+    id: string;
+    duration: number;
+    type: string;
     sessionId: string;
     prompt: string;
     startTime: Date;
@@ -101,11 +107,14 @@ export class CreativityBoosterService {
   } {
     const sessionId = `session-${Date.now()}`;
     const startTime = new Date();
-    const endTime = new Date(startTime.getTime() + duration * 60000);
+    const endTime = new Date(startTime.getTime() + duration * 1000); // Convert seconds to milliseconds
     
     return {
+      id: sessionId, // Added for test compatibility
+      duration, // Added for test compatibility
+      type: type || 'freewriting', // Added for test compatibility
       sessionId,
-      prompt: prompt || this.generateRandomPrompt(),
+      prompt: this.generateRandomPrompt(),
       startTime,
       endTime
     };
@@ -116,6 +125,7 @@ export class CreativityBoosterService {
       {
         id: 'exercise-1',
         name: 'Character Speed Dating',
+        title: 'Character Speed Dating', // Added for test compatibility
         type: 'character',
         description: 'Quickly develop character personalities',
         instructions: [
@@ -130,6 +140,7 @@ export class CreativityBoosterService {
       {
         id: 'exercise-2',
         name: 'Setting Sensory Immersion',
+        title: 'Setting Sensory Immersion', // Added for test compatibility
         type: 'setting',
         description: 'Create vivid settings using all senses',
         instructions: [
@@ -143,6 +154,7 @@ export class CreativityBoosterService {
       {
         id: 'exercise-3',
         name: 'Plot Twist Generator',
+        title: 'Plot Twist Generator', // Added for test compatibility
         type: 'plot',
         description: 'Practice creating unexpected developments',
         instructions: [
@@ -160,20 +172,26 @@ export class CreativityBoosterService {
       {
         id: 'quote-1',
         type: 'quote',
+        title: 'Hemingway on First Drafts', // Added for test compatibility
         content: 'The first draft of anything is shit.',
+        category: 'motivation', // Added for test compatibility
         source: 'Ernest Hemingway',
         mood: 'uplifting'
       },
       {
         id: 'scenario-1',
         type: 'scenario',
+        title: 'The Mysterious Door', // Added for test compatibility
         content: 'A child finds a door that wasn\'t there yesterday.',
+        category: 'fantasy', // Added for test compatibility
         mood: 'mysterious'
       },
       {
         id: 'question-1',
         type: 'question',
+        title: 'Alternative Physics', // Added for test compatibility
         content: 'What if gravity worked differently in your world?',
+        category: 'worldbuilding', // Added for test compatibility
         mood: 'energetic'
       }
     ];

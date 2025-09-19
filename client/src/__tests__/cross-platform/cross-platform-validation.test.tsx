@@ -15,7 +15,7 @@
  * 10. Cross-platform Data Synchronization
  */
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, test, expect, beforeEach, afterEach, vi, beforeAll, afterAll } from 'vitest';
@@ -84,9 +84,9 @@ const mockMediaQuery = (query: string) => ({
 
 // Mock responsive components
 const ResponsiveComponent = ({ children }: { children: React.ReactNode }) => {
-  const [viewport, setViewport] = React.useState({ width: window.innerWidth, height: window.innerHeight });
+  const [viewport, setViewport] = useState({ width: window.innerWidth, height: window.innerHeight });
   
-  React.useEffect(() => {
+  useEffect(() => {
     const handleResize = () => {
       setViewport({ width: window.innerWidth, height: window.innerHeight });
     };
@@ -111,7 +111,7 @@ const ResponsiveComponent = ({ children }: { children: React.ReactNode }) => {
 };
 
 const TouchInteractiveComponent = () => {
-  const [touchState, setTouchState] = React.useState({
+  const [touchState, setTouchState] = useState({
     touching: false,
     touchCount: 0,
     lastTouch: null as { x: number; y: number } | null,
@@ -159,10 +159,10 @@ const TouchInteractiveComponent = () => {
 };
 
 const PWAComponent = () => {
-  const [isOnline, setIsOnline] = React.useState(navigator.onLine);
-  const [installPrompt, setInstallPrompt] = React.useState<Event | null>(null);
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
+  const [installPrompt, setInstallPrompt] = useState<Event | null>(null);
   
-  React.useEffect(() => {
+  useEffect(() => {
     const handleOnline = () => setIsOnline(true);
     const handleOffline = () => setIsOnline(false);
     const handleInstallPrompt = (e: Event) => {
@@ -410,8 +410,8 @@ describe('🔄 Cross-Platform Validation Testing Suite', () => {
 
     test('should handle swipe gestures', async () => {
       const SwipeComponent = () => {
-        const [swipeDirection, setSwipeDirection] = React.useState<string>('');
-        const [startTouch, setStartTouch] = React.useState<{ x: number; y: number } | null>(null);
+        const [swipeDirection, setSwipeDirection] = useState<string>('');
+        const [startTouch, setStartTouch] = useState<{ x: number; y: number } | null>(null);
         
         const handleTouchStart = (e: React.TouchEvent) => {
           setStartTouch({ x: e.touches[0].clientX, y: e.touches[0].clientY });
@@ -469,7 +469,7 @@ describe('🔄 Cross-Platform Validation Testing Suite', () => {
 
     test('should handle long press interactions', async () => {
       const LongPressComponent = () => {
-        const [longPressed, setLongPressed] = React.useState(false);
+        const [longPressed, setLongPressed] = useState(false);
         
         const handleTouchStart = () => {
           const timer = setTimeout(() => {
@@ -618,9 +618,9 @@ describe('🔄 Cross-Platform Validation Testing Suite', () => {
 
     test('should handle keyboard shortcuts on desktop', async () => {
       const ShortcutComponent = () => {
-        const [shortcutPressed, setShortcutPressed] = React.useState('');
+        const [shortcutPressed, setShortcutPressed] = useState('');
         
-        React.useEffect(() => {
+        useEffect(() => {
           const handleKeyDown = (e: KeyboardEvent) => {
             if (e.ctrlKey && e.key === 's') {
               e.preventDefault();
@@ -714,9 +714,9 @@ describe('🔄 Cross-Platform Validation Testing Suite', () => {
 
     test('should handle service worker registration', async () => {
       const ServiceWorkerComponent = () => {
-        const [swStatus, setSWStatus] = React.useState('');
+        const [swStatus, setSWStatus] = useState('');
         
-        React.useEffect(() => {
+        useEffect(() => {
           if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('/sw.js')
               .then(() => setSWStatus('registered'))
@@ -752,7 +752,7 @@ describe('🔄 Cross-Platform Validation Testing Suite', () => {
       mockViewport.setSize(375, 667);
       
       const HeavyComponent = () => {
-        const [items] = React.useState(Array.from({ length: 100 }, (_, i) => i));
+        const [items] = useState(Array.from({ length: 100 }, (_, i) => i));
         
         return (
           <div data-testid="heavy-component">
@@ -788,9 +788,9 @@ describe('🔄 Cross-Platform Validation Testing Suite', () => {
       mockViewport.setSize(375, 667);
       
       const MemoryEfficientComponent = () => {
-        const [visibleItems, setVisibleItems] = React.useState(20);
+        const [visibleItems, setVisibleItems] = useState(20);
         
-        React.useEffect(() => {
+        useEffect(() => {
           const mediaQuery = window.matchMedia('(max-width: 768px)');
           setVisibleItems(mediaQuery.matches ? 10 : 20);
         }, []);
@@ -824,8 +824,8 @@ describe('🔄 Cross-Platform Validation Testing Suite', () => {
   describe('7. Cross-Platform Data Synchronization', () => {
     test('should sync data across different platforms', async () => {
       const SyncComponent = () => {
-        const [syncStatus, setSyncStatus] = React.useState('idle');
-        const [data, setData] = React.useState({ content: '', lastSync: null });
+        const [syncStatus, setSyncStatus] = useState('idle');
+        const [data, setData] = useState({ content: '', lastSync: null });
         
         const syncData = async () => {
           setSyncStatus('syncing');
@@ -871,7 +871,7 @@ describe('🔄 Cross-Platform Validation Testing Suite', () => {
 
     test('should handle sync conflicts across platforms', async () => {
       const ConflictComponent = () => {
-        const [conflicts, setConflicts] = React.useState<Array<{ id: string; type: string }>>([]);
+        const [conflicts, setConflicts] = useState<Array<{ id: string; type: string }>>([]);
         
         const simulateConflict = () => {
           setConflicts([
@@ -1005,7 +1005,7 @@ describe('🔄 Cross-Platform Validation Testing Suite', () => {
   describe('9. Cross-Platform Integration Tests', () => {
     test('should handle platform-specific features gracefully', async () => {
       const PlatformFeatureComponent = () => {
-        const [features, setFeatures] = React.useState({
+        const [features, setFeatures] = useState({
           touch: 'ontouchstart' in window,
           serviceWorker: 'serviceWorker' in navigator,
           geolocation: 'geolocation' in navigator,
@@ -1034,9 +1034,9 @@ describe('🔄 Cross-Platform Validation Testing Suite', () => {
 
     test('should maintain consistent UX across platforms', () => {
       const ConsistentUXComponent = () => {
-        const [viewport, setViewport] = React.useState({ width: window.innerWidth, height: window.innerHeight });
+        const [viewport, setViewport] = useState({ width: window.innerWidth, height: window.innerHeight });
         
-        React.useEffect(() => {
+        useEffect(() => {
           const handleResize = () => {
             setViewport({ width: window.innerWidth, height: window.innerHeight });
           };

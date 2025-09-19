@@ -241,7 +241,7 @@ describe('AIProviderService', () => {
     });
 
     test('should throw error when no active provider', async () => {
-      aiProviderService.setActiveProvider('nonexistent');
+      aiProviderService.clearActiveProvider();
       
       await expect(
         aiProviderService.generateCompletion(mockRequest)

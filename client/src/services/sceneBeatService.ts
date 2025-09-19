@@ -440,7 +440,7 @@ Suggest beats that would naturally follow and advance the scene. Format as JSON 
         description: 'Character-driven scene focused on conversation and revelation',
         category: 'dialogue',
         beats: [
-          { type: 'description', content: 'Set the scene - where and when' },
+          { type: 'description', content: 'Set the scene in [LOCATION] - where and when' },
           { type: 'dialogue', content: '[CHARACTER] opens the conversation' },
           { type: 'emotion', content: 'Show emotional reaction' },
           { type: 'dialogue', content: 'Response reveals information or conflict' },
