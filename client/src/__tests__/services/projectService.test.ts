@@ -51,14 +51,20 @@ describe('ProjectService', () => {
       });
 
       expect(mockLocalStorage.setItem).toHaveBeenCalledWith(
-        'astral-projects',
+        'astral_notes_data',
         expect.stringContaining(project.id)
       );
     });
 
     it('retrieves all projects', async () => {
       const mockProject = createMockProject();
-      mockLocalStorage.getItem.mockReturnValue(JSON.stringify([mockProject]));
+      const mockData = {
+        projects: [mockProject],
+        notes: {},
+        preferences: {},
+        appData: { lastBackup: null, dataVersion: '1.0.0' }
+      };
+      mockLocalStorage.getItem.mockReturnValue(JSON.stringify(mockData));
 
       const projects = await projectService.getProjects();
 
@@ -68,7 +74,13 @@ describe('ProjectService', () => {
 
     it('retrieves a project by ID', async () => {
       const mockProject = createMockProject();
-      mockLocalStorage.getItem.mockReturnValue(JSON.stringify([mockProject]));
+      const mockData = {
+        projects: [mockProject],
+        notes: {},
+        preferences: {},
+        appData: { lastBackup: null, dataVersion: '1.0.0' }
+      };
+      mockLocalStorage.getItem.mockReturnValue(JSON.stringify(mockData));
 
       const project = await projectService.getProject(mockProject.id);
 
@@ -76,7 +88,13 @@ describe('ProjectService', () => {
     });
 
     it('returns null for non-existent project', async () => {
-      mockLocalStorage.getItem.mockReturnValue(JSON.stringify([]));
+      const mockData = {
+        projects: [],
+        notes: {},
+        preferences: {},
+        appData: { lastBackup: null, dataVersion: '1.0.0' }
+      };
+      mockLocalStorage.getItem.mockReturnValue(JSON.stringify(mockData));
 
       const project = await projectService.getProject('non-existent-id');
 

@@ -595,6 +595,86 @@ class CollaborationService {
   }
 
   /**
+   * Get document lock (alias for getDocumentLockOwner)
+   */
+  public getDocumentLock(documentId: string): string | undefined {
+    return this.getDocumentLockOwner(documentId);
+  }
+
+  /**
+   * Request document lock
+   */
+  public requestDocumentLock(documentId: string): Promise<boolean> {
+    return this.lockDocument(documentId);
+  }
+
+  /**
+   * Release document lock
+   */
+  public releaseDocumentLock(documentId: string): void {
+    this.unlockDocument(documentId);
+  }
+
+  /**
+   * Send cursor position
+   */
+  public sendCursorPosition(documentId: string, x: number, y: number): void {
+    this.updateCursor(documentId, x, y);
+  }
+
+  /**
+   * Update presence
+   */
+  public updatePresence(presenceData: PresenceData): void {
+    if (this.socket && this.socket.connected) {
+      this.socket.emit('presence:update', presenceData);
+    }
+  }
+
+  /**
+   * Get current session
+   */
+  public getCurrentSession(): CollaborationSession | null {
+    return this.session;
+  }
+
+  /**
+   * Check if connected
+   */
+  public isConnected(): boolean {
+    return this.socket?.connected || false;
+  }
+
+  /**
+   * Get user permissions (placeholder implementation)
+   */
+  public getUserPermissions(userId: string): any {
+    // This could be expanded based on your permission system
+    return {
+      canEdit: true,
+      canComment: true,
+      canLock: true,
+    };
+  }
+
+  /**
+   * Remove event listener (off method)
+   */
+  public off<K extends keyof CollaborationEvents>(
+    event: K,
+    handler?: CollaborationEvents[K]
+  ): void {
+    const handlers = this.eventHandlers.get(event);
+    if (handlers) {
+      if (handler) {
+        handlers.delete(handler as Function);
+      } else {
+        handlers.clear();
+      }
+    }
+  }
+
+  /**
    * Subscribe to event
    */
   public on<K extends keyof CollaborationEvents>(
@@ -841,5 +921,6 @@ class CollaborationService {
   }
 }
 
-// Export singleton instance
+// Export singleton instance and class for testing
 export const collaborationService = CollaborationService.getInstance();
+export { CollaborationService };

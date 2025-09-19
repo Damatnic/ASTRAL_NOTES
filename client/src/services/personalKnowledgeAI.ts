@@ -49,6 +49,24 @@ export class PersonalKnowledgeAIService {
   }
 
   /**
+   * Add knowledge item (alias for addKnowledge for API compatibility)
+   */
+  public addKnowledgeItem(item: {
+    title: string;
+    content: string;
+    tags?: string[];
+    category?: KnowledgeEntry['category'];
+    source?: string;
+  }): KnowledgeEntry {
+    return this.addKnowledge({
+      title: item.title,
+      content: item.content,
+      tags: item.tags || [],
+      category: item.category || 'fact'
+    });
+  }
+
+  /**
    * Search knowledge base
    */
   public searchKnowledge(query: string, filters?: {
@@ -161,6 +179,33 @@ export class PersonalKnowledgeAIService {
       categoryCounts,
       topTags,
       recentActivity
+    };
+  }
+
+  /**
+   * Semantic search in knowledge base
+   */
+  public semanticSearch(query: string, options?: {
+    limit?: number;
+    similarityThreshold?: number;
+    categories?: KnowledgeEntry['category'][];
+  }): {
+    results: KnowledgeEntry[];
+    similarity: number[];
+    totalFound: number;
+  } {
+    const results = this.searchKnowledge(query, {
+      limit: options?.limit || 10,
+      category: options?.categories?.[0]
+    });
+    
+    // Simplified semantic similarity (would use embeddings in real implementation)
+    const similarity = results.map(() => Math.random() * 0.5 + 0.5);
+    
+    return {
+      results,
+      similarity,
+      totalFound: results.length
     };
   }
 

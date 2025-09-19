@@ -7,7 +7,7 @@ import { cva, type VariantProps } from 'class-variance-authority';
 import { cn } from '@/utils/cn';
 
 const cardVariants = cva(
-  'rounded-xl border bg-card text-card-foreground transition-all duration-200',
+  'rounded-lg border bg-card text-card-foreground transition-all duration-200',
   {
     variants: {
       variant: {
@@ -39,17 +39,30 @@ export interface CardProps
 }
 
 const Card = React.forwardRef<HTMLDivElement, CardProps>(
-  ({ className, variant, padding, hover = false, ...props }, ref) => (
-    <div
-      ref={ref}
-      className={cn(
-        cardVariants({ variant, padding }),
-        hover && 'hover:shadow-lg hover:-translate-y-0.5',
-        className
-      )}
-      {...props}
-    />
-  )
+  ({ className, variant, padding, hover = false, onClick, onKeyDown, ...props }, ref) => {
+    const handleKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+      if (onClick && (event.key === 'Enter' || event.key === ' ')) {
+        event.preventDefault();
+        onClick(event as any);
+      }
+      onKeyDown?.(event);
+    };
+
+    return (
+      <div
+        ref={ref}
+        className={cn(
+          cardVariants({ variant, padding }),
+          hover && 'hover:shadow-lg hover:-translate-y-0.5',
+          onClick && 'cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2',
+          className
+        )}
+        onClick={onClick}
+        onKeyDown={handleKeyDown}
+        {...props}
+      />
+    );
+  }
 );
 Card.displayName = 'Card';
 

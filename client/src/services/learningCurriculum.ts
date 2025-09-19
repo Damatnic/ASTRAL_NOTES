@@ -65,6 +65,26 @@ export class LearningCurriculumService {
   }
 
   /**
+   * Get all learning modules
+   */
+  public getLearningModules(level?: 'beginner' | 'intermediate' | 'advanced'): LearningModule[] {
+    let modules = Array.from(this.modules.values());
+    
+    if (level) {
+      modules = modules.filter(module => module.level === level);
+    }
+    
+    return modules;
+  }
+
+  /**
+   * Get a specific module by ID
+   */
+  public getModule(moduleId: string): LearningModule | null {
+    return this.modules.get(moduleId) || null;
+  }
+
+  /**
    * Get modules for a learning path
    */
   public getPathModules(pathId: string): LearningModule[] {
@@ -181,6 +201,62 @@ export class LearningCurriculumService {
       
       return levelMatch && (interests.length === 0 || interestMatch);
     }).slice(0, 5);
+  }
+
+  /**
+   * Start a specific module
+   */
+  public startModule(userId: string, moduleId: string): {
+    module: LearningModule | null;
+    progress: { started: boolean; startTime: string };
+    nextSteps: string[];
+  } {
+    const module = this.modules.get(moduleId);
+    if (!module) {
+      return {
+        module: null,
+        progress: { started: false, startTime: '' },
+        nextSteps: ['Module not found']
+      };
+    }
+
+    return {
+      module,
+      progress: { started: true, startTime: new Date().toISOString() },
+      nextSteps: [
+        'Complete the first exercise',
+        'Track your progress',
+        'Take notes on key concepts'
+      ]
+    };
+  }
+
+  /**
+   * Perform skill assessment
+   */
+  public performSkillAssessment(skills: string[]): {
+    assessment: Record<string, 'beginner' | 'intermediate' | 'advanced'>;
+    recommendations: LearningPath[];
+    focusAreas: string[];
+  } {
+    const assessment: Record<string, 'beginner' | 'intermediate' | 'advanced'> = {};
+    
+    // Ensure skills is an array
+    const skillsArray = Array.isArray(skills) ? skills : [];
+    
+    // Simplified assessment based on skill list
+    skillsArray.forEach(skill => {
+      assessment[skill] = 'beginner'; // Default to beginner
+    });
+    
+    const recommendations = this.getLearningPaths('beginner');
+    const focusAreas = skills.slice(0, 3); // Focus on first 3 skills
+    
+    return {
+      assessment,
+      recommendations: recommendations.slice(0, 3),
+      focusAreas
+    };
   }
 
   // Private helper methods

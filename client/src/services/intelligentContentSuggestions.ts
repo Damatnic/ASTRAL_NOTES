@@ -20,6 +20,7 @@ export interface ContentAnalysis {
   suggestions: ContentSuggestion[];
   readabilityScore: number;
   engagementScore: number;
+  clarityScore: number; // For test compatibility
 }
 
 export class IntelligentContentSuggestionsService {
@@ -43,7 +44,8 @@ export class IntelligentContentSuggestionsService {
       weaknesses: this.identifyWeaknesses(content),
       suggestions: await this.generateSuggestions(content, context),
       readabilityScore: this.calculateReadability(content),
-      engagementScore: this.calculateEngagement(content)
+      engagementScore: this.calculateEngagement(content),
+      clarityScore: this.calculateClarity(content)
     };
 
     this.analysisCache.set(cacheKey, analysis);
@@ -80,7 +82,16 @@ export class IntelligentContentSuggestionsService {
   /**
    * Generate alternative phrasings
    */
-  public generateAlternatives(text: string, type: 'synonym' | 'rephrase' | 'simplify'): string[] {
+  public generateAlternatives(text: string, type?: 'synonym' | 'rephrase' | 'simplify'): string[] {
+    // If no type specified, return general alternatives based on the text
+    if (!type) {
+      return [
+        `Enhanced version of: ${text}`,
+        `Alternative phrasing: ${text}`,
+        `Improved wording: ${text}`
+      ];
+    }
+    
     switch (type) {
       case 'synonym':
         return ['alternative phrasing', 'different wording', 'varied expression'];
@@ -191,6 +202,31 @@ export class IntelligentContentSuggestionsService {
     if (content.includes('!')) score += 10;
     
     return Math.min(100, score);
+  }
+
+  private calculateClarity(content: string): number {
+    let score = 60; // Base score
+    
+    // Positive clarity indicators
+    const words = content.split(/\s+/);
+    const sentences = content.split(/[.!?]+/).filter(s => s.trim().length > 0);
+    const avgWordsPerSentence = words.length / sentences.length;
+    
+    // Optimal sentence length for clarity (10-20 words)
+    if (avgWordsPerSentence >= 10 && avgWordsPerSentence <= 20) {
+      score += 15;
+    } else if (avgWordsPerSentence > 20) {
+      score -= 10; // Too long, harder to understand
+    }
+    
+    // Simple words increase clarity
+    const complexWords = words.filter(word => word.length > 8).length;
+    const complexWordRatio = complexWords / words.length;
+    if (complexWordRatio < 0.1) {
+      score += 10;
+    }
+    
+    return Math.max(0, Math.min(100, score));
   }
 
   private getReadabilitySuggestions(content: string): ContentSuggestion[] {

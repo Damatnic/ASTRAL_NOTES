@@ -494,13 +494,18 @@ describe('🔍 Comprehensive API Testing Suite (326 Checks)', () => {
     });
 
     it('should detect anomalies', () => {
-      const anomalies = patternRecognition.detectAnomalies(testText);
-      expect(Array.isArray(anomalies)).toBe(true);
+      const result = patternRecognition.detectAnomalies(testText);
+      expect(typeof result).toBe('object');
+      expect(Array.isArray(result.anomalies)).toBe(true);
+      expect(typeof result.overallScore).toBe('number');
     });
 
     it('should provide stylistic recommendations', () => {
       const recommendations = patternRecognition.getStylisticRecommendations(testText, 'concise');
-      expect(Array.isArray(recommendations)).toBe(true);
+      expect(typeof recommendations).toBe('object');
+      expect(Array.isArray(recommendations.immediate)).toBe(true);
+      expect(Array.isArray(recommendations.longTerm)).toBe(true);
+      expect(Array.isArray(recommendations.priorityAreas)).toBe(true);
     });
   });
 
@@ -513,8 +518,8 @@ describe('🔍 Comprehensive API Testing Suite (326 Checks)', () => {
       modules.forEach(module => {
         expect(module.id).toBeTypeOf('string');
         expect(module.title).toBeTypeOf('string');
-        expect(module.difficulty).toBeDefined();
-        expect(Array.isArray(module.skillsCovered)).toBe(true);
+        expect(module.level).toBeDefined();
+        expect(Array.isArray(module.objectives)).toBe(true);
       });
     });
 
@@ -587,13 +592,18 @@ describe('🔍 Comprehensive API Testing Suite (326 Checks)', () => {
     });
 
     it('should predict next action', () => {
-      const nextAction = predictiveWorkflow.predictNextAction(testUserId);
-      expect(typeof nextAction).toBe('string');
+      const prediction = predictiveWorkflow.predictNextAction(['writing', 'editing']);
+      expect(typeof prediction).toBe('object');
+      expect(typeof prediction.nextAction).toBe('string');
+      expect(typeof prediction.confidence).toBe('number');
     });
 
     it('should recommend tools', () => {
       const tools = predictiveWorkflow.recommendTools('writing');
-      expect(Array.isArray(tools)).toBe(true);
+      expect(typeof tools).toBe('object');
+      expect(Array.isArray(tools.primary)).toBe(true);
+      expect(Array.isArray(tools.optional)).toBe(true);
+      expect(Array.isArray(tools.integrations)).toBe(true);
     });
   });
 

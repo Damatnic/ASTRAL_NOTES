@@ -170,6 +170,37 @@ global.FileReader = class MockFileReader {
   abort = vi.fn();
 } as any;
 
+// Mock Blob for file operations
+global.Blob = class MockBlob {
+  public parts: any[];
+  public options: BlobPropertyBag;
+  
+  constructor(parts: any[] = [], options: BlobPropertyBag = {}) {
+    this.parts = parts;
+    this.options = options;
+  }
+  
+  get size() {
+    return this.parts.reduce((size, part) => size + (part.length || 0), 0);
+  }
+  
+  get type() {
+    return this.options.type || '';
+  }
+  
+  text = vi.fn().mockResolvedValue('mock-text-content');
+  arrayBuffer = vi.fn().mockResolvedValue(new ArrayBuffer(0));
+  stream = vi.fn();
+  slice = vi.fn().mockReturnValue({
+    size: 0,
+    type: '',
+    text: vi.fn().mockResolvedValue('mock-text-content'),
+    arrayBuffer: vi.fn().mockResolvedValue(new ArrayBuffer(0)),
+    stream: vi.fn(),
+    slice: vi.fn(),
+  });
+} as any;
+
 // Mock DOMParser for XML/HTML parsing
 global.DOMParser = class MockDOMParser {
   parseFromString = vi.fn().mockReturnValue({

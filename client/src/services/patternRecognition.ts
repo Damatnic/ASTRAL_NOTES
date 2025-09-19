@@ -42,6 +42,14 @@ export class PatternRecognitionService {
   }
 
   /**
+   * Analyze writing patterns (alias for analyzePatterns for API compatibility)
+   */
+  public analyzeWritingPatterns(text: string, userId?: string): WritingPattern[] {
+    const analysis = this.analyzePatterns(text, userId);
+    return analysis.patterns; // Return array directly for test compatibility
+  }
+
+  /**
    * Get pattern-based recommendations
    */
   public getRecommendations(userId: string): string[] {
@@ -77,6 +85,85 @@ export class PatternRecognitionService {
       consistentHabits: habits.map(h => h.pattern),
       improvingAreas: ['Sentence variety', 'Vocabulary expansion'],
       suggestedFocus: habits.length > 0 ? 'Style consistency' : 'Pattern development'
+    };
+  }
+
+  /**
+   * Detect anomalies in writing patterns
+   */
+  public detectAnomalies(text: string, userId?: string): {
+    anomalies: Array<{
+      type: 'unusual_length' | 'style_deviation' | 'pattern_break';
+      description: string;
+      severity: 'low' | 'medium' | 'high';
+      suggestion: string;
+    }>;
+    overallScore: number;
+  } {
+    const anomalies = [];
+    const words = text.split(/\s+/);
+    const sentences = text.split(/[.!?]+/).filter(s => s.trim().length > 0);
+    
+    // Check for unusual sentence length
+    const avgSentenceLength = words.length / sentences.length;
+    if (avgSentenceLength > 40) {
+      anomalies.push({
+        type: 'unusual_length',
+        description: 'Sentences are unusually long',
+        severity: 'medium',
+        suggestion: 'Consider breaking up longer sentences for clarity'
+      });
+    }
+    
+    return {
+      anomalies,
+      overallScore: Math.max(0, 100 - anomalies.length * 20)
+    };
+  }
+
+  /**
+   * Get stylistic recommendations based on text or patterns
+   */
+  public getStylisticRecommendations(input: string | WritingPattern[], targetStyle?: string): {
+    immediate: string[];
+    longTerm: string[];
+    priorityAreas: string[];
+  } {
+    let patterns: WritingPattern[];
+    
+    // If input is a string, analyze it first
+    if (typeof input === 'string') {
+      patterns = this.analyzePatterns(input);
+    } else {
+      patterns = input;
+    }
+    
+    // Ensure patterns is an array
+    if (!Array.isArray(patterns)) {
+      patterns = [];
+    }
+    
+    const immediate = [];
+    const longTerm = [];
+    const priorityAreas = [];
+    
+    const repetitionPatterns = patterns.filter(p => p.type === 'repetition');
+    const stylePatterns = patterns.filter(p => p.type === 'style');
+    
+    if (repetitionPatterns.length > 0) {
+      immediate.push('Focus on word variety in your current draft');
+      priorityAreas.push('Vocabulary expansion');
+    }
+    
+    if (stylePatterns.length > 2) {
+      longTerm.push('Develop consistent style guidelines');
+      priorityAreas.push('Style consistency');
+    }
+    
+    return {
+      immediate: immediate.length > 0 ? immediate : ['Continue developing your unique voice'],
+      longTerm: longTerm.length > 0 ? longTerm : ['Build writing momentum'],
+      priorityAreas: priorityAreas.length > 0 ? priorityAreas : ['General improvement']
     };
   }
 

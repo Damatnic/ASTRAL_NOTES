@@ -316,3 +316,29 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
 export function useToast() {
   return toast;
 }
+
+// Simple Toast component for testing compatibility
+export function Toast({
+  type = 'default',
+  message,
+  isVisible = true,
+  onClose
+}: {
+  type?: 'success' | 'error' | 'warning' | 'info' | 'default';
+  message: string;
+  isVisible?: boolean;
+  onClose?: () => void;
+}) {
+  if (!isVisible) return null;
+
+  const variant = type === 'default' ? 'default' : type;
+  
+  return (
+    <ToastItem
+      id="test-toast"
+      description={message}
+      variant={variant}
+      onDismiss={onClose || (() => {})}
+    />
+  );
+}

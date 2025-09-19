@@ -19,6 +19,13 @@ export interface StoryAnalysis {
   plotConsistency: number; // 0-100 score
   characterCount: number; // Character count for test compatibility
   plotComplexity: number; // Plot complexity for test compatibility
+  storyStructure: {
+    setup: number;
+    conflict: number;
+    resolution: number;
+    acts: number;
+    scenes: string[];
+  };
   suggestions: string[];
 }
 
@@ -58,6 +65,13 @@ export class StoryAssistantService {
       plotConsistency: 75, // Simplified
       characterCount: content.length, // Added for test compatibility
       plotComplexity: Math.min(sentences.length * 2, 100), // Added for test compatibility
+      storyStructure: {
+        setup: Math.floor(sentences.length * 0.25),
+        conflict: Math.floor(sentences.length * 0.5),
+        resolution: Math.floor(sentences.length * 0.25),
+        acts: Math.min(Math.floor(sentences.length / 10) + 1, 3),
+        scenes: sentences.slice(0, 3).map((s, i) => `Scene ${i + 1}: ${s.trim().substring(0, 50)}...`)
+      },
       suggestions: this.generateSuggestions(pacing, characterScore)
     };
 

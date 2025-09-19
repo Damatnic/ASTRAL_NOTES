@@ -9,12 +9,12 @@ import { cn } from '@/utils/cn';
 import { Loader2 } from 'lucide-react';
 
 const buttonVariants = cva(
-  'inline-flex items-center justify-center rounded-lg text-sm font-medium transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none ring-offset-background relative overflow-hidden group active:scale-95',
+  'inline-flex items-center justify-center rounded-lg text-sm font-medium transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 ring-offset-background relative overflow-hidden group active:scale-95',
   {
     variants: {
       variant: {
-        default: 'bg-primary text-primary-foreground shadow hover:bg-primary/90 hover:shadow-md focus-visible:ring-primary',
-        destructive: 'bg-destructive text-destructive-foreground shadow hover:bg-destructive/90 hover:shadow-md focus-visible:ring-destructive',
+        default: 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow hover:from-indigo-700 hover:to-purple-700 hover:shadow-md focus-visible:ring-primary',
+        destructive: 'bg-gradient-to-r from-red-600 to-pink-600 text-white shadow hover:from-red-700 hover:to-pink-700 hover:shadow-md focus-visible:ring-destructive',
         outline: 'border border-input bg-background shadow-sm hover:bg-accent hover:text-accent-foreground focus-visible:ring-ring',
         secondary: 'bg-secondary text-secondary-foreground shadow-sm hover:bg-secondary/80 focus-visible:ring-ring',
         ghost: 'hover:bg-accent hover:text-accent-foreground focus-visible:ring-ring',
@@ -117,6 +117,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       <button
         className={cn(
           buttonVariants({ variant, size, fullWidth }),
+          isDisabled && 'opacity-50 pointer-events-none',
           pulse && 'animate-pulse',
           shimmer && 'relative before:absolute before:inset-0 before:bg-gradient-to-r before:from-transparent before:via-white/20 before:to-transparent before:-translate-x-full hover:before:translate-x-full before:transition-transform before:duration-700',
           className

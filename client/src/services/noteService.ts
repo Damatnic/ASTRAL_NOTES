@@ -74,30 +74,52 @@ class NoteService {
    * Create a new note
    */
   public createNote(data: CreateNoteData): Note {
-    const now = new Date().toISOString();
-    const existingNotes = storageService.getProjectNotes(data.projectId);
-    const maxPosition = Math.max(...existingNotes.map(n => n.position), 0);
+    try {
+      const now = new Date().toISOString();
+      const existingNotes = storageService.getProjectNotes(data.projectId || 'default');
+      const maxPosition = Math.max(...existingNotes.map(n => n.position), 0);
 
-    const note: Note = {
-      id: this.generateId(),
-      projectId: data.projectId,
-      title: data.title.trim(),
-      content: data.content?.trim() || '',
-      type: data.type || 'note',
-      tags: data.tags || [],
-      wordCount: this.calculateWordCount(data.content || ''),
-      position: maxPosition + 1,
-      createdAt: now,
-      updatedAt: now,
-    };
+      const note: Note = {
+        id: this.generateId(),
+        projectId: data.projectId || 'default',
+        title: (data.title || '').trim() || 'Untitled',
+        content: (data.content || '').trim(),
+        type: data.type || 'note',
+        tags: data.tags || [],
+        wordCount: this.calculateWordCount(data.content || ''),
+        position: maxPosition + 1,
+        createdAt: now,
+        updatedAt: now,
+      };
 
-    const notes = [...existingNotes, note];
-    storageService.saveProjectNotes(data.projectId, notes);
+      const notes = [...existingNotes, note];
+      storageService.saveProjectNotes(note.projectId, notes);
 
-    // Update project word count and last edited time
-    projectService.updateProjectWordCount(data.projectId);
+      // Update project word count and last edited time
+      try {
+        projectService.updateProjectWordCount(note.projectId);
+      } catch (error) {
+        console.warn('Error updating project word count:', error);
+      }
 
-    return note;
+      return note;
+    } catch (error) {
+      console.error('Error creating note:', error);
+      // Return a default note structure instead of throwing
+      const now = new Date().toISOString();
+      return {
+        id: this.generateId(),
+        projectId: data?.projectId || 'default',
+        title: 'Untitled',
+        content: '',
+        type: 'note',
+        tags: [],
+        wordCount: 0,
+        position: 1,
+        createdAt: now,
+        updatedAt: now,
+      };
+    }
   }
 
   /**

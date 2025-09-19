@@ -791,3 +791,4 @@ export class PlotStructureService extends BrowserEventEmitter {
 }
 
 export const plotStructureService = new PlotStructureService();
+export { PlotStructureService };

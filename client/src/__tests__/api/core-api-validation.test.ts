@@ -48,7 +48,7 @@ describe('🔍 Core API Validation Suite', () => {
     mockLocalStorage.clear();
     
     // Create the test project that notes will be associated with
-    const project = projectService.createProject({
+    const project = projectService.createProjectSync({
       title: 'Test Project',
       description: 'A project for testing purposes',
       status: 'active',
@@ -119,7 +119,7 @@ describe('🔍 Core API Validation Suite', () => {
       });
 
       // Add a small delay to ensure different timestamps
-      await new Promise(resolve => setTimeout(resolve, 1));
+      await new Promise(resolve => setTimeout(resolve, 10));
 
       const updated = noteService.updateNote(note.id, {
         title: 'Updated Title',
@@ -178,7 +178,7 @@ describe('🔍 Core API Validation Suite', () => {
 
   describe('📁 Project Service API (20 checks)', () => {
     it('should create projects successfully', () => {
-      const project = projectService.createProject({
+      const project = projectService.createProjectSyncSync({
         title: 'Test Project',
         description: 'A test project',
         genre: 'fantasy',
@@ -436,7 +436,7 @@ describe('🔍 Core API Validation Suite', () => {
   describe('🔄 Service Integration Tests (15 checks)', () => {
     it('should maintain data consistency between services', () => {
       // Create a project
-      const project = projectService.createProject({
+      const project = projectService.createProjectSync({
         title: 'Integration Test Project',
         description: 'Testing service integration',
         genre: 'test',
@@ -526,7 +526,7 @@ describe('🔍 Core API Validation Suite', () => {
       }).not.toThrow();
 
       expect(() => {
-        projectService.createProject({
+        projectService.createProjectSync({
           title: '',
           description: '',
           genre: '',

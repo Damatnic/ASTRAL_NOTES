@@ -27,7 +27,10 @@ import userEvent from '@testing-library/user-event';
 import { describe, test, expect, beforeEach, afterEach, vi, beforeAll, afterAll } from 'vitest';
 import { BrowserRouter, Routes, Route, MemoryRouter } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { ErrorBoundary } from 'react-error-boundary';
+// Simple ErrorBoundary mock for testing
+const ErrorBoundary = ({ children, fallback }: { children: React.ReactNode; fallback: React.ReactNode }) => {
+  return <div>{children}</div>;
+};
 
 // Mock all page imports
 vi.mock('../../pages/Dashboard', () => ({

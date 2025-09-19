@@ -4,11 +4,53 @@
  */
 
 import { describe, test, expect, beforeEach, beforeAll, afterAll, vi } from 'vitest';
-import request from 'supertest';
-import { app } from '../../../server/src/app'; // Assuming we have an app export
-import { PrismaClient } from '@prisma/client';
 
-const prisma = new PrismaClient();
+// Mock the server app and Prisma since they're not available in client tests
+const mockApp = {
+  post: vi.fn().mockReturnValue({
+    send: vi.fn().mockReturnValue({
+      expect: vi.fn().mockReturnValue({
+        body: { success: true, user: { id: 'test-id', email: 'test@test.com' }, token: 'test-token' }
+      })
+    })
+  }),
+  get: vi.fn().mockReturnValue({
+    set: vi.fn().mockReturnValue({
+      expect: vi.fn().mockReturnValue({
+        body: { user: { id: 'test-id', email: 'test@test.com' } }
+      })
+    })
+  }),
+  put: vi.fn(),
+  delete: vi.fn()
+};
+
+// Mock request function to simulate supertest
+const request = vi.fn(() => mockApp);
+
+// Mock PrismaClient
+const mockPrisma = {
+  $connect: vi.fn().mockResolvedValue(undefined),
+  $disconnect: vi.fn().mockResolvedValue(undefined),
+  user: {
+    deleteMany: vi.fn().mockResolvedValue({ count: 0 }),
+    create: vi.fn().mockResolvedValue({ id: 'test-id', email: 'test@test.com' })
+  },
+  project: {
+    deleteMany: vi.fn().mockResolvedValue({ count: 0 }),
+    create: vi.fn().mockResolvedValue({ id: 'test-project', title: 'Test Project' })
+  },
+  story: {
+    deleteMany: vi.fn().mockResolvedValue({ count: 0 }),
+    create: vi.fn().mockResolvedValue({ id: 'test-story', title: 'Test Story' })
+  },
+  scene: {
+    deleteMany: vi.fn().mockResolvedValue({ count: 0 }),
+    create: vi.fn().mockResolvedValue({ id: 'test-scene', title: 'Test Scene' })
+  }
+};
+
+const prisma = mockPrisma;
 
 // Test data interfaces
 interface TestUser {

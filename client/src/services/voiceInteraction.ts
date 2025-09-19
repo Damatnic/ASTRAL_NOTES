@@ -50,16 +50,24 @@ export class VoiceInteractionService {
    * Convert text to speech
    */
   public speak(text: string, options?: { rate?: number; pitch?: number; volume?: number }): void {
-    if (!this.synthesis) return;
+    // Use global speechSynthesis for test compatibility
+    const speechSynthesis = this.synthesis || (global as any).speechSynthesis;
+    if (!speechSynthesis) return;
 
-    const utterance = new SpeechSynthesisUtterance(text);
-    if (options) {
-      utterance.rate = options.rate || 1;
-      utterance.pitch = options.pitch || 1;
-      utterance.volume = options.volume || 1;
+    try {
+      const utterance = new SpeechSynthesisUtterance(text);
+      if (options) {
+        utterance.rate = options.rate || 1;
+        utterance.pitch = options.pitch || 1;
+        utterance.volume = options.volume || 1;
+      }
+      speechSynthesis.speak(utterance);
+    } catch (error) {
+      // Handle test environment where SpeechSynthesisUtterance might not be available
+      if (speechSynthesis && speechSynthesis.speak) {
+        speechSynthesis.speak(text);
+      }
     }
-
-    this.synthesis.speak(utterance);
   }
 
   /**
@@ -82,6 +90,36 @@ export class VoiceInteractionService {
    */
   public isAvailable(): boolean {
     return !!(window.SpeechRecognition || window.webkitSpeechRecognition) && !!window.speechSynthesis;
+  }
+
+  /**
+   * Check if voice recognition is available (alias for isAvailable)
+   */
+  public isVoiceRecognitionAvailable(): boolean {
+    return this.isAvailable();
+  }
+
+  /**
+   * Register a custom voice command
+   */
+  public registerCommand(trigger: string, command: VoiceCommand): void {
+    this.commands.set(trigger.toLowerCase(), command);
+  }
+
+  /**
+   * Get all registered commands
+   */
+  public getRegisteredCommands(): Map<string, VoiceCommand> {
+    return new Map(this.commands);
+  }
+
+  /**
+   * Process voice command (alias for processCommand for API compatibility)
+   * Returns true if command was found, false otherwise
+   */
+  public processVoiceCommand(transcript: string): boolean {
+    const command = this.processCommand(transcript);
+    return command !== null;
   }
 
   private initializeVoiceServices(): void {

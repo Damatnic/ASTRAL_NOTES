@@ -2016,3 +2016,4 @@ export class WorldBuildingService extends BrowserEventEmitter {
 }
 
 export const worldBuildingService = new WorldBuildingService();
+export { WorldBuildingService };

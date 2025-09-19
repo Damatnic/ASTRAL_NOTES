@@ -6,11 +6,28 @@
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { noteService } from '../../services/noteService';
-import { storageService } from '../../services/storageService';
-import { projectService } from '../../services/projectService';
 import { testUtils, TestPerformanceMonitor } from '../utils/testUtils';
 import { factories } from '../utils/testFactories';
 import type { Note } from '../../types/global';
+
+// Mock the services at module level
+vi.mock('../../services/storageService', () => ({
+  storageService: {
+    getProjectNotes: vi.fn(() => []),
+    getAllNotes: vi.fn(() => []),
+    saveProjectNotes: vi.fn(() => true)
+  }
+}));
+
+vi.mock('../../services/projectService', () => ({
+  projectService: {
+    updateProjectWordCount: vi.fn(),
+    getProjectById: vi.fn()
+  }
+}));
+
+import { storageService } from '../../services/storageService';
+import { projectService } from '../../services/projectService';
 
 // Test suite configuration
 const PERFORMANCE_THRESHOLDS = {
@@ -48,12 +65,12 @@ describe('NoteService - Comprehensive Test Suite', () => {
       getProjectById: vi.fn()
     });
 
-    // Mock the actual services
-    vi.mocked(storageService.getProjectNotes).mockImplementation(mockStorageService.getProjectNotes);
-    vi.mocked(storageService.getAllNotes).mockImplementation(mockStorageService.getAllNotes);
-    vi.mocked(storageService.saveProjectNotes).mockImplementation(mockStorageService.saveProjectNotes);
-    vi.mocked(projectService.updateProjectWordCount).mockImplementation(mockProjectService.updateProjectWordCount);
-    vi.mocked(projectService.getProjectById).mockImplementation(mockProjectService.getProjectById);
+    // Configure mocked services
+    (storageService.getProjectNotes as any).mockImplementation(mockStorageService.getProjectNotes);
+    (storageService.getAllNotes as any).mockImplementation(mockStorageService.getAllNotes);
+    (storageService.saveProjectNotes as any).mockImplementation(mockStorageService.saveProjectNotes);
+    (projectService.updateProjectWordCount as any).mockImplementation(mockProjectService.updateProjectWordCount);
+    (projectService.getProjectById as any).mockImplementation(mockProjectService.getProjectById);
 
     // Generate test data
     testProject = factories.Project.create();

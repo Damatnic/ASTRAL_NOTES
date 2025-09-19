@@ -670,6 +670,50 @@ export class AIWritingCompanionService {
       }
     };
   }
+
+  /**
+   * Check session health (private method for testing)
+   */
+  private checkSessionHealth(): void {
+    if (!this.currentSession) return;
+    
+    const now = Date.now();
+    const sessionDuration = now - this.currentSession.startTime;
+    
+    // Emit health reminder if session is too long (30+ minutes)
+    if (sessionDuration > 30 * 60 * 1000) {
+      // This would normally emit an event or call a callback
+      // For testing, we'll just set a flag or emit to a global handler
+      if (typeof window !== 'undefined' && (window as any).healthReminderCallback) {
+        (window as any).healthReminderCallback({
+          type: 'break',
+          message: 'Consider taking a short break to refresh your mind.',
+          timestamp: now
+        });
+      }
+    }
+  }
+
+  /**
+   * Check if real-time feedback is enabled
+   */
+  public isRealTimeFeedbackEnabled(): boolean {
+    return this.currentPersonality?.realTimeFeedback || false;
+  }
+
+  /**
+   * Save data to storage (private method for testing)
+   */
+  private saveDataToStorage(): void {
+    try {
+      localStorage.setItem('aiWritingCompanion_goals', JSON.stringify(this.writingGoals));
+      if (this.currentPersonality) {
+        localStorage.setItem('aiWritingCompanion_personality', JSON.stringify(this.currentPersonality.id));
+      }
+    } catch (error) {
+      console.warn('Failed to save AI Writing Companion data:', error);
+    }
+  }
 }
 
 // Export singleton instance

@@ -19,6 +19,8 @@ export interface WritingMetrics {
   activeTime: number;
   distractionEvents: number;
   focusScore: number;
+  sessionCount: number; // For test compatibility
+  lastSessionDuration?: number; // For test compatibility
 }
 
 export interface SmartSuggestion {
@@ -91,7 +93,8 @@ export class SmartWritingCompanionService {
         totalWords: 0,
         activeTime: 0,
         distractionEvents: 0,
-        focusScore: 0
+        focusScore: 0,
+        sessionCount: 0
       };
     }
 
@@ -108,7 +111,8 @@ export class SmartWritingCompanionService {
       totalWords,
       activeTime: totalTime,
       distractionEvents: 0, // Simplified
-      focusScore: this.calculateFocusScore()
+      focusScore: this.calculateFocusScore(),
+      sessionCount: totalSessions
     };
   }
 
@@ -213,6 +217,78 @@ export class SmartWritingCompanionService {
     };
   }
 
+  /**
+   * Update metrics with word count and time
+   */
+  public updateMetrics(wordCount: number, timeMinutes: number): WritingMetrics {
+    // Create a synthetic session for metrics calculation
+    const syntheticSession: WritingSession = {
+      id: `synthetic-${Date.now()}`,
+      startTime: new Date(Date.now() - timeMinutes * 60000),
+      endTime: new Date(),
+      wordCount,
+      charactersTyped: wordCount * 5, // Approximate
+      pauseTime: 0,
+      productivity: this.calculateProductivityFromWPM(wordCount / timeMinutes)
+    };
+
+    this.sessionHistory.push(syntheticSession);
+    const metrics = this.getMetrics();
+    metrics.lastSessionDuration = timeMinutes;
+    return metrics;
+  }
+
+  /**
+   * Create a writing goal
+   */
+  public createGoal(projectId: string, goalData: {
+    type: string;
+    target: number;
+    deadline?: string;
+    description?: string;
+    unit?: string;
+  }): { id: string; projectId: string; type: string; target: number; deadline?: string; description?: string; unit?: string; progress: number; status: string } {
+    return {
+      id: `goal-${Date.now()}`,
+      projectId,
+      type: goalData.type,
+      target: goalData.target,
+      deadline: goalData.deadline,
+      description: goalData.description,
+      unit: goalData.unit,
+      progress: 0,
+      status: 'active'
+    };
+  }
+
+  /**
+   * Get personalized feedback for text
+   */
+  public getPersonalizedFeedback(projectId: string, text: string): string[] {
+    const suggestions = this.getSuggestions(text);
+    const wordCount = text.split(/\s+/).length;
+    const sentenceCount = text.split(/[.!?]+/).filter(s => s.trim().length > 0).length;
+    
+    // Return array of feedback strings for API compatibility
+    const feedback: string[] = [];
+    
+    // Add strengths
+    if (wordCount > 100) feedback.push('Good content length');
+    if (sentenceCount > 3) feedback.push('Good sentence variety');
+    
+    // Add improvements
+    feedback.push(...suggestions.map(s => s.message));
+    
+    // Add personalized tips
+    feedback.push(
+      'Try varying your sentence structure',
+      'Consider using more descriptive words',
+      'Break up long paragraphs for better readability'
+    );
+    
+    return feedback;
+  }
+
   // Private helper methods
   private calculateProductivity(session: WritingSession): 'high' | 'medium' | 'low' {
     if (!session.endTime) return 'medium';
@@ -230,6 +306,12 @@ export class SmartWritingCompanionService {
 
     const productiveSessions = this.sessionHistory.filter(s => s.productivity === 'high').length;
     return Math.round((productiveSessions / this.sessionHistory.length) * 100);
+  }
+
+  private calculateProductivityFromWPM(wpm: number): 'high' | 'medium' | 'low' {
+    if (wpm > 25) return 'high';
+    if (wpm > 15) return 'medium';
+    return 'low';
   }
 }
 
