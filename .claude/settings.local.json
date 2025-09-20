@@ -75,7 +75,10 @@
       "Bash(cat:*)",
       "Bash(npx vitest run:*)",
       "Bash(LC_ALL=C npm test)",
-      "Bash(python:*)"
+      "Bash(python:*)",
+      "Bash(npx vercel:*)",
+      "WebFetch(domain:astral-notes-36ffa92xd-astral-productions.vercel.app)",
+      "Bash(start https://astral-notes-36ffa92xd-astral-productions.vercel.app)"
     ],
     "deny": [],
     "ask": []
