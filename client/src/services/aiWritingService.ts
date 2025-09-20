@@ -437,7 +437,8 @@ class AIWritingService {
       try {
         return await openaiService.generateContentSuggestions(context, type);
       } catch (error) {
-        console.error('AI content generation failed:', error);\n        throw new Error('AI writing service is not available. Please check your API configuration.');
+        console.error('AI content generation failed:', error);
+        throw new Error('AI writing service is not available. Please check your API configuration.');
       }
     }
 
