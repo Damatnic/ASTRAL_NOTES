@@ -272,3 +272,24 @@ export function ConfirmModal({
     </Modal>
   );
 }
+
+// Component exports for Dialog compatibility
+export const ModalContent = ({ children, className, ...props }: { children: React.ReactNode; className?: string; [key: string]: any }) => (
+  <div className={className} {...props}>{children}</div>
+);
+
+export const ModalHeader = ({ children, className, ...props }: { children: React.ReactNode; className?: string; [key: string]: any }) => (
+  <div className={className} {...props}>{children}</div>
+);
+
+export const ModalTitle = ({ children, className, ...props }: { children: React.ReactNode; className?: string; [key: string]: any }) => (
+  <h2 className={className} {...props}>{children}</h2>
+);
+
+export const ModalDescription = ({ children, className, ...props }: { children: React.ReactNode; className?: string; [key: string]: any }) => (
+  <p className={className} {...props}>{children}</p>
+);
+
+export const ModalTrigger = ({ children, className, ...props }: { children: React.ReactNode; className?: string; [key: string]: any }) => (
+  <div className={className} {...props}>{children}</div>
+);

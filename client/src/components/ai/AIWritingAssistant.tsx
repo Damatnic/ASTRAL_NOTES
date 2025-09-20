@@ -31,6 +31,9 @@ import {
 import { type GenreContext } from '@/services/ai/genreSpecificAssistants';
 import { type WritingDNAProfile } from '@/services/ai/personalizedStyleAnalysis';
 
+// Import Phase 3A AI Writing Coach
+import { AIWritingCoach } from './AIWritingCoach';
+
 interface AIWritingAssistantProps {
   content: string;
   onContentChange: (content: string) => void;
@@ -76,6 +79,10 @@ export function AIWritingAssistant({
   const [isPhase2AEnabled, setIsPhase2AEnabled] = useState(false);
   const [selectedGenre, setSelectedGenre] = useState<GenreContext['genre'] | undefined>(genre);
   const [activeAnalysisMode, setActiveAnalysisMode] = useState<'basic' | 'comprehensive'>('basic');
+  
+  // Phase 3A: AI Writing Coach integration
+  const [showAICoach, setShowAICoach] = useState(false);
+  const [phase3AEnabled, setPhase3AEnabled] = useState(true); // Enable Phase 3A by default
 
   // Analyze content when it changes
   useEffect(() => {
@@ -459,6 +466,73 @@ export function AIWritingAssistant({
     },
   ];
 
+  // Add Phase 3A AI Coach tab if enabled
+  if (phase3AEnabled) {
+    tabs.push({
+      id: 'ai-coach',
+      label: 'AI Coach',
+      icon: <Sparkles className="h-4 w-4" />,
+      content: (
+        <div className="space-y-4">
+          <div className="text-center py-6">
+            <div className="p-3 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full w-16 h-16 mx-auto mb-4 flex items-center justify-center">
+              <Sparkles className="h-8 w-8 text-white" />
+            </div>
+            <h3 className="font-bold text-lg mb-2">AI Writing Coach</h3>
+            <p className="text-sm text-muted-foreground mb-4">
+              Your personal AI mentor with expert guidance, skill assessment, and adaptive learning paths.
+            </p>
+            <Button
+              variant="cosmic"
+              onClick={() => setShowAICoach(true)}
+              leftIcon={<Sparkles className="h-4 w-4" />}
+            >
+              Launch AI Coach
+            </Button>
+          </div>
+          
+          <div className="space-y-3">
+            <Card className="border-l-4 border-l-blue-500">
+              <CardContent className="p-3">
+                <h4 className="font-medium text-sm mb-1">📚 Skill Assessment</h4>
+                <p className="text-xs text-muted-foreground">
+                  50+ writing metrics with personalized feedback
+                </p>
+              </CardContent>
+            </Card>
+            
+            <Card className="border-l-4 border-l-purple-500">
+              <CardContent className="p-3">
+                <h4 className="font-medium text-sm mb-1">🎯 Learning Paths</h4>
+                <p className="text-xs text-muted-foreground">
+                  Adaptive curriculum tailored to your goals
+                </p>
+              </CardContent>
+            </Card>
+            
+            <Card className="border-l-4 border-l-green-500">
+              <CardContent className="p-3">
+                <h4 className="font-medium text-sm mb-1">👨‍🏫 Expert Mentors</h4>
+                <p className="text-xs text-muted-foreground">
+                  Learn from Hemingway, Austen, Tolkien & more
+                </p>
+              </CardContent>
+            </Card>
+            
+            <Card className="border-l-4 border-l-orange-500">
+              <CardContent className="p-3">
+                <h4 className="font-medium text-sm mb-1">🔮 Predictive Assistance</h4>
+                <p className="text-xs text-muted-foreground">
+                  AI that anticipates your story needs
+                </p>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      )
+    });
+  }
+
   // Add Phase 2A tabs if enabled
   if (isPhase2AEnabled) {
     tabs.push(
@@ -745,6 +819,17 @@ export function AIWritingAssistant({
       <div className="flex-1 overflow-hidden">
         <Tabs tabs={tabs} variant="cosmic" />
       </div>
+      
+      {/* Phase 3A: AI Writing Coach Integration */}
+      {phase3AEnabled && (
+        <AIWritingCoach
+          authorId={authorId || 'default-user'}
+          currentText={content}
+          isVisible={showAICoach}
+          onToggle={() => setShowAICoach(!showAICoach)}
+          onContentUpdate={onContentChange}
+        />
+      )}
     </div>
   );
 }

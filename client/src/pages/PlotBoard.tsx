@@ -7,7 +7,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
-import { Alert, AlertDescription } from '@/components/ui/Alert';
+// import { Alert } from '@mui/material';
 import { AlertCircle, Loader2 } from 'lucide-react';
 
 import { EnhancedPlotBoard } from '@/components/plotboard/EnhancedPlotBoard';
@@ -586,12 +586,12 @@ export function PlotBoard() {
   if (error) {
     return (
       <div className="p-6" data-testid="plot-board-error">
-        <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4" />
-          <AlertDescription>
-            {error}
-          </AlertDescription>
-        </Alert>
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+          <div className="flex items-center">
+            <AlertCircle className="h-4 w-4 text-red-500 mr-2" />
+            <span className="text-red-800">{error}</span>
+          </div>
+        </div>
         <div className="mt-4">
           <Button onClick={loadPlotBoardData}>
             Try Again
