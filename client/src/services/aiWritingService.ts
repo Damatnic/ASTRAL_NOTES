@@ -1,10 +1,16 @@
 /**
  * AI Writing Assistance Service
  * Provides intelligent writing suggestions and improvements
+ * Enhanced with Phase 2A AI-Powered Writing Workflows
  */
 
 import { env } from '@/config/env';
 import { openaiService } from './ai/openaiService';
+import { genreSpecificAssistants, type GenreContext, type GenreAnalysis } from './ai/genreSpecificAssistants';
+import { personalizedStyleAnalysis, type WritingDNAProfile, type VoiceConsistencyAnalysis } from './ai/personalizedStyleAnalysis';
+import { intelligentContentSuggestions, type ContentContext, type ContentSuggestion } from './ai/intelligentContentSuggestions';
+import { consistencyChecker, type ConsistencyCheck, type ConsistencyReport } from './ai/consistencyChecker';
+import { plotDevelopmentAnalyzer, type PlotAnalysisResult, type CharacterArc } from './ai/plotDevelopmentAnalyzer';
 
 export interface WritingSuggestion {
   id: string;
@@ -41,6 +47,29 @@ export interface AIPromptTemplate {
   prompt: string;
   description: string;
   variables: string[];
+}
+
+// ===== PHASE 2A INTERFACES =====
+
+export interface ComprehensiveAnalysisResult {
+  basicAnalysis: WritingAnalysis;
+  genreAnalysis: GenreAnalysis | null;
+  styleAnalysis: WritingDNAProfile | null;
+  voiceConsistency: VoiceConsistencyAnalysis | null;
+  contentSuggestions: ContentSuggestion[];
+  consistencyReport: ConsistencyReport | null;
+  plotAnalysis: PlotAnalysisResult | null;
+  recommendations: ComprehensiveRecommendation[];
+  timestamp: Date;
+}
+
+export interface ComprehensiveRecommendation {
+  category: 'writing-quality' | 'genre-alignment' | 'voice-consistency' | 'consistency' | 'plot-development';
+  priority: 'critical' | 'high' | 'medium' | 'low';
+  title: string;
+  description: string;
+  suggestions: string[];
+  source: string;
 }
 
 class AIWritingService {
@@ -575,6 +604,364 @@ class AIWritingService {
       readabilityScore: analysis.readabilityScore,
       sentimentScore: analysis.toneAnalysis.positive - analysis.toneAnalysis.negative
     };
+  }
+
+  // ===== PHASE 2A: AI-POWERED WRITING WORKFLOWS =====
+
+  /**
+   * Genre-specific analysis and suggestions
+   */
+  async analyzeWithGenre(context: GenreContext): Promise<GenreAnalysis> {
+    return await genreSpecificAssistants.analyzeWithGenre(context);
+  }
+
+  /**
+   * Get genre-specific writing prompts
+   */
+  getGenrePrompts(genre: GenreContext['genre']): string[] {
+    return genreSpecificAssistants.getGenrePrompts(genre);
+  }
+
+  /**
+   * Create or update personalized writing DNA profile
+   */
+  async createWritingDNAProfile(authorId: string, texts: string[]): Promise<WritingDNAProfile> {
+    return await personalizedStyleAnalysis.createOrUpdateProfile(authorId, texts);
+  }
+
+  /**
+   * Analyze voice consistency across text
+   */
+  async analyzeVoiceConsistency(text: string, profile?: WritingDNAProfile): Promise<VoiceConsistencyAnalysis> {
+    return await personalizedStyleAnalysis.analyzeVoiceConsistency(text, profile);
+  }
+
+  /**
+   * Get adaptive suggestions based on writing DNA
+   */
+  async getAdaptiveSuggestions(text: string, profile: WritingDNAProfile): Promise<any[]> {
+    return await personalizedStyleAnalysis.getAdaptiveSuggestions(text, profile);
+  }
+
+  /**
+   * Learn from user feedback on suggestions
+   */
+  async learnFromFeedback(
+    suggestionId: string,
+    feedback: 'accepted' | 'rejected' | 'modified',
+    profile: WritingDNAProfile,
+    context?: string,
+    reasoning?: string
+  ): Promise<void> {
+    return await personalizedStyleAnalysis.learnFromFeedback(suggestionId, feedback, profile, context, reasoning);
+  }
+
+  /**
+   * Generate intelligent content suggestions
+   */
+  async generateIntelligentSuggestions(context: ContentContext): Promise<ContentSuggestion[]> {
+    return await intelligentContentSuggestions.generateSuggestions(context);
+  }
+
+  /**
+   * Analyze scene dynamics
+   */
+  async analyzeSceneDynamics(sceneText: string, context: ContentContext): Promise<any> {
+    return await intelligentContentSuggestions.analyzeSceneDynamics(sceneText, context);
+  }
+
+  /**
+   * Get contextual auto-completions
+   */
+  async getContextualCompletions(text: string, cursorPosition: number, context: ContentContext): Promise<any[]> {
+    return await intelligentContentSuggestions.getContextualCompletions(text, cursorPosition, context);
+  }
+
+  /**
+   * Analyze emotional progression
+   */
+  analyzeEmotionalProgression(text: string, targetArc?: any): any {
+    return intelligentContentSuggestions.analyzeEmotionalProgression(text, targetArc);
+  }
+
+  /**
+   * Generate dialogue improvements
+   */
+  async generateDialogueImprovements(dialogue: string, character: any, context: ContentContext): Promise<any[]> {
+    return await intelligentContentSuggestions.generateDialogueImprovements(dialogue, character, context);
+  }
+
+  /**
+   * Perform comprehensive consistency check
+   */
+  async performConsistencyCheck(
+    documents: any[],
+    characters: any[],
+    worldElements: any[],
+    plotThreads: any[]
+  ): Promise<ConsistencyReport> {
+    return await consistencyChecker.performConsistencyCheck(documents, characters, worldElements, plotThreads);
+  }
+
+  /**
+   * Monitor real-time consistency
+   */
+  async monitorRealTimeConsistency(newText: string, context: any): Promise<any[]> {
+    return await consistencyChecker.monitorRealTimeConsistency(newText, context);
+  }
+
+  /**
+   * Generate auto-fix suggestions for consistency issues
+   */
+  async generateAutoFix(issue: ConsistencyCheck): Promise<any> {
+    return await consistencyChecker.generateAutoFix(issue);
+  }
+
+  /**
+   * Analyze complete plot development
+   */
+  async analyzePlotDevelopment(manuscript: any, targetStructure?: string, genre?: string): Promise<PlotAnalysisResult> {
+    return await plotDevelopmentAnalyzer.analyzePlotDevelopment(manuscript, targetStructure, genre);
+  }
+
+  /**
+   * Optimize character arc
+   */
+  async optimizeCharacterArc(characterId: string, manuscript: any): Promise<any> {
+    return await plotDevelopmentAnalyzer.optimizeCharacterArc(characterId, manuscript);
+  }
+
+  /**
+   * Analyze individual scene
+   */
+  async analyzeScene(scene: any, context: any): Promise<any> {
+    return await plotDevelopmentAnalyzer.analyzeScene(scene, context);
+  }
+
+  /**
+   * Generate structural recommendations
+   */
+  async generateStructuralRecommendations(manuscript: any, structure: any, genre?: string): Promise<any[]> {
+    return await plotDevelopmentAnalyzer.generateStructuralRecommendations(manuscript, structure, genre);
+  }
+
+  /**
+   * Real-time plot development feedback
+   */
+  async analyzeRealTimePlotDevelopment(newContent: string, context: any, manuscript: any): Promise<any> {
+    return await plotDevelopmentAnalyzer.analyzeRealTimePlotDevelopment(newContent, context, manuscript);
+  }
+
+  /**
+   * Comprehensive AI writing analysis combining all Phase 2A features
+   */
+  async performComprehensiveAnalysis(
+    text: string,
+    context: {
+      genre?: GenreContext['genre'];
+      authorId?: string;
+      characters?: any[];
+      worldElements?: any[];
+      plotThreads?: any[];
+      manuscript?: any;
+      writingDNAProfile?: WritingDNAProfile;
+    }
+  ): Promise<ComprehensiveAnalysisResult> {
+    const results: ComprehensiveAnalysisResult = {
+      basicAnalysis: await this.analyzeText(text),
+      genreAnalysis: null,
+      styleAnalysis: null,
+      voiceConsistency: null,
+      contentSuggestions: [],
+      consistencyReport: null,
+      plotAnalysis: null,
+      recommendations: [],
+      timestamp: new Date()
+    };
+
+    // Genre-specific analysis
+    if (context.genre) {
+      const genreContext: GenreContext = {
+        genre: context.genre,
+        text,
+        characters: context.characters || [],
+        worldElements: context.worldElements || [],
+        plotPoints: context.plotThreads || [],
+        themes: []
+      };
+      results.genreAnalysis = await this.analyzeWithGenre(genreContext);
+    }
+
+    // Style and voice analysis
+    if (context.authorId) {
+      if (context.writingDNAProfile) {
+        results.styleAnalysis = context.writingDNAProfile;
+        results.voiceConsistency = await this.analyzeVoiceConsistency(text, context.writingDNAProfile);
+      } else {
+        results.styleAnalysis = await this.createWritingDNAProfile(context.authorId, [text]);
+      }
+    }
+
+    // Intelligent content suggestions
+    if (context.genre || context.characters) {
+      const contentContext: ContentContext = {
+        precedingText: text,
+        currentSentence: '',
+        cursorPosition: text.length,
+        characters: context.characters || [],
+        plotPoints: context.plotThreads || [],
+        worldElements: context.worldElements || [],
+        themes: [],
+        currentScene: {
+          id: 'current',
+          purpose: 'analysis',
+          setting: { location: '', timeOfDay: '', atmosphere: '', sensoryDetails: { visual: [], auditory: [], tactile: [], olfactory: [], gustatory: [] }, significance: '' },
+          characters: [],
+          conflicts: [],
+          emotions: { startingEmotion: '', targetEmotion: '', progressionBeats: [], intensity: 0, authenticity: 0 },
+          pacing: { overall: 'moderate', actionPacing: 0, dialoguePacing: 0, descriptionPacing: 0, transitionPacing: 0 },
+          dynamics: { tension: 0, momentum: 0, engagement: 0, clarity: 0, purpose: 0 },
+          goals: [],
+          outcomes: []
+        },
+        previousScenes: [],
+        writingDNAProfile: context.writingDNAProfile,
+        userPreferences: { suggestionTypes: [], autocompletionLevel: 'moderate', creativityLevel: 0.7, consistencyFocus: 0.8, stylePreservation: 0.8 },
+        documentStructure: { type: 'novel', chapters: [], outline: [], currentProgress: { totalWords: 0, completedChapters: 0, currentChapter: 1, percentComplete: 0 } },
+        metadata: { genre: context.genre || '', targetAudience: '', wordCountGoal: 0, tags: [], notes: [] }
+      };
+      results.contentSuggestions = await this.generateIntelligentSuggestions(contentContext);
+    }
+
+    // Consistency check
+    if (context.characters && context.worldElements && context.plotThreads) {
+      const documents = [{ id: 'current', content: text, metadata: {} }];
+      results.consistencyReport = await this.performConsistencyCheck(
+        documents,
+        context.characters,
+        context.worldElements,
+        context.plotThreads
+      );
+    }
+
+    // Plot development analysis
+    if (context.manuscript) {
+      results.plotAnalysis = await this.analyzePlotDevelopment(context.manuscript, undefined, context.genre);
+    }
+
+    // Generate comprehensive recommendations
+    results.recommendations = this.generateComprehensiveRecommendations(results);
+
+    return results;
+  }
+
+  /**
+   * Generate comprehensive recommendations from all analysis results
+   */
+  private generateComprehensiveRecommendations(results: ComprehensiveAnalysisResult): ComprehensiveRecommendation[] {
+    const recommendations: ComprehensiveRecommendation[] = [];
+
+    // Basic writing improvements
+    if (results.basicAnalysis.suggestions.length > 0) {
+      recommendations.push({
+        category: 'writing-quality',
+        priority: 'high',
+        title: 'Basic Writing Improvements',
+        description: `${results.basicAnalysis.suggestions.length} writing improvements identified`,
+        suggestions: results.basicAnalysis.suggestions.map(s => s.description),
+        source: 'basic-analysis'
+      });
+    }
+
+    // Genre-specific recommendations
+    if (results.genreAnalysis?.suggestions.length) {
+      recommendations.push({
+        category: 'genre-alignment',
+        priority: 'medium',
+        title: 'Genre-Specific Improvements',
+        description: 'Enhance genre conventions and reader expectations',
+        suggestions: results.genreAnalysis.suggestions.map(s => s.description),
+        source: 'genre-analysis'
+      });
+    }
+
+    // Voice consistency issues
+    if (results.voiceConsistency && results.voiceConsistency.overallConsistency < 0.8) {
+      recommendations.push({
+        category: 'voice-consistency',
+        priority: 'high',
+        title: 'Voice Consistency Issues',
+        description: 'Strengthen character voice distinction and narrative consistency',
+        suggestions: results.voiceConsistency.recommendations.map(r => r.description),
+        source: 'voice-analysis'
+      });
+    }
+
+    // Critical consistency issues
+    if (results.consistencyReport) {
+      const criticalIssues = results.consistencyReport.issues.filter(i => i.severity === 'critical');
+      if (criticalIssues.length > 0) {
+        recommendations.push({
+          category: 'consistency',
+          priority: 'critical',
+          title: 'Critical Consistency Issues',
+          description: `${criticalIssues.length} critical consistency issues that may confuse readers`,
+          suggestions: criticalIssues.map(i => i.suggestedFix),
+          source: 'consistency-check'
+        });
+      }
+    }
+
+    // Plot development opportunities
+    if (results.plotAnalysis && results.plotAnalysis.optimization.optimizationGain > 0.2) {
+      recommendations.push({
+        category: 'plot-development',
+        priority: 'medium',
+        title: 'Plot Development Opportunities',
+        description: 'Strengthen plot structure and character arcs',
+        suggestions: results.plotAnalysis.recommendations.map(r => r.solution),
+        source: 'plot-analysis'
+      });
+    }
+
+    return recommendations.sort((a, b) => this.getPriorityWeight(a.priority) - this.getPriorityWeight(b.priority));
+  }
+
+  private getPriorityWeight(priority: string): number {
+    const weights = { 'critical': 1, 'high': 2, 'medium': 3, 'low': 4 };
+    return weights[priority as keyof typeof weights] || 5;
+  }
+
+  /**
+   * Initialize all Phase 2A AI services
+   */
+  async initializePhase2A(): Promise<boolean> {
+    try {
+      await genreSpecificAssistants.initialize();
+      await personalizedStyleAnalysis.initialize();
+      await intelligentContentSuggestions.initialize();
+      await consistencyChecker.initialize();
+      await plotDevelopmentAnalyzer.initialize();
+      
+      console.log('Phase 2A AI services initialized successfully');
+      return true;
+    } catch (error) {
+      console.error('Failed to initialize Phase 2A AI services:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Check if Phase 2A features are available
+   */
+  isPhase2AEnabled(): boolean {
+    return (
+      genreSpecificAssistants.isConfigured() &&
+      personalizedStyleAnalysis.isConfigured() &&
+      intelligentContentSuggestions.isConfigured() &&
+      consistencyChecker.isConfigured() &&
+      plotDevelopmentAnalyzer.isConfigured()
+    );
   }
 }
 

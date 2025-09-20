@@ -24,8 +24,12 @@ import {
   aiWritingService, 
   type WritingSuggestion, 
   type WritingAnalysis,
-  type AIPromptTemplate
+  type AIPromptTemplate,
+  type ComprehensiveAnalysisResult,
+  type ComprehensiveRecommendation
 } from '@/services/aiWritingService';
+import { type GenreContext } from '@/services/ai/genreSpecificAssistants';
+import { type WritingDNAProfile } from '@/services/ai/personalizedStyleAnalysis';
 
 interface AIWritingAssistantProps {
   content: string;
@@ -33,6 +37,15 @@ interface AIWritingAssistantProps {
   onSuggestionApply?: (suggestion: WritingSuggestion) => void;
   isVisible: boolean;
   onToggle: () => void;
+  
+  // Phase 2A Context
+  genre?: GenreContext['genre'];
+  authorId?: string;
+  characters?: any[];
+  worldElements?: any[];
+  plotThreads?: any[];
+  manuscript?: any;
+  writingDNAProfile?: WritingDNAProfile;
 }
 
 export function AIWritingAssistant({ 
@@ -40,7 +53,16 @@ export function AIWritingAssistant({
   onContentChange, 
   onSuggestionApply,
   isVisible,
-  onToggle 
+  onToggle,
+  
+  // Phase 2A props
+  genre,
+  authorId,
+  characters,
+  worldElements,
+  plotThreads,
+  manuscript,
+  writingDNAProfile
 }: AIWritingAssistantProps) {
   const [analysis, setAnalysis] = useState<WritingAnalysis | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -48,6 +70,12 @@ export function AIWritingAssistant({
   const [promptTemplates, setPromptTemplates] = useState<AIPromptTemplate[]>([]);
   const [selectedTemplate, setSelectedTemplate] = useState<AIPromptTemplate | null>(null);
   const [templateVariables, setTemplateVariables] = useState<Record<string, string>>({});
+  
+  // Phase 2A State
+  const [comprehensiveAnalysis, setComprehensiveAnalysis] = useState<ComprehensiveAnalysisResult | null>(null);
+  const [isPhase2AEnabled, setIsPhase2AEnabled] = useState(false);
+  const [selectedGenre, setSelectedGenre] = useState<GenreContext['genre'] | undefined>(genre);
+  const [activeAnalysisMode, setActiveAnalysisMode] = useState<'basic' | 'comprehensive'>('basic');
 
   // Analyze content when it changes
   useEffect(() => {
@@ -56,10 +84,18 @@ export function AIWritingAssistant({
     }
   }, [content]);
 
-  // Load prompt templates
+  // Load prompt templates and check Phase 2A availability
   useEffect(() => {
     setPromptTemplates(aiWritingService.getPromptTemplates());
+    setIsPhase2AEnabled(aiWritingService.isPhase2AEnabled());
   }, []);
+
+  // Update comprehensive analysis when context changes
+  useEffect(() => {
+    if (isPhase2AEnabled && activeAnalysisMode === 'comprehensive' && content.trim().length > 50) {
+      performComprehensiveAnalysis();
+    }
+  }, [content, selectedGenre, authorId, characters, worldElements, plotThreads, manuscript, writingDNAProfile, isPhase2AEnabled, activeAnalysisMode]);
 
   const analyzeContent = useCallback(async () => {
     if (!content.trim()) return;
@@ -96,6 +132,38 @@ export function AIWritingAssistant({
       setAnalysis({ ...analysis, suggestions: updatedSuggestions });
     }
   }, [analysis]);
+
+  // Phase 2A: Comprehensive Analysis
+  const performComprehensiveAnalysis = useCallback(async () => {
+    if (!content.trim() || !isPhase2AEnabled) return;
+    
+    setIsAnalyzing(true);
+    try {
+      const result = await aiWritingService.performComprehensiveAnalysis(content, {
+        genre: selectedGenre,
+        authorId,
+        characters,
+        worldElements,
+        plotThreads,
+        manuscript,
+        writingDNAProfile
+      });
+      setComprehensiveAnalysis(result);
+    } catch (error) {
+      console.error('Comprehensive analysis failed:', error);
+    } finally {
+      setIsAnalyzing(false);
+    }
+  }, [content, selectedGenre, authorId, characters, worldElements, plotThreads, manuscript, writingDNAProfile, isPhase2AEnabled]);
+
+  const toggleAnalysisMode = useCallback(() => {
+    const newMode = activeAnalysisMode === 'basic' ? 'comprehensive' : 'basic';
+    setActiveAnalysisMode(newMode);
+    
+    if (newMode === 'comprehensive' && isPhase2AEnabled) {
+      performComprehensiveAnalysis();
+    }
+  }, [activeAnalysisMode, isPhase2AEnabled, performComprehensiveAnalysis]);
 
   const getConfidenceColor = (confidence: number) => {
     if (confidence >= 0.8) return 'text-green-600';
@@ -391,6 +459,254 @@ export function AIWritingAssistant({
     },
   ];
 
+  // Add Phase 2A tabs if enabled
+  if (isPhase2AEnabled) {
+    tabs.push(
+      {
+        id: 'comprehensive',
+        label: 'Comprehensive',
+        icon: <Sparkles className="h-4 w-4" />,
+        content: (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <Sparkles className="h-4 w-4 text-purple-500" />
+                <span className="text-sm font-medium">AI-Powered Analysis</span>
+              </div>
+              <Button
+                size="sm"
+                variant={activeAnalysisMode === 'comprehensive' ? 'cosmic' : 'outline'}
+                onClick={toggleAnalysisMode}
+              >
+                {activeAnalysisMode === 'comprehensive' ? 'Comprehensive' : 'Switch to Comprehensive'}
+              </Button>
+            </div>
+
+            {selectedGenre && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-sm flex items-center gap-2">
+                    <Badge variant="outline">{selectedGenre}</Badge>
+                    Genre Analysis
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm text-muted-foreground">
+                    Specialized analysis for {selectedGenre} writing conventions and reader expectations.
+                  </p>
+                </CardContent>
+              </Card>
+            )}
+
+            {comprehensiveAnalysis ? (
+              <div className="space-y-4">
+                {/* Comprehensive Recommendations */}
+                {comprehensiveAnalysis.recommendations.length > 0 && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-sm">Priority Recommendations</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-3">
+                        {comprehensiveAnalysis.recommendations.slice(0, 5).map((rec, index) => (
+                          <div key={index} className="border-l-4 border-l-purple-500 pl-3">
+                            <div className="flex items-center gap-2 mb-1">
+                              <Badge 
+                                variant={rec.priority === 'critical' ? 'destructive' : rec.priority === 'high' ? 'default' : 'outline'}
+                                className="text-xs"
+                              >
+                                {rec.priority}
+                              </Badge>
+                              <span className="text-sm font-medium">{rec.title}</span>
+                            </div>
+                            <p className="text-xs text-muted-foreground mb-2">{rec.description}</p>
+                            <div className="space-y-1">
+                              {rec.suggestions.slice(0, 3).map((suggestion, idx) => (
+                                <div key={idx} className="text-xs bg-purple-50 dark:bg-purple-950 p-2 rounded">
+                                  {suggestion}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* Voice Consistency */}
+                {comprehensiveAnalysis.voiceConsistency && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-sm">Voice Consistency</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="flex items-center gap-2 mb-2">
+                        <div className="text-2xl font-bold">
+                          {Math.round(comprehensiveAnalysis.voiceConsistency.overallConsistency * 100)}%
+                        </div>
+                        <span className="text-sm text-muted-foreground">Overall Consistency</span>
+                      </div>
+                      {comprehensiveAnalysis.voiceConsistency.characterVoices.length > 0 && (
+                        <div className="space-y-2">
+                          <span className="text-xs font-medium">Character Voices:</span>
+                          {comprehensiveAnalysis.voiceConsistency.characterVoices.map((char, idx) => (
+                            <div key={idx} className="flex items-center justify-between text-xs">
+                              <span>{char.characterName}</span>
+                              <Badge variant="outline">
+                                {Math.round(char.consistencyScore * 100)}%
+                              </Badge>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* Consistency Issues */}
+                {comprehensiveAnalysis.consistencyReport && comprehensiveAnalysis.consistencyReport.issues.length > 0 && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-sm">Consistency Issues</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-2">
+                        {comprehensiveAnalysis.consistencyReport.issues.slice(0, 5).map((issue, idx) => (
+                          <div key={idx} className="text-xs border rounded p-2">
+                            <div className="flex items-center gap-2 mb-1">
+                              <Badge 
+                                variant={issue.severity === 'critical' ? 'destructive' : 'outline'}
+                                className="text-xs"
+                              >
+                                {issue.type}
+                              </Badge>
+                              <span className="font-medium">{issue.title}</span>
+                            </div>
+                            <p className="text-muted-foreground mb-1">{issue.description}</p>
+                            <div className="bg-green-50 dark:bg-green-950 p-1 rounded">
+                              <span className="font-medium">Fix: </span>
+                              {issue.suggestedFix}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+              </div>
+            ) : isAnalyzing ? (
+              <div className="flex items-center justify-center py-8">
+                <RefreshCw className="h-6 w-6 animate-spin text-purple-600" />
+                <span className="ml-2 text-muted-foreground">Performing comprehensive analysis...</span>
+              </div>
+            ) : (
+              <div className="text-center py-8">
+                <Sparkles className="h-12 w-12 text-purple-500 mx-auto mb-3" />
+                <h3 className="font-medium mb-1">Comprehensive Analysis</h3>
+                <p className="text-sm text-muted-foreground mb-4">
+                  Get advanced AI insights including genre-specific analysis, voice consistency, and plot development.
+                </p>
+                <Button
+                  variant="cosmic"
+                  onClick={() => setActiveAnalysisMode('comprehensive')}
+                >
+                  Start Comprehensive Analysis
+                </Button>
+              </div>
+            )}
+          </div>
+        ),
+      },
+      {
+        id: 'genre-assistant',
+        label: 'Genre',
+        icon: <TrendingUp className="h-4 w-4" />,
+        content: (
+          <div className="space-y-4">
+            <div className="flex items-center gap-2 mb-4">
+              <label className="text-sm font-medium">Genre:</label>
+              <select
+                value={selectedGenre || ''}
+                onChange={(e) => setSelectedGenre(e.target.value as GenreContext['genre'])}
+                className="px-2 py-1 border rounded text-sm"
+              >
+                <option value="">Select Genre</option>
+                <option value="literary-fiction">Literary Fiction</option>
+                <option value="fantasy-scifi">Fantasy/Sci-Fi</option>
+                <option value="mystery-thriller">Mystery/Thriller</option>
+                <option value="romance">Romance</option>
+                <option value="non-fiction">Non-Fiction</option>
+                <option value="screenplay">Screenplay</option>
+              </select>
+            </div>
+
+            {selectedGenre && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-sm">Genre-Specific Prompts</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-2">
+                    {aiWritingService.getGenrePrompts(selectedGenre).map((prompt, idx) => (
+                      <div key={idx} className="p-2 bg-slate-50 dark:bg-slate-900 rounded text-xs">
+                        {prompt}
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {comprehensiveAnalysis?.genreAnalysis && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-sm">Genre Analysis Results</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-medium">Alignment Score:</span>
+                      <Badge variant="outline">
+                        {Math.round((comprehensiveAnalysis.genreAnalysis.confidence || 0) * 100)}%
+                      </Badge>
+                    </div>
+                    
+                    {comprehensiveAnalysis.genreAnalysis.strengths && (
+                      <div>
+                        <span className="text-xs font-medium text-green-600">Strengths:</span>
+                        <div className="flex flex-wrap gap-1 mt-1">
+                          {comprehensiveAnalysis.genreAnalysis.strengths.map((strength, idx) => (
+                            <Badge key={idx} variant="outline" className="text-xs">
+                              {strength}
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {comprehensiveAnalysis.genreAnalysis.suggestions && (
+                      <div>
+                        <span className="text-xs font-medium">Suggestions:</span>
+                        <div className="space-y-1 mt-1">
+                          {comprehensiveAnalysis.genreAnalysis.suggestions.slice(0, 3).map((suggestion, idx) => (
+                            <div key={idx} className="text-xs p-2 bg-blue-50 dark:bg-blue-950 rounded">
+                              {suggestion.description}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+          </div>
+        ),
+      }
+    );
+  }
+
   if (!isVisible) {
     return (
       <Button
@@ -400,7 +716,7 @@ export function AIWritingAssistant({
         onClick={onToggle}
         leftIcon={<Wand2 className="h-4 w-4" />}
       >
-        AI Assistant
+        AI Assistant {isPhase2AEnabled && <Sparkles className="h-3 w-3 ml-1" />}
       </Button>
     );
   }
@@ -411,6 +727,11 @@ export function AIWritingAssistant({
         <div className="flex items-center gap-2">
           <Wand2 className="h-5 w-5 text-indigo-600" />
           <h3 className="font-semibold">AI Writing Assistant</h3>
+          {isPhase2AEnabled && (
+            <Badge variant="outline" className="text-xs">
+              Phase 2A
+            </Badge>
+          )}
         </div>
         <Button
           variant="ghost"

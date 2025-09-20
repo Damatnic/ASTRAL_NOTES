@@ -20,6 +20,7 @@ import characterRoutes from '../server/src/routes/characters';
 import locationRoutes from '../server/src/routes/locations';
 import timelineRoutes from '../server/src/routes/timelines';
 import linkRoutes from '../server/src/routes/links';
+import marketplaceRoutes from '../server/src/routes/marketplace';
 
 // Initialize Express app
 const app = express();
@@ -90,6 +91,7 @@ app.use('/api/characters', authMiddleware, characterRoutes);
 app.use('/api/locations', authMiddleware, locationRoutes);
 app.use('/api/timelines', authMiddleware, timelineRoutes);
 app.use('/api/links', authMiddleware, linkRoutes);
+app.use('/api/marketplace', marketplaceRoutes);
 
 // Root API endpoint
 app.get('/api', (req, res) => {

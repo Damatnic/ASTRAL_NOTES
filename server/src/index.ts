@@ -23,6 +23,7 @@ import locationRoutes from './routes/locations.js';
 import timelineRoutes from './routes/timelines.js';
 import linkRoutes from './routes/links.js';
 import exportRoutes from './routes/exports.js';
+import publishingRoutes from './routes/publishing.js';
 // import codexRoutes from './routes/codex.js';
 // import collaborationRoutes from './routes/collaboration.js';
 
@@ -95,6 +96,7 @@ app.use('/api/locations', authMiddleware, locationRoutes);
 app.use('/api/timelines', authMiddleware, timelineRoutes);
 app.use('/api/links', authMiddleware, linkRoutes);
 app.use('/api/exports', exportRoutes); // Enhanced export system with built-in auth
+app.use('/api/publishing', authMiddleware, publishingRoutes); // Phase 2D: Professional Publishing
 // app.use('/api/codex', authMiddleware, codexRoutes);
 // app.use('/api/collaboration', authMiddleware, collaborationRoutes);
 

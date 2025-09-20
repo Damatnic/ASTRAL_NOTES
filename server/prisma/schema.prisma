@@ -39,6 +39,25 @@ model User {
   aiUsageRecords AIUsageRecord[]
   aiAuditLogs    AIAuditLog[]
 
+  // Template Marketplace relationships
+  marketplaceTemplates    MarketplaceTemplate[]
+  templateReviews         TemplateReview[]
+  templatePurchases       TemplatePurchase[]
+  templateDownloads       TemplateDownload[]
+  templateLikes           TemplateLike[]
+  templateReports         TemplateReport[]
+  creatorProfile          CreatorProfile?
+  templateCollections     TemplateCollection[]
+  collectionLikes         CollectionLike[]
+  templateSubmissions     TemplateSubmission[]
+  templateSubmissionsReviewed TemplateSubmission[] @relation("TemplateReviewer")
+  creatorRevenues         CreatorRevenue[]
+  challengeSubmissions    ChallengeSubmission[]
+  
+  // Phase 2D: Professional Publishing relationships
+  publishingProjects      PublishingProject[]
+  authorPlatform          AuthorPlatform?
+
   @@map("users")
 }
 
@@ -89,6 +108,9 @@ model Project {
   codexTags          CodexTag[]
   entityCollections  EntityCollection[]
   consistencyChecks  ConsistencyCheck[]
+  
+  // Phase 2D: Professional Publishing relationships
+  publishingProjects PublishingProject[]
 
   @@map("projects")
 }
@@ -949,3 +971,1050 @@ model AIDetection {
   @@index([userId, timestamp])
   @@map("ai_detections")
 }
+
+// TEMPLATE MARKETPLACE SYSTEM - Phase 2B Implementation
+
+// Template Marketplace Core Models
+model MarketplaceTemplate {
+  id          String   @id @default(cuid())
+  title       String
+  description String
+  author      String?  // Display name for creator
+  authorId    String   // Creator's user ID
+  creator     User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  
+  // Template Content
+  templateData String   // JSON blob of complete template structure
+  sections     String   @default("[]") // JSON array of template sections
+  metadata     String   @default("{}") // JSON metadata (character arcs, plot threads, etc.)
+  
+  // Classification
+  genre        String   @default("[]") // JSON array of genres
+  subgenre     String   @default("[]") // JSON array of subgenres
+  category     String   // novel, screenplay, non-fiction, world-building, character, marketing
+  structure    String   // three-act, hero-journey, etc.
+  difficulty   String   @default("beginner") // beginner, intermediate, advanced
+  tags         String   @default("[]") // JSON array of tags
+  
+  // Target Specifications
+  targetWordCount     Int      @default(0)
+  estimatedDuration   String?  // "3-6 months"
+  targetAudience      String   @default("general") // young-adult, adult, literary, commercial
+  writingLevel        String   @default("amateur") // amateur, professional, expert
+  
+  // Marketplace Details
+  licenseType         String   @default("free") // free, premium, exclusive
+  price               Float    @default(0.0) // Price in USD
+  isPublic            Boolean  @default(false)
+  isFeatured          Boolean  @default(false)
+  isVerified          Boolean  @default(false) // Verified by editorial team
+  
+  // Version Control
+  version             String   @default("1.0.0")
+  changeLog          String   @default("[]") // JSON array of version changes
+  parentVersionId    String?  // Previous version if this is an update
+  
+  // Statistics
+  downloadCount      Int      @default(0)
+  purchaseCount      Int      @default(0)
+  viewCount          Int      @default(0)
+  likeCount          Int      @default(0)
+  averageRating      Float    @default(0.0)
+  reviewCount        Int      @default(0)
+  
+  // Preview and Media
+  previewContent     String?  // Sample content for preview
+  coverImage         String?  // Cover image URL
+  screenshots        String   @default("[]") // JSON array of screenshot URLs
+  
+  // Publishing
+  publishedAt        DateTime?
+  lastUpdated        DateTime @updatedAt
+  createdAt          DateTime @default(now())
+  
+  // Template Processing
+  processingStatus   String   @default("draft") // draft, reviewing, approved, rejected, published
+  moderationNotes    String?  // Internal moderation notes
+  
+  // Relationships
+  reviews            TemplateReview[]
+  purchases          TemplatePurchase[]
+  downloads          TemplateDownload[]
+  likes              TemplateLike[]
+  reports            TemplateReport[]
+  collections        TemplateCollectionItem[]
+  challengeSubmissions ChallengeSubmission[]
+  analytics          TemplateAnalytics[]
+  
+  @@index([category, isPublic, publishedAt])
+  @@index([authorId, publishedAt])
+  @@index([averageRating, downloadCount])
+  @@index([isFeatured, isPublic])
+  @@map("marketplace_templates")
+}
+
+// Template Reviews and Ratings
+model TemplateReview {
+  id               String             @id @default(cuid())
+  templateId       String
+  template         MarketplaceTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  reviewerId       String
+  reviewer         User               @relation(fields: [reviewerId], references: [id], onDelete: Cascade)
+  
+  rating           Int                // 1-5 stars
+  title            String?
+  content          String
+  
+  // Review Details
+  isVerifiedPurchase Boolean          @default(false)
+  isRecommended      Boolean          @default(true)
+  helpfulCount       Int              @default(0)
+  reportCount        Int              @default(0)
+  
+  // Template Usage Feedback
+  usageRating        Int?             // How well template worked for them (1-5)
+  difficultyRating   Int?             // How difficult was it to use (1-5)
+  valueRating        Int?             // Was it worth the price (1-5)
+  
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+  
+  // Moderation
+  isModerated      Boolean            @default(false)
+  isHidden         Boolean            @default(false)
+  
+  @@unique([templateId, reviewerId])
+  @@index([templateId, rating])
+  @@index([reviewerId, createdAt])
+  @@map("template_reviews")
+}
+
+// Template Purchases
+model TemplatePurchase {
+  id               String             @id @default(cuid())
+  templateId       String
+  template         MarketplaceTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  purchaserId      String
+  purchaser        User               @relation(fields: [purchaserId], references: [id], onDelete: Cascade)
+  
+  price            Float              // Price paid at time of purchase
+  licenseType      String             // License purchased
+  
+  // Payment Details
+  paymentMethod    String?            // stripe, paypal, etc.
+  transactionId    String?            // External transaction ID
+  paymentStatus    String             @default("completed") // pending, completed, refunded, failed
+  
+  // License Details
+  licenseKey       String?            // Unique license key
+  expiresAt        DateTime?          // For timed licenses
+  usageLimit       Int?               // Number of projects can be used on
+  
+  purchasedAt      DateTime           @default(now())
+  
+  @@unique([templateId, purchaserId])
+  @@index([purchaserId, purchasedAt])
+  @@index([templateId, purchasedAt])
+  @@map("template_purchases")
+}
+
+// Template Downloads (free templates)
+model TemplateDownload {
+  id          String             @id @default(cuid())
+  templateId  String
+  template    MarketplaceTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  downloaderId String
+  downloader  User               @relation(fields: [downloaderId], references: [id], onDelete: Cascade)
+  
+  downloadedAt DateTime          @default(now())
+  ipAddress   String?
+  userAgent   String?
+  
+  @@unique([templateId, downloaderId])
+  @@index([downloaderId, downloadedAt])
+  @@index([templateId, downloadedAt])
+  @@map("template_downloads")
+}
+
+// Template Likes/Favorites
+model TemplateLike {
+  id          String             @id @default(cuid())
+  templateId  String
+  template    MarketplaceTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  likedAt     DateTime          @default(now())
+  
+  @@unique([templateId, userId])
+  @@index([userId, likedAt])
+  @@index([templateId, likedAt])
+  @@map("template_likes")
+}
+
+// Template Reporting
+model TemplateReport {
+  id          String             @id @default(cuid())
+  templateId  String
+  template    MarketplaceTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  reporterId  String
+  reporter    User               @relation(fields: [reporterId], references: [id], onDelete: Cascade)
+  
+  reason      String             // inappropriate, copyright, quality, etc.
+  description String
+  status      String             @default("pending") // pending, investigating, resolved, dismissed
+  
+  reportedAt  DateTime          @default(now())
+  resolvedAt  DateTime?
+  resolution  String?
+  
+  @@index([templateId, status])
+  @@index([reporterId, reportedAt])
+  @@map("template_reports")
+}
+
+// Creator Profiles
+model CreatorProfile {
+  id               String   @id @default(cuid())
+  userId           String   @unique
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  // Profile Information
+  displayName      String
+  bio              String?
+  avatar           String?
+  website          String?
+  socialLinks      String   @default("{}") // JSON object of social media links
+  
+  // Creator Stats
+  totalTemplates   Int      @default(0)
+  totalDownloads   Int      @default(0)
+  totalRevenue     Float    @default(0.0)
+  averageRating    Float    @default(0.0)
+  followerCount    Int      @default(0)
+  
+  // Creator Status
+  isVerified       Boolean  @default(false)
+  isFeatured       Boolean  @default(false)
+  tier             String   @default("bronze") // bronze, silver, gold, platinum
+  
+  // Creator Settings
+  allowFollowers   Boolean  @default(true)
+  publicProfile    Boolean  @default(true)
+  showStats        Boolean  @default(true)
+  
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  
+  // Relationships
+  followers        CreatorFollower[] @relation("FollowedCreator")
+  following        CreatorFollower[] @relation("FollowerUser")
+  
+  @@map("creator_profiles")
+}
+
+// Creator Following System
+model CreatorFollower {
+  id          String        @id @default(cuid())
+  creatorId   String
+  creator     CreatorProfile @relation("FollowedCreator", fields: [creatorId], references: [id], onDelete: Cascade)
+  followerId  String
+  follower    CreatorProfile @relation("FollowerUser", fields: [followerId], references: [id], onDelete: Cascade)
+  
+  followedAt  DateTime      @default(now())
+  
+  @@unique([creatorId, followerId])
+  @@index([creatorId, followedAt])
+  @@index([followerId, followedAt])
+  @@map("creator_followers")
+}
+
+// Template Collections (curated sets)
+model TemplateCollection {
+  id          String   @id @default(cuid())
+  title       String
+  description String?
+  creatorId   String
+  creator     User     @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  
+  // Collection Details
+  type        String   @default("user") // user, editorial, featured, genre
+  isPublic    Boolean  @default(false)
+  isFeatured  Boolean  @default(false)
+  
+  // Collection Metadata
+  coverImage  String?
+  tags        String   @default("[]") // JSON array
+  category    String?  // Genre or theme category
+  
+  // Stats
+  itemCount   Int      @default(0)
+  likeCount   Int      @default(0)
+  viewCount   Int      @default(0)
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // Relationships
+  items       TemplateCollectionItem[]
+  likes       CollectionLike[]
+  
+  @@index([creatorId, isPublic])
+  @@index([type, isFeatured])
+  @@map("template_collections")
+}
+
+// Collection Items
+model TemplateCollectionItem {
+  id           String              @id @default(cuid())
+  collectionId String
+  collection   TemplateCollection  @relation(fields: [collectionId], references: [id], onDelete: Cascade)
+  templateId   String
+  template     MarketplaceTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  
+  order        Int                 @default(0)
+  note         String?             // Curator's note about this template
+  addedAt      DateTime           @default(now())
+  
+  @@unique([collectionId, templateId])
+  @@index([collectionId, order])
+  @@map("template_collection_items")
+}
+
+// Collection Likes
+model CollectionLike {
+  id           String              @id @default(cuid())
+  collectionId String
+  collection   TemplateCollection  @relation(fields: [collectionId], references: [id], onDelete: Cascade)
+  userId       String
+  user         User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  likedAt      DateTime           @default(now())
+  
+  @@unique([collectionId, userId])
+  @@index([userId, likedAt])
+  @@map("collection_likes")
+}
+
+// Template Submissions for Editorial Review
+model TemplateSubmission {
+  id                String   @id @default(cuid())
+  submitterId       String
+  submitter         User     @relation(fields: [submitterId], references: [id], onDelete: Cascade)
+  
+  // Submission Details
+  title             String
+  description       String
+  templateData      String   // JSON template data
+  category          String
+  requestedPrice    Float    @default(0.0)
+  licenseType       String   @default("free")
+  
+  // Review Process
+  status            String   @default("pending") // pending, reviewing, approved, rejected, revision_requested
+  reviewerId        String?
+  reviewer          User?    @relation("TemplateReviewer", fields: [reviewerId], references: [id])
+  reviewNotes       String?
+  reviewedAt        DateTime?
+  
+  // Quality Checklist
+  hasPreview        Boolean  @default(false)
+  hasDescription    Boolean  @default(false)
+  hasMetadata       Boolean  @default(false)
+  isFormatValid     Boolean  @default(false)
+  isContentOriginal Boolean  @default(false)
+  
+  submittedAt       DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  
+  @@index([submitterId, status])
+  @@index([status, submittedAt])
+  @@map("template_submissions")
+}
+
+// Template Analytics for Creators
+model TemplateAnalytics {
+  id           String              @id @default(cuid())
+  templateId   String
+  template     MarketplaceTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  
+  // Daily Stats
+  date         DateTime            // Date for this analytics record
+  views        Int                 @default(0)
+  downloads    Int                 @default(0)
+  purchases    Int                 @default(0)
+  revenue      Float               @default(0.0)
+  
+  // User Engagement
+  likes        Int                 @default(0)
+  reviews      Int                 @default(0)
+  avgRating    Float               @default(0.0)
+  
+  // Traffic Sources
+  directViews  Int                 @default(0)
+  searchViews  Int                 @default(0)
+  collectionViews Int              @default(0)
+  featuredViews Int                @default(0)
+  
+  @@unique([templateId, date])
+  @@index([templateId, date])
+  @@map("template_analytics")
+}
+
+// Template Tags System
+model MarketplaceTag {
+  id            String   @id @default(cuid())
+  name          String   @unique
+  description   String?
+  category      String?  // genre, style, technique, audience
+  color         String?  // Hex color for visual organization
+  
+  usageCount    Int      @default(0)
+  isFeatured    Boolean  @default(false)
+  
+  createdAt     DateTime @default(now())
+  
+  @@index([category, usageCount])
+  @@map("marketplace_tags")
+}
+
+// Revenue Tracking for Creators
+model CreatorRevenue {
+  id          String   @id @default(cuid())
+  creatorId   String
+  creator     User     @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  
+  // Revenue Details
+  amount      Float    // Revenue amount
+  source      String   // template_sale, commission, bonus
+  templateId  String?  // Related template if applicable
+  
+  // Payment Processing
+  status      String   @default("pending") // pending, processed, paid, withheld
+  currency    String   @default("USD")
+  
+  // Platform Split (70% creator, 30% platform)
+  grossAmount Float    // Original sale amount
+  feeAmount   Float    // Platform fee
+  netAmount   Float    // Amount after fees
+  
+  earnedAt    DateTime @default(now())
+  paidAt      DateTime?
+  
+  @@index([creatorId, earnedAt])
+  @@index([status, earnedAt])
+  @@map("creator_revenue")
+}
+
+// Template Challenges and Contests
+model TemplateChallenge {
+  id            String   @id @default(cuid())
+  title         String
+  description   String
+  theme         String   // Monthly theme or focus
+  
+  // Challenge Details
+  category      String   // Type of templates being solicited
+  requirements  String   @default("{}") // JSON requirements
+  prizes        String   @default("{}") // JSON prize structure
+  
+  // Timeline
+  startDate     DateTime
+  endDate       DateTime
+  judgingEnds   DateTime
+  
+  // Challenge Status
+  status        String   @default("upcoming") // upcoming, active, judging, completed
+  winnerCount   Int      @default(3)
+  
+  // Stats
+  submissionCount Int    @default(0)
+  participantCount Int   @default(0)
+  
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  // Relationships
+  submissions   ChallengeSubmission[]
+  
+  @@index([status, endDate])
+  @@map("template_challenges")
+}
+
+// Challenge Submissions
+model ChallengeSubmission {
+  id          String             @id @default(cuid())
+  challengeId String
+  challenge   TemplateChallenge  @relation(fields: [challengeId], references: [id], onDelete: Cascade)
+  templateId  String
+  template    MarketplaceTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  submitterId String
+  submitter   User               @relation(fields: [submitterId], references: [id], onDelete: Cascade)
+  
+  // Submission Details
+  description String?           // Why this template fits the challenge
+  
+  // Judging
+  judgeScore  Float?            // 0-100 score from judges
+  publicVotes Int               @default(0)
+  placement   Int?              // Final ranking if applicable
+  won         Boolean           @default(false)
+  
+  submittedAt DateTime          @default(now())
+  
+  @@unique([challengeId, templateId])
+  @@index([challengeId, judgeScore])
+  @@map("challenge_submissions")
+}
+
+// PHASE 2D: PROFESSIONAL PUBLISHING SYSTEM
+
+// Publishing Projects - Manuscripts ready for publication
+model PublishingProject {
+  id                String   @id @default(cuid())
+  title             String
+  subtitle          String?
+  description       String?
+  
+  // Source Content
+  projectId         String?  // Link to original writing project
+  project           Project? @relation(fields: [projectId], references: [id])
+  storyId           String?  // Specific story if project-based
+  
+  // Book Details
+  isbn              String?  @unique
+  genre             String   @default("[]") // JSON array of genres
+  subgenre          String   @default("[]") // JSON array of subgenres
+  keywords          String   @default("[]") // JSON array of keywords
+  targetAudience    String   @default("adult") // children, ya, adult, literary
+  language          String   @default("en")
+  
+  // Content Specifications
+  wordCount         Int      @default(0)
+  pageCount         Int      @default(0)
+  chapterCount      Int      @default(0)
+  
+  // Publishing Details
+  publishingPath    String   @default("self") // self, traditional, hybrid
+  status            String   @default("draft") // draft, formatted, submitted, published
+  
+  // Rights and Legal
+  copyrightHolder   String?
+  copyrightYear     Int?
+  rightsStatus      String   @default("available") // available, optioned, sold, retained
+  
+  // Metadata
+  authorId          String
+  author            User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  publishedAt       DateTime?
+  
+  // Relationships
+  manuscripts       Manuscript[]
+  submissions       PublishingSubmission[]
+  contracts         PublishingContract[]
+  marketingCampaigns MarketingCampaign[]
+  salesData         SalesData[]
+  reviews           PublishingReview[]
+  rightsTransactions RightsTransaction[]
+  directPublications DirectPublication[]
+  
+  @@index([authorId, status])
+  @@index([publishingPath, status])
+  @@map("publishing_projects")
+}
+
+// Manuscript Versions with Professional Formatting
+model Manuscript {
+  id                String           @id @default(cuid())
+  publishingProjectId String
+  publishingProject PublishingProject @relation(fields: [publishingProjectId], references: [id], onDelete: Cascade)
+  
+  version           String           @default("1.0")
+  title             String
+  content           String           // Full manuscript content
+  
+  // Formatting Standards
+  formatType        String           @default("standard") // standard, publisher_specific, academic
+  publisherGuideline String?         // Publisher-specific formatting rules
+  wordCount         Int              @default(0)
+  pageCount         Int              @default(0)
+  
+  // Technical Specifications
+  fontSize          Int              @default(12)
+  fontFamily        String           @default("Times New Roman")
+  lineSpacing       Float            @default(2.0)
+  margins           String           @default("{\"top\":1,\"bottom\":1,\"left\":1,\"right\":1}")
+  
+  // Export Formats
+  docxUrl           String?          // DOCX export URL
+  pdfUrl            String?          // PDF export URL
+  epubUrl           String?          // ePub export URL
+  mobiUrl           String?          // Mobi export URL
+  
+  // Status
+  isFinalized       Boolean          @default(false)
+  notes             String?
+  
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  
+  @@index([publishingProjectId, version])
+  @@map("manuscripts")
+}
+
+// Literary Agents and Publishers Database
+model LiteraryAgent {
+  id                String   @id @default(cuid())
+  name              String
+  agency            String
+  email             String?
+  website           String?
+  
+  // Specialization
+  genres            String   @default("[]") // JSON array of genres they represent
+  clientTypes       String   @default("[]") // debut, established, celebrity
+  manuscriptTypes   String   @default("[]") // fiction, non-fiction, memoir, etc.
+  
+  // Preferences
+  queryFormat       String?  // How they want queries formatted
+  responseTime      String?  // Typical response time
+  exclusiveQuery    Boolean  @default(false) // Requires exclusive submissions
+  
+  // Contact Details
+  submissionEmail   String?
+  submissionPortal  String?  // Online submission portal URL
+  socialMedia       String   @default("{}") // JSON object of social links
+  
+  // Stats
+  clientCount       Int      @default(0)
+  recentSales       String   @default("[]") // JSON array of recent book deals
+  responseRate      Float    @default(0.0) // Percentage who respond to queries
+  
+  // Status
+  isActive          Boolean  @default(true)
+  acceptingQueries  Boolean  @default(true)
+  
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  
+  // Relationships
+  submissions       PublishingSubmission[]
+  
+  @@index([acceptingQueries, isActive])
+  @@map("literary_agents")
+}
+
+// Publishers Database
+model Publisher {
+  id                String   @id @default(cuid())
+  name              String
+  type              String   @default("traditional") // traditional, indie, hybrid, self_publishing_service
+  
+  // Contact Information
+  website           String?
+  submissionEmail   String?
+  submissionPortal  String?
+  
+  // Specialization
+  genres            String   @default("[]") // JSON array
+  imprints          String   @default("[]") // JSON array of imprints
+  distribution      String   @default("[]") // Distribution networks
+  
+  // Business Details
+  royaltyRate       String?  // "8-15% hardcover, 7-10% paperback"
+  advanceRange      String?  // "$5,000-50,000"
+  territories       String   @default("[]") // Geographic territories
+  
+  // Submission Requirements
+  acceptsUnsolicited Boolean @default(false)
+  requiresAgent     Boolean  @default(true)
+  submissionGuidelines String?
+  
+  // Stats
+  booksPerYear      Int      @default(0)
+  authorCount       Int      @default(0)
+  
+  // Status
+  isActive          Boolean  @default(true)
+  acceptingSubmissions Boolean @default(true)
+  
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  
+  // Relationships
+  submissions       PublishingSubmission[]
+  contracts         PublishingContract[]
+  
+  @@index([acceptsUnsolicited, isActive])
+  @@index([type, acceptingSubmissions])
+  @@map("publishers")
+}
+
+// Submission Tracking System
+model PublishingSubmission {
+  id                String           @id @default(cuid())
+  publishingProjectId String
+  publishingProject PublishingProject @relation(fields: [publishingProjectId], references: [id], onDelete: Cascade)
+  
+  // Target
+  targetType        String           // agent, publisher, contest
+  targetId          String?          // Agent or Publisher ID
+  targetName        String           // Name if not in our database
+  targetEmail       String?
+  
+  // Submission Details
+  submissionType    String           @default("query") // query, partial, full_manuscript
+  queryLetter       String?
+  synopsis          String?
+  samplePages       String?
+  fullManuscript    String?
+  
+  // Tracking
+  submittedAt       DateTime         @default(now())
+  followUpDate      DateTime?
+  responseDate      DateTime?
+  status            String           @default("submitted") // submitted, responded, rejected, requested, offered
+  response          String?          // Their response
+  
+  // Metadata
+  notes             String?
+  isExclusive       Boolean          @default(false)
+  
+  // Relationships
+  agent             LiteraryAgent?   @relation(fields: [targetId], references: [id])
+  publisher         Publisher?       @relation(fields: [targetId], references: [id])
+  
+  @@index([publishingProjectId, status])
+  @@index([submittedAt, status])
+  @@map("publishing_submissions")
+}
+
+// Publishing Contracts and Deals
+model PublishingContract {
+  id                String           @id @default(cuid())
+  publishingProjectId String
+  publishingProject PublishingProject @relation(fields: [publishingProjectId], references: [id], onDelete: Cascade)
+  
+  // Contract Details
+  contractType      String           @default("book_deal") // book_deal, option, film_rights, translation
+  publisherId       String?
+  publisher         Publisher?       @relation(fields: [publisherId], references: [id])
+  agentId           String?
+  
+  // Financial Terms
+  advance           Float            @default(0.0)
+  royaltyRate       String?          // "10% hardcover, 8% paperback, 25% ebook"
+  territories       String           @default("[]") // Geographic rights
+  
+  // Rights Granted
+  rightsGranted     String           @default("[]") // print, ebook, audio, translation, film
+  exclusivityPeriod Int?             // Months of exclusivity
+  
+  // Contract Timeline
+  signedAt          DateTime?
+  effectiveDate     DateTime?
+  expirationDate    DateTime?
+  
+  // Status
+  status            String           @default("negotiating") // negotiating, signed, active, expired, terminated
+  
+  // Documents
+  contractUrl       String?          // Signed contract document
+  notes             String?
+  
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  
+  @@index([publishingProjectId, status])
+  @@map("publishing_contracts")
+}
+
+// Rights Management
+model RightsTransaction {
+  id                String           @id @default(cuid())
+  publishingProjectId String
+  publishingProject PublishingProject @relation(fields: [publishingProjectId], references: [id], onDelete: Cascade)
+  
+  // Transaction Details
+  rightsType        String           // film, tv, translation, audio, foreign, subsidiary
+  territory         String?          // Geographic territory
+  language          String?          // For translation rights
+  
+  // Parties
+  grantorName       String           // Who is granting the rights
+  granteeName       String           // Who is receiving the rights
+  agentName         String?          // Agent facilitating
+  
+  // Financial Terms
+  advance           Float            @default(0.0)
+  royaltyRate       Float            @default(0.0)
+  minimumGuarantee  Float            @default(0.0)
+  
+  // Rights Duration
+  startDate         DateTime
+  endDate           DateTime?
+  isExclusive       Boolean          @default(true)
+  
+  // Status
+  status            String           @default("negotiating") // negotiating, active, expired, terminated
+  
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  
+  @@index([publishingProjectId, rightsType])
+  @@map("rights_transactions")
+}
+
+// Marketing Campaigns
+model MarketingCampaign {
+  id                String           @id @default(cuid())
+  publishingProjectId String
+  publishingProject PublishingProject @relation(fields: [publishingProjectId], references: [id], onDelete: Cascade)
+  
+  name              String
+  description       String?
+  campaignType      String           @default("launch") // pre_launch, launch, ongoing, seasonal
+  
+  // Timeline
+  startDate         DateTime
+  endDate           DateTime?
+  
+  // Channels
+  channels          String           @default("[]") // social_media, email, advertising, events, media
+  
+  // Budget and Goals
+  budget            Float            @default(0.0)
+  targetReach       Int              @default(0)
+  targetSales       Int              @default(0)
+  
+  // Assets
+  pressKit          String?          // Press kit URL
+  reviewCopies      Int              @default(0)
+  mediaList         String           @default("[]") // JSON array of media contacts
+  
+  // Status
+  status            String           @default("planning") // planning, active, completed, paused
+  
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  
+  // Relationships
+  activities        MarketingActivity[]
+  
+  @@index([publishingProjectId, status])
+  @@map("marketing_campaigns")
+}
+
+// Marketing Activities
+model MarketingActivity {
+  id          String          @id @default(cuid())
+  campaignId  String
+  campaign    MarketingCampaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  
+  title       String
+  description String?
+  type        String          // social_post, email_blast, ad_campaign, interview, event
+  platform    String?         // Facebook, Twitter, BookBub, etc.
+  
+  // Scheduling
+  scheduledAt DateTime
+  completedAt DateTime?
+  
+  // Performance
+  reach       Int             @default(0)
+  engagement  Int             @default(0)
+  conversions Int             @default(0)
+  cost        Float           @default(0.0)
+  
+  // Status
+  status      String          @default("scheduled") // scheduled, completed, cancelled
+  
+  // Content
+  content     String?         // Post content, email body, etc.
+  mediaUrls   String          @default("[]") // JSON array of media URLs
+  
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  
+  @@index([campaignId, scheduledAt])
+  @@map("marketing_activities")
+}
+
+// Sales Data and Analytics
+model SalesData {
+  id                String           @id @default(cuid())
+  publishingProjectId String
+  publishingProject PublishingProject @relation(fields: [publishingProjectId], references: [id], onDelete: Cascade)
+  
+  // Sales Period
+  date              DateTime         // Date for this sales record
+  platform          String           // Amazon, Barnes & Noble, Apple Books, etc.
+  format            String           // ebook, paperback, hardcover, audiobook
+  
+  // Sales Metrics
+  unitsSold         Int              @default(0)
+  grossRevenue      Float            @default(0.0)
+  netRevenue        Float            @default(0.0) // After platform fees
+  royaltiesEarned   Float            @default(0.0)
+  
+  // Performance Data
+  rank              Int?             // Bestseller rank if available
+  reviews           Int              @default(0) // New reviews this period
+  averageRating     Float            @default(0.0)
+  
+  createdAt         DateTime         @default(now())
+  
+  @@unique([publishingProjectId, date, platform, format])
+  @@index([publishingProjectId, date])
+  @@map("sales_data")
+}
+
+// Professional Reviews and Media Coverage
+model PublishingReview {
+  id                String           @id @default(cuid())
+  publishingProjectId String
+  publishingProject PublishingProject @relation(fields: [publishingProjectId], references: [id], onDelete: Cascade)
+  
+  // Review Source
+  reviewer          String           // Name of reviewer or publication
+  publication       String?          // Publication name if different
+  type              String           @default("review") // review, interview, feature, blurb
+  
+  // Review Details
+  title             String?
+  content           String?
+  rating            Float?           // Star rating if applicable
+  url               String?          // Link to review
+  
+  // Publication Info
+  publishedAt       DateTime?
+  circulation       Int?             // Publication circulation
+  reach             Int?             // Estimated reach
+  
+  // Classification
+  sentiment         String           @default("neutral") // positive, neutral, negative
+  isInfluential     Boolean          @default(false)    // Major publication/reviewer
+  
+  createdAt         DateTime         @default(now())
+  
+  @@index([publishingProjectId, sentiment])
+  @@map("publishing_reviews")
+}
+
+// Direct Publishing Integrations
+model PublishingPlatform {
+  id                String   @id @default(cuid())
+  name              String   @unique // "Amazon KDP", "IngramSpark", "Apple Books"
+  type              String   // ebook, print, audio, distribution
+  
+  // API Integration
+  hasApi            Boolean  @default(false)
+  apiBaseUrl        String?
+  authType          String?  // oauth, api_key, basic
+  
+  // Platform Details
+  regions           String   @default("[]") // Supported regions
+  formats           String   @default("[]") // Supported file formats
+  royaltyRates      String   @default("{}") // JSON object of royalty rates
+  
+  // Requirements
+  requirements      String   @default("{}") // JSON object of platform requirements
+  guidelines        String?  // Formatting and content guidelines
+  
+  isActive          Boolean  @default(true)
+  
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  
+  // Relationships
+  publications      DirectPublication[]
+  
+  @@map("publishing_platforms")
+}
+
+// Direct Publishing Records
+model DirectPublication {
+  id                String           @id @default(cuid())
+  publishingProjectId String
+  publishingProject PublishingProject @relation(fields: [publishingProjectId], references: [id], onDelete: Cascade)
+  platformId        String
+  platform          PublishingPlatform @relation(fields: [platformId], references: [id])
+  
+  // Publication Details
+  platformBookId    String?          // Platform-specific book ID
+  title             String
+  description       String?
+  price             Float            @default(0.0)
+  
+  // Metadata
+  categories        String           @default("[]") // Platform categories
+  keywords          String           @default("[]") // Search keywords
+  
+  // Files
+  manuscriptUrl     String?          // Uploaded manuscript
+  coverUrl          String?          // Book cover image
+  
+  // Status
+  status            String           @default("draft") // draft, submitted, under_review, published, rejected
+  publishedAt       DateTime?
+  lastSyncAt        DateTime?
+  
+  // Platform Response
+  platformResponse  String?          // Response from platform API
+  errorMessage      String?
+  
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  
+  @@unique([publishingProjectId, platformId])
+  @@index([platformId, status])
+  @@map("direct_publications")
+}
+
+// Author Platforms and Websites
+model AuthorPlatform {
+  id          String   @id @default(cuid())
+  authorId    String   @unique
+  author      User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  
+  // Website
+  domain      String?  // Custom domain
+  subdomain   String?  // platform.astral-notes.com
+  websiteUrl  String?  // Final website URL
+  
+  // Branding
+  brandName   String?  // Author brand name
+  tagline     String?  // Author tagline
+  bio         String?  // Author bio
+  
+  // Design
+  theme       String   @default("professional") // Theme template
+  colorScheme String   @default("{}")  // JSON color configuration
+  logo        String?  // Logo URL
+  headerImage String?  // Header background image
+  
+  // Content
+  pages       String   @default("[]") // JSON array of custom pages
+  blogPosts   String   @default("[]") // JSON array of blog posts
+  
+  // SEO
+  metaTitle   String?
+  metaDescription String?
+  keywords    String   @default("[]") // JSON array
+  
+  // Social Media
+  socialLinks String   @default("{}") // JSON object of social links
+  
+  // Analytics
+  googleAnalytics String? // GA tracking code
+  
+  isPublished Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@map("author_platforms")
+}
+
+
