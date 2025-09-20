@@ -320,7 +320,7 @@ app.post('/api/ai/coach', authMiddleware, async (req: any, res) => {
         'Strengthen the conflict'
       ],
       suggestions: [
-        'Try using the "show, don't tell" technique in paragraph 3',
+        'Try using the show, not tell technique in paragraph 3',
         'The pacing could be improved in the middle section',
         'Consider adding a subplot to enhance character depth'
       ],
