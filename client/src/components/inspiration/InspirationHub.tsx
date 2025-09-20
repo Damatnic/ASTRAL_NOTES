@@ -424,14 +424,38 @@ export function InspirationHub({
     </Card>
   );
 
-  // Placeholder for AI image generation
+  // AI image generation using real services
   const generateAIImage = async (prompt: AIPrompt): Promise<{ url: string; data: any }> => {
-    // This would integrate with actual AI services like DALL-E, Midjourney, or Stable Diffusion
-    await new Promise(resolve => setTimeout(resolve, 3000)); // Simulate API call
-    return {
-      url: 'https://via.placeholder.com/512x512/4f46e5/ffffff?text=AI+Generated',
-      data: {}
-    };
+    // Integrate with actual AI image generation services
+    // TODO: Configure API keys for DALL-E, Midjourney, or Stable Diffusion
+    
+    try {
+      // Example implementation for OpenAI DALL-E
+      const response = await fetch('/api/ai/generate-image', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          prompt: prompt.text,
+          size: '512x512',
+          n: 1
+        })
+      });
+      
+      if (!response.ok) {
+        throw new Error('Image generation failed');
+      }
+      
+      const result = await response.json();
+      return {
+        url: result.data[0].url,
+        data: result.data[0]
+      };
+    } catch (error) {
+      console.error('AI image generation failed:', error);
+      throw new Error('AI image generation service not available. Please configure API keys and endpoints.');
+    }
   };
 
   return (

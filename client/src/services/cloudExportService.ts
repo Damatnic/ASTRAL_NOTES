@@ -229,22 +229,10 @@ class CloudExportService {
    * Google Drive Authentication
    */
   private async authenticateGoogleDrive(config: CloudAuthConfig): Promise<CloudAuthResult> {
-    // For demo purposes, we'll simulate authentication
-    // In a real implementation, you would use Google's OAuth 2.0 flow
-    if (process.env.NODE_ENV === 'development') {
-      // Mock authentication for development
-      const mockToken = 'mock_google_drive_token_' + Date.now();
-      this.tokens['google-drive'] = {
-        accessToken: mockToken,
-        expiresAt: Date.now() + 3600000 // 1 hour
-      };
-      localStorage.setItem('astral_notes_google-drive_token', JSON.stringify(this.tokens['google-drive']));
-      
-      return {
-        success: true,
-        accessToken: mockToken,
-        expiresIn: 3600
-      };
+    // Implement real Google Drive OAuth 2.0 authentication
+    // This requires proper OAuth configuration and API keys
+    if (!config.clientId) {
+      throw new Error('Google Drive client ID not configured. Please set VITE_GOOGLE_DRIVE_CLIENT_ID in environment variables.');
     }
 
     // Real implementation would open OAuth flow
@@ -391,19 +379,7 @@ class CloudExportService {
   private async exportToGoogleDrive(content: Blob, options: CloudExportOptions): Promise<CloudExportResult> {
     const token = this.tokens['google-drive'].accessToken;
     
-    if (process.env.NODE_ENV === 'development') {
-      // Mock successful upload for development
-      await new Promise(resolve => setTimeout(resolve, 2000)); // Simulate upload delay
-      
-      return {
-        success: true,
-        fileId: 'mock_google_drive_file_' + Date.now(),
-        downloadUrl: `https://drive.google.com/file/d/mock_file_id/view`,
-        shareUrl: `https://drive.google.com/file/d/mock_file_id/view?usp=sharing`
-      };
-    }
-
-    // Real Google Drive API implementation would go here
+    // Implement real Google Drive API upload
     const formData = new FormData();
     formData.append('file', content, options.filename);
     

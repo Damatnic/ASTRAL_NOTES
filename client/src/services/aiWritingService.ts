@@ -437,38 +437,12 @@ class AIWritingService {
       try {
         return await openaiService.generateContentSuggestions(context, type);
       } catch (error) {
-        console.warn('AI content generation failed, falling back to mock suggestions:', error);
+        console.error('AI content generation failed:', error);\n        throw new Error('AI writing service is not available. Please check your API configuration.');
       }
     }
 
-    // Fall back to mock suggestions
-    const suggestions = [];
-    
-    switch (type) {
-      case 'continuation':
-        suggestions.push(
-          'Based on the context, you might continue with...',
-          'This could lead to an exploration of...',
-          'Consider developing this theme further by...'
-        );
-        break;
-      case 'expansion':
-        suggestions.push(
-          'Add more detail about the emotional impact...',
-          'Include specific examples to illustrate...',
-          'Explain the broader implications of...'
-        );
-        break;
-      case 'alternative':
-        suggestions.push(
-          'An alternative perspective might be...',
-          'You could approach this differently by...',
-          'Consider reframing this as...'
-        );
-        break;
-    }
-
-    return suggestions;
+    // If AI is not configured, throw error instead of using mock data
+    throw new Error('AI writing service is not configured. Please set up your AI API keys in the environment configuration.');
   }
 
   /**

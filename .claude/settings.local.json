@@ -78,7 +78,9 @@
       "Bash(python:*)",
       "Bash(npx vercel:*)",
       "WebFetch(domain:astral-notes-36ffa92xd-astral-productions.vercel.app)",
-      "Bash(start https://astral-notes-36ffa92xd-astral-productions.vercel.app)"
+      "Bash(start https://astral-notes-36ffa92xd-astral-productions.vercel.app)",
+      "Bash(start https://astral-notes-e484mteah-astral-productions.vercel.app)",
+      "WebFetch(domain:astral-notes-e484mteah-astral-productions.vercel.app)"
     ],
     "deny": [],
     "ask": []

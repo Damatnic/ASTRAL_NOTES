@@ -78,7 +78,7 @@ export function AppContent() {
     },
   });
 
-  const handleCreateGlobalNote = async (data: any) => {
+  const handleCreateGlobalNote = async (data: { title: string; content: string; tags?: string[]; projectId?: string }) => {
     try {
       await quickNotesService.createQuickNote(data);
       setShowGlobalQuickNote(false);
@@ -88,7 +88,7 @@ export function AppContent() {
     }
   };
 
-  const availableProjects = (projectService.getAllProjects?.() || []).map((p: any) => ({ id: p.id, title: p.title }));
+  const availableProjects = (projectService.getAllProjects?.() || []).map((p: { id: string; title: string }) => ({ id: p.id, title: p.title }));
   const availableTags = quickNotesService.getAllTags?.() || [];
 
   return (

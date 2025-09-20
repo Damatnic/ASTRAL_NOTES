@@ -399,84 +399,21 @@ class AdvancedExportEngine extends EventEmitter {
   }
 
   private async runSpellCheck(content: string, warnings: ValidationIssue[]): Promise<void> {
-    // Mock spell check implementation
-    // In a real implementation, this would use a professional spell checking API
-    const commonMisspellings = ['teh', 'recieve', 'occured', 'seperate', 'definately'];
-    
-    commonMisspellings.forEach(misspelling => {
-      const regex = new RegExp(`\\b${misspelling}\\b`, 'gi');
-      const matches = content.match(regex);
-      if (matches) {
-        warnings.push({
-          type: 'spelling',
-          severity: 'low',
-          message: `Possible misspelling: "${misspelling}"`,
-          location: {},
-          suggestion: `Consider reviewing spelling`,
-          autoFixAvailable: true
-        });
-      }
-    });
+    // Spell check requires integration with a professional API service
+    // Consider using: LanguageTool, Grammarly API, or Microsoft Cognitive Services
+    throw new Error('Spell check service not configured. Please integrate with a professional spell checking API.');
   }
 
   private async runGrammarCheck(content: string, warnings: ValidationIssue[]): Promise<void> {
-    // Mock grammar check implementation
-    // In a real implementation, this would integrate with services like Grammarly API
-    
-    // Check for passive voice (simplified)
-    const passiveVoiceRegex = /\b(was|were|is|are|been|being)\s+\w+ed\b/gi;
-    const passiveMatches = content.match(passiveVoiceRegex);
-    if (passiveMatches && passiveMatches.length > content.split(/\s+/).length * 0.1) {
-      warnings.push({
-        type: 'grammar',
-        severity: 'low',
-        message: 'High usage of passive voice detected',
-        location: {},
-        suggestion: 'Consider using more active voice for better readability',
-        autoFixAvailable: false
-      });
-    }
-
-    // Check for sentence length
-    const sentences = content.split(/[.!?]+/);
-    const longSentences = sentences.filter(s => s.split(/\s+/).length > 25);
-    if (longSentences.length > 0) {
-      warnings.push({
-        type: 'grammar',
-        severity: 'low',
-        message: `${longSentences.length} sentences exceed 25 words`,
-        location: {},
-        suggestion: 'Consider breaking long sentences for better readability',
-        autoFixAvailable: false
-      });
-    }
+    // Grammar check requires integration with a professional API service
+    // Consider using: LanguageTool, Grammarly API, or Microsoft Cognitive Services
+    throw new Error('Grammar check service not configured. Please integrate with a professional grammar checking API.');
   }
 
   private async runPlagiarismCheck(content: string, warnings: ValidationIssue[]): Promise<void> {
-    // Mock plagiarism check implementation
-    // In a real implementation, this would integrate with plagiarism detection services
-    
-    // Simple check for repeated phrases (mock implementation)
-    const phrases = content.match(/\b\w+\s+\w+\s+\w+\s+\w+\b/g) || [];
-    const phraseCount = new Map<string, number>();
-    
-    phrases.forEach(phrase => {
-      const normalized = phrase.toLowerCase();
-      phraseCount.set(normalized, (phraseCount.get(normalized) || 0) + 1);
-    });
-
-    Array.from(phraseCount.entries())
-      .filter(([_, count]) => count > 3)
-      .forEach(([phrase, count]) => {
-        warnings.push({
-          type: 'structure',
-          severity: 'medium',
-          message: `Repeated phrase detected: "${phrase}" (${count} times)`,
-          location: {},
-          suggestion: 'Consider varying language to improve originality',
-          autoFixAvailable: false
-        });
-      });
+    // Plagiarism check requires integration with a professional service
+    // Consider using: Turnitin API, Copyscape, or similar services
+    throw new Error('Plagiarism check service not configured. Please integrate with a professional plagiarism detection API.');
   }
 
   private generateImprovementSuggestions(
@@ -693,9 +630,8 @@ class FormattingEngine {
     options?: ExportOptions
   ): Promise<ArrayBuffer> {
     // Professional manuscript PDF generation
-    // This would use a library like PDFKit or jsPDF with professional formatting
-    const mockPDF = new TextEncoder().encode('Mock Professional PDF Content');
-    return mockPDF.buffer;
+    // Requires PDFKit or similar library for production use
+    throw new Error('PDF generation not implemented. Please install and configure a PDF generation library like PDFKit.');
   }
 
   private async generateKDPInterior(
@@ -703,8 +639,8 @@ class FormattingEngine {
     options?: ExportOptions
   ): Promise<ArrayBuffer> {
     // KDP-specific interior formatting
-    const mockPDF = new TextEncoder().encode('Mock KDP Interior PDF');
-    return mockPDF.buffer;
+    // Requires PDF generation library with KDP-compliant formatting
+    throw new Error('KDP PDF generation not implemented. Please install and configure a PDF generation library with KDP templates.');
   }
 
   private async generateFinalDraft(

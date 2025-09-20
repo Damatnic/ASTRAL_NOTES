@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 
-interface WebSocketMessage {
+interface WebSocketMessage<T = unknown> {
   type: string;
-  data?: any;
+  data?: T;
   timestamp: number;
 }
 
@@ -22,7 +22,7 @@ interface UseWebSocketReturn {
   isConnected: boolean;
   isConnecting: boolean;
   error: string | null;
-  sendMessage: (type: string, data?: any) => void;
+  sendMessage: <T = unknown>(type: string, data?: T) => void;
   connect: () => void;
   disconnect: () => void;
   reconnect: () => void;
@@ -136,7 +136,7 @@ export const useWebSocket = (options: UseWebSocketOptions): UseWebSocketReturn =
     setTimeout(connect, 100);
   }, [connect, disconnect]);
 
-  const sendMessage = useCallback((type: string, data?: any) => {
+  const sendMessage = useCallback(<T = unknown>(type: string, data?: T) => {
     if (!socket || socket.readyState !== WebSocket.OPEN) {
       console.warn('WebSocket is not connected. Cannot send message.');
       return;
